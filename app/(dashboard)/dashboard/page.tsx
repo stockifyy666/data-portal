@@ -13,26 +13,21 @@ export default function DashboardPage() {
       {/* Market open/close banner */}
       <MarketStatusBanner />
 
-      {/* KSE-100 chart (left) + index cards (right) */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-        {/* KSE-100 chart */}
-        <div className="card lg:col-span-3 flex flex-col min-h-[200px]">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-                KSE-100
-              </p>
-              <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Intraday</p>
-            </div>
-          </div>
-          <div className="flex-1 min-h-[140px]">
-            <KSEChart />
+      {/* Index cards — full width row */}
+      <IndexTracker />
+
+      {/* KSE-100 candlestick chart — full width */}
+      <div className="card">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+              KSE-100
+            </p>
+            <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Intraday · Candlestick</p>
           </div>
         </div>
-
-        {/* Index cards */}
-        <div className="lg:col-span-2">
-          <IndexTracker />
+        <div style={{ height: 280 }}>
+          <KSEChart />
         </div>
       </div>
 
