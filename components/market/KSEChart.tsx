@@ -7,11 +7,9 @@ type Candle = { date: string; open: number; high: number; low: number; close: nu
 
 /* ── Layout ─────────────────────────────────────────────────────── */
 const W       = 1000
-const H_C     = 270   // candle section height
-const H_V     = 90    // volume section height
+const H_C     = 310   // candle section height
 const H_X     = 30    // x-axis height
-const H_GAP   = 6     // gap between candle and volume
-const H_TOTAL = H_C + H_GAP + H_V + H_X
+const H_TOTAL = H_C + H_X
 const PAD_L   = 8
 const PAD_R   = 82
 const PAD_T   = 8
@@ -34,12 +32,6 @@ function fmtPrice(n: number) {
   return n.toFixed(2)
 }
 
-function fmtVol(n: number) {
-  if (n >= 1_000_000_000) return (n / 1_000_000_000).toFixed(1) + 'B'
-  if (n >= 1_000_000)     return (n / 1_000_000).toFixed(0) + 'M'
-  if (n >= 1_000)         return (n / 1_000).toFixed(0) + 'K'
-  return String(n)
-}
 
 function fmtDate(s: string, mode: 'daily' | 'intraday') {
   try {
@@ -73,15 +65,8 @@ function CandleChart({ data, mode }: { data: Candle[]; mode: 'daily' | 'intraday
   const yMax    = ySteps[ySteps.length - 1]
   const yRange  = yMax - yMin || 1
 
-  /* Volume range */
-  const vols    = data.map(c => c.volume)
-  const vMax    = Math.max(...vols) || 1
-  const vSteps  = niceSteps(0, vMax, 3)
-  const vTopMax = vSteps[vSteps.length - 1] || vMax
-
   /* Coordinate helpers */
   const toY  = (v: number) => PAD_T + H_C - ((v - yMin) / yRange) * H_C
-  const toVY = (v: number) => H_C + H_GAP + H_V - (v / vTopMax) * H_V
   const toX  = (i: number) => PAD_L + (i + 0.5) * (CW / n)
 
   /* Candle width */
@@ -190,71 +175,8 @@ function CandleChart({ data, mode }: { data: Candle[]; mode: 'daily' | 'intraday
           )
         })}
 
-        {/* ── Volume section separator ─────────────────────────────── */}
-        <line x1={PAD_L} y1={H_C + H_GAP} x2={W - PAD_R} y2={H_C + H_GAP}
-              stroke="var(--bg-border)" strokeWidth="0.8" />
-
-        {/* ── Volume label ─────────────────────────────────────────── */}
-        <text x={PAD_L + 2} y={H_C + H_GAP + 14}
-              fontSize="10" fill="var(--text-muted)" fontFamily="sans-serif" fontWeight="600">
-          Volume
-        </text>
-        <text x={PAD_L + 50} y={H_C + H_GAP + 14}
-              fontSize="10" fill={priceColor} fontFamily="monospace" fontWeight="600">
-          {fmtVol(last.volume)}
-        </text>
-
-        {/* ── Volume Y-axis labels ─────────────────────────────────── */}
-        {vSteps.filter(v => v > 0).map((val, i) => {
-          const vy = toVY(val)
-          if (vy > H_C + H_GAP + H_V + 2 || vy < H_C + H_GAP - 2) return null
-          return (
-            <g key={i}>
-              <line x1={PAD_L} y1={vy} x2={W - PAD_R} y2={vy}
-                    stroke="var(--bg-border)" strokeWidth="0.4" strokeDasharray="3,5" />
-              <text x={W - PAD_R + 6} y={vy + 4}
-                    fontSize="9.5" fill="var(--text-muted)" fontFamily="monospace">
-                {fmtVol(val)}
-              </text>
-            </g>
-          )
-        })}
-
-        {/* ── Volume current value box ──────────────────────────────── */}
-        {(() => {
-          const vy = toVY(last.volume)
-          if (vy < H_C + H_GAP || vy > H_C + H_GAP + H_V) return null
-          return (
-            <g>
-              <line x1={PAD_L} y1={vy} x2={W - PAD_R} y2={vy}
-                    stroke={priceColor} strokeWidth="0.6" strokeDasharray="3,4" opacity="0.5" />
-              <rect x={W - PAD_R + 2} y={vy - 8} width={PAD_R - 4} height={15}
-                    fill={priceColor} rx="2" />
-              <text x={W - PAD_R + (PAD_R / 2)} y={vy + 4}
-                    textAnchor="middle" fontSize="9" fill="white" fontFamily="monospace" fontWeight="bold">
-                {fmtVol(last.volume)}
-              </text>
-            </g>
-          )
-        })()}
-
-        {/* ── Volume bars ──────────────────────────────────────────── */}
-        {data.map((c, i) => {
-          const x     = toX(i)
-          const isGrn = c.close >= c.open
-          const color = isGrn ? '#26a69a55' : '#ef535055'
-          const barH  = (c.volume / vTopMax) * H_V
-          const barY  = H_C + H_GAP + H_V - barH
-          return (
-            <rect key={i}
-                  x={x - bodyW / 2} y={barY}
-                  width={bodyW} height={Math.max(barH, 1)}
-                  fill={color} rx="0.5" />
-          )
-        })}
-
-        {/* ── X-axis labels ────────────────────────────────────────── */}
-        <line x1={PAD_L} y1={H_C + H_GAP + H_V} x2={W - PAD_R} y2={H_C + H_GAP + H_V}
+        {/* ── X-axis line + labels ─────────────────────────────────── */}
+        <line x1={PAD_L} y1={PAD_T + H_C} x2={W - PAD_R} y2={PAD_T + H_C}
               stroke="var(--bg-border)" strokeWidth="0.8" />
 
         {xLabels.map(({ i, label }) => {
@@ -262,9 +184,9 @@ function CandleChart({ data, mode }: { data: Candle[]; mode: 'daily' | 'intraday
           if (x < PAD_L + 20 || x > W - PAD_R - 20) return null
           return (
             <g key={i}>
-              <line x1={x} y1={H_C + H_GAP + H_V} x2={x} y2={H_C + H_GAP + H_V + 4}
+              <line x1={x} y1={PAD_T + H_C} x2={x} y2={PAD_T + H_C + 4}
                     stroke="var(--bg-border)" strokeWidth="0.8" />
-              <text x={x} y={H_C + H_GAP + H_V + 18}
+              <text x={x} y={PAD_T + H_C + 18}
                     textAnchor="middle" fontSize="10" fill="var(--text-muted)" fontFamily="monospace">
                 {label}
               </text>
