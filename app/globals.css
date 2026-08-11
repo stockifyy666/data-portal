@@ -1,0 +1,97 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Root CSS Variables — Light Theme (default) ─────────────────── */
+:root {
+  --bg-page:        #f1f5f9;
+  --bg-sidebar:     #ffffff;
+  --bg-card:        #ffffff;
+  --bg-border:      #e2e8f0;
+  --bg-hover:       #f8fafc;
+  --text-primary:   #0f172a;
+  --text-secondary: #475569;
+  --text-muted:     #94a3b8;
+  --color-up:       #16a34a;
+  --color-down:     #dc2626;
+  --brand:          #FEA500;
+  --brand-dark:     #986300;
+}
+
+/* ── Dark Theme Overrides ────────────────────────────────────────── */
+.dark {
+  --bg-page:        #0d1117;
+  --bg-sidebar:     #0c1222;
+  --bg-card:        #161b27;
+  --bg-border:      #1e293b;
+  --bg-hover:       #1e293b;
+  --text-primary:   #e2e8f0;
+  --text-secondary: #94a3b8;
+  --text-muted:     #475569;
+  --color-up:       #22c55e;
+  --color-down:     #ef4444;
+  --brand:          #FEA500;
+  --brand-dark:     #986300;
+}
+
+/* ── Base Styles ────────────────────────────────────────────────── */
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    background-color: var(--bg-page);
+    color: var(--text-primary);
+    font-family: var(--font-inter), system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--bg-page);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--bg-border);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #cbd5e1;
+  }
+}
+
+/* ── Utility Classes ─────────────────────────────────────────────── */
+@layer utilities {
+  .text-up   { color: var(--color-up); }
+  .text-down { color: var(--color-down); }
+
+  .card {
+    background-color: var(--bg-card);
+    border: 1px solid var(--bg-border);
+    border-radius: 0.75rem;
+    padding: 1rem;
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.05);
+  }
+
+  .font-number {
+    font-family: var(--font-mono), 'Courier New', monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .animate-data {
+    animation: fadeIn 0.2s ease-in-out;
+  }
+
+  /* Hide scrollbar visually but keep functionality */
+  .hide-scrollbar::-webkit-scrollbar { display: none; }
+  .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+  @keyframes fadeIn {
+    from { opacity: 0.7; }
+    to   { opacity: 1; }
+  }
+}
