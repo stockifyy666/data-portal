@@ -8,11 +8,12 @@ export default async function SettingsPage() {
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) redirect('/login')
 
-  const { data: profile } = await supabase
+  const { data: profileData } = await supabase
     .from('profiles')
     .select('full_name, username, avatar_url')
     .eq('id', session.user.id)
     .single()
+  const profile = profileData as { full_name?: string; username?: string; avatar_url?: string } | null
 
   return (
     <div className="max-w-2xl space-y-6 animate-data">
