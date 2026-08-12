@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import {
   TrendingUp, TrendingDown, BarChart2, FileText, Users,
-  Newspaper, Bell, Building2, ChevronDown,
+  Newspaper, Bell, Building2, ChevronDown, ExternalLink,
 } from 'lucide-react'
 import { formatPrice, formatChange, formatPercent, formatVolume } from '@/lib/utils/format'
 
@@ -186,6 +186,46 @@ function StatementTable({ data, maxCols = 6 }: { data: StatementData; maxCols?: 
   )
 }
 
+/* ── TradingView Widget ──────────────────────────────────────────── */
+function TradingViewWidget({ symbol }: { symbol: string }) {
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+    container.innerHTML = ''
+    const wrapper = document.createElement('div')
+    wrapper.className = 'tradingview-widget-container'
+    wrapper.style.height = '420px'
+    const inner = document.createElement('div')
+    inner.className = 'tradingview-widget-container__widget'
+    inner.style.height = '100%'
+    wrapper.appendChild(inner)
+    const script = document.createElement('script')
+    script.type = 'text/javascript'
+    script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js'
+    script.async = true
+    script.innerHTML = JSON.stringify({
+      symbol:              `PSX:${symbol}`,
+      interval:            'D',
+      timezone:            'Asia/Karachi',
+      theme:               document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light',
+      style:               '1',
+      locale:              'en',
+      enable_publishing:   false,
+      hide_side_toolbar:   false,
+      allow_symbol_change: false,
+      save_image:          false,
+      height:              420,
+      width:               '100%',
+    })
+    wrapper.appendChild(script)
+    container.appendChild(wrapper)
+  }, [symbol])
+
+  return <div ref={containerRef} className="w-full overflow-hidden rounded-lg" style={{ height: 420 }} />
+}
+
 /* ── Main Component ──────────────────────────────────────────────── */
 export default function StockDetailClient({
   symbol,
@@ -205,10 +245,11 @@ export default function StockDetailClient({
   const [chartMode, setChartMode] = useState<'intraday' | 'daily'>('intraday')
   const [chartLoad, setChartLoad] = useState(false)
 
-  const [stmtData,  setStmtData]  = useState<StatementData | null>(null)
-  const [stmtType,  setStmtType]  = useState<'income' | 'balance'>('income')
-  const [stmtInt,   setStmtInt]   = useState<'annual' | 'quarterly'>('annual')
-  const [stmtLoad,  setStmtLoad]  = useState(false)
+  const [stmtData,   setStmtData]   = useState<StatementData | null>(null)
+  const [stmtType,   setStmtType]   = useState<'income' | 'balance'>('income')
+  const [stmtInt,    setStmtInt]    = useState<'annual' | 'quarterly'>('annual')
+  const [stmtLoad,   setStmtLoad]   = useState(false)
+  const [stmtPdfUrl, setStmtPdfUrl] = useState<string | null>(null)
 
   const [fundData,  setFundData]  = useState<StatementData | null>(null)
   const [fundLoad,  setFundLoad]  = useState(false)
@@ -269,6 +310,18 @@ export default function StockDetailClient({
       fetchChart()
     } else if (tab === 'financials') {
       fetchStatement()
+      // Fetch latest financial statement PDF from announcements
+      fetch(`/api/stock/${symbol}/announcements`)
+        .then(r => r.json())
+        .then(j => {
+          if (!Array.isArray(j.announcements)) return
+          const fin = j.announcements.find((a: Announcement) =>
+            a.pdf_id &&
+            /financial|result|statement|account|annual|quarter/i.test(a.announcementType + ' ' + a.title)
+          )
+          if (fin?.pdf_id) setStmtPdfUrl(fin.pdf_id)
+        })
+        .catch(() => {})
     } else if (tab === 'fundamentals' && !fundData) {
       setFundLoad(true)
       fetch(`/api/stock/${symbol}/statement?type=fundamentals&interval=annual`)
@@ -384,6 +437,12 @@ export default function StockDetailClient({
                 <Stat label="Symbol"     value={symbol} />
               </div>
             </div>
+
+            {/* TradingView chart */}
+            <div className="card">
+              <SectionHeading>Chart · PSX:{symbol}</SectionHeading>
+              <TradingViewWidget symbol={symbol} />
+            </div>
           </div>
         ) : (
           <div className="card"><p style={{ color: 'var(--text-muted)' }}>No overview data available.</p></div>
@@ -456,6 +515,16 @@ export default function StockDetailClient({
               ))}
             </div>
           </div>
+
+          {/* PDF link for current statement release */}
+          {stmtPdfUrl && (
+            <a href={stmtPdfUrl} target="_blank" rel="noopener noreferrer"
+               className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors hover:opacity-80"
+               style={{ borderColor: 'var(--bg-border)', color: 'var(--text-secondary)' }}>
+              <ExternalLink size={12} />
+              View Statement PDF
+            </a>
+          )}
 
           {stmtLoad ? <LoadingRows /> : stmtData
             ? <StatementTable data={stmtData} maxCols={stmtInt === 'quarterly' ? 8 : 6} />

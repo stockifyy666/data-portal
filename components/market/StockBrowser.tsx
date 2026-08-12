@@ -93,8 +93,14 @@ export default function StockBrowser() {
     return [
       { value: '', label: 'All Industries' },
       ...Array.from(codes)
-        .sort((a, b) => (SECTOR_NAMES[a] ?? a).localeCompare(SECTOR_NAMES[b] ?? b))
-        .map(code => ({ value: code, label: SECTOR_NAMES[code] ?? `Sector ${code}` })),
+        .sort((a, b) => {
+          const hasA = !!SECTOR_NAMES[a]
+          const hasB = !!SECTOR_NAMES[b]
+          if (hasA && !hasB) return -1
+          if (!hasA && hasB) return 1
+          return (SECTOR_NAMES[a] ?? a).localeCompare(SECTOR_NAMES[b] ?? b)
+        })
+        .map(code => ({ value: code, label: SECTOR_NAMES[code] ?? code })),
     ]
   }, [quotes])
 

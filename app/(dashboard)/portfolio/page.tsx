@@ -6,12 +6,12 @@ import { Briefcase, TrendingUp, TrendingDown } from 'lucide-react'
 import { formatPrice, getChangeColor } from '@/lib/utils/format'
 
 const DUMMY_HOLDINGS = [
-  { symbol: 'ENGRO', name: 'Engro Corporation',      qty: 500,  avgPrice: 265.00, ltp: 285.40 },
-  { symbol: 'LUCK',  name: 'Lucky Cement',           qty: 100,  avgPrice: 880.00, ltp: 932.00 },
-  { symbol: 'HBL',   name: 'Habib Bank',             qty: 1000, avgPrice: 160.00, ltp: 177.30 },
-  { symbol: 'OGDC',  name: 'Oil & Gas Dev. Co.',     qty: 2000, avgPrice: 118.00, ltp: 126.50 },
-  { symbol: 'MCB',   name: 'MCB Bank',               qty: 300,  avgPrice: 235.00, ltp: 225.60 },
-  { symbol: 'MARI',  name: 'Mari Petroleum',         qty: 50,   avgPrice: 1980.0, ltp: 2145.0 },
+  { symbol: 'ENGRO', name: 'Engro Corporation',      qty: 500,  avgPrice: 265.00, ltp: 285.40, prevClose: 283.10 },
+  { symbol: 'LUCK',  name: 'Lucky Cement',           qty: 100,  avgPrice: 880.00, ltp: 932.00, prevClose: 928.50 },
+  { symbol: 'HBL',   name: 'Habib Bank',             qty: 1000, avgPrice: 160.00, ltp: 177.30, prevClose: 176.20 },
+  { symbol: 'OGDC',  name: 'Oil & Gas Dev. Co.',     qty: 2000, avgPrice: 118.00, ltp: 126.50, prevClose: 127.40 },
+  { symbol: 'MCB',   name: 'MCB Bank',               qty: 300,  avgPrice: 235.00, ltp: 225.60, prevClose: 224.80 },
+  { symbol: 'MARI',  name: 'Mari Petroleum',         qty: 50,   avgPrice: 1980.0, ltp: 2145.0, prevClose: 2138.0 },
 ]
 
 function fmtPKR(n: number) {
@@ -24,14 +24,16 @@ export default function PortfolioPage() {
   const [holdings] = useState(DUMMY_HOLDINGS)
 
   const totals = holdings.reduce((acc, h) => {
-    const cost   = h.qty * h.avgPrice
-    const mktVal = h.qty * h.ltp
-    return { cost: acc.cost + cost, value: acc.value + mktVal }
-  }, { cost: 0, value: 0 })
+    const cost      = h.qty * h.avgPrice
+    const mktVal    = h.qty * h.ltp
+    const todayPnl  = h.qty * (h.ltp - h.prevClose)
+    return { cost: acc.cost + cost, value: acc.value + mktVal, todayPnl: acc.todayPnl + todayPnl }
+  }, { cost: 0, value: 0, todayPnl: 0 })
 
   const totalPnl    = totals.value - totals.cost
   const totalPnlPct = totals.cost > 0 ? (totalPnl / totals.cost) * 100 : 0
   const isUp        = totalPnl >= 0
+  const todayIsUp   = totals.todayPnl >= 0
 
   return (
     <div className="space-y-5 animate-data">
@@ -55,7 +57,8 @@ export default function PortfolioPage() {
           { label: 'Total P&L',    value: (isUp ? '+' : '') + fmtPKR(totalPnl),
             sub: `${isUp ? '+' : ''}${totalPnlPct.toFixed(2)}%`,
             color: isUp ? '#16a34a' : '#dc2626' },
-          { label: 'Holdings',     value: `${holdings.length} stocks`, sub: null,           color: 'var(--text-primary)' },
+          { label: "Today P&L",    value: (todayIsUp ? '+' : '') + fmtPKR(totals.todayPnl),
+            sub: null, color: todayIsUp ? '#16a34a' : '#dc2626' },
         ].map(c => (
           <div key={c.label} className="card">
             <p className="text-[10px] uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>
@@ -72,7 +75,7 @@ export default function PortfolioPage() {
         <table className="w-full text-xs">
           <thead>
             <tr style={{ borderBottom: '1px solid var(--bg-border)' }}>
-              {['Symbol', 'Company', 'Qty', 'Avg Price', 'LTP', 'Mkt Value', 'P&L', 'Return'].map(col => (
+              {['Symbol', 'Company', 'Qty', 'PP', 'LTP', 'Mkt Value', 'P&L', 'Today P&L', 'Return'].map(col => (
                 <th key={col}
                     className="text-left py-2 px-2 text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap"
                     style={{ color: 'var(--text-muted)' }}>
@@ -83,12 +86,14 @@ export default function PortfolioPage() {
           </thead>
           <tbody>
             {holdings.map(h => {
-              const cost    = h.qty * h.avgPrice
-              const mktVal  = h.qty * h.ltp
-              const pnl     = mktVal - cost
-              const pnlPct  = (pnl / cost) * 100
-              const clr     = getChangeColor(pnl)
-              const up      = pnl >= 0
+              const cost      = h.qty * h.avgPrice
+              const mktVal    = h.qty * h.ltp
+              const pnl       = mktVal - cost
+              const pnlPct    = (pnl / cost) * 100
+              const todayPnl  = h.qty * (h.ltp - h.prevClose)
+              const clr       = getChangeColor(pnl)
+              const up        = pnl >= 0
+              const todayUp   = todayPnl >= 0
               return (
                 <tr key={h.symbol}
                     style={{ borderBottom: '1px solid var(--bg-border)' }}
@@ -110,6 +115,7 @@ export default function PortfolioPage() {
                   <td className="py-2.5 px-2 font-number" style={{ color: 'var(--text-secondary)' }}>
                     {formatPrice(h.avgPrice)}
                   </td>
+
                   <td className="py-2.5 px-2 font-number font-semibold" style={{ color: 'var(--text-primary)' }}>
                     {formatPrice(h.ltp)}
                   </td>
@@ -118,6 +124,9 @@ export default function PortfolioPage() {
                   </td>
                   <td className={`py-2.5 px-2 font-number font-semibold ${clr}`}>
                     {up ? '+' : ''}{fmtPKR(pnl)}
+                  </td>
+                  <td className={`py-2.5 px-2 font-number font-semibold ${todayUp ? 'text-green-600' : 'text-red-500'}`}>
+                    {todayUp ? '+' : ''}{fmtPKR(todayPnl)}
                   </td>
                   <td className={`py-2.5 px-2 font-number ${clr}`}>
                     <span className="flex items-center gap-1">
