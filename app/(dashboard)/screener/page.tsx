@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import Link                             from 'next/link'
-import { SlidersHorizontal }            from 'lucide-react'
+import { SlidersHorizontal, Search }    from 'lucide-react'
 import { formatPrice, formatPercent, formatVolume, getChangeColor } from '@/lib/utils/format'
 import { cachedFetch } from '@/lib/utils/clientCache'
 import type { StockQuote }              from '@/types/market'
@@ -53,6 +53,7 @@ export default function ScreenerPage() {
   const [quotes,  setQuotes]  = useState<StockQuote[]>([])
   const [loading, setLoading] = useState(true)
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS)
+  const [search,  setSearch]  = useState('')
 
   useEffect(() => {
     cachedFetch<{ quotes: StockQuote[] }>('/api/market/quotes')
@@ -62,23 +63,25 @@ export default function ScreenerPage() {
   }, [])
 
   const results = useMemo(() => {
-    return quotes.filter(q => {
-      if (q.price <= 0) return false
-      if (filters.minPrice  && q.price     < parseFloat(filters.minPrice))  return false
-      if (filters.maxPrice  && q.price     > parseFloat(filters.maxPrice))  return false
-      if (filters.minChange && q.changePct < parseFloat(filters.minChange)) return false
-      if (filters.maxChange && q.changePct > parseFloat(filters.maxChange)) return false
-      if (filters.minVolume && q.volume    < parseFloat(filters.minVolume)) return false
-      if (filters.minEps    && q.eps       < parseFloat(filters.minEps))    return false
-      if (filters.minDps    && q.dps       < parseFloat(filters.minDps))    return false
+    const q = search.trim().toUpperCase()
+    return quotes.filter(s => {
+      if (s.price <= 0) return false
+      if (q && !s.symbol.includes(q) && !s.name.toUpperCase().includes(q)) return false
+      if (filters.minPrice  && s.price     < parseFloat(filters.minPrice))  return false
+      if (filters.maxPrice  && s.price     > parseFloat(filters.maxPrice))  return false
+      if (filters.minChange && s.changePct < parseFloat(filters.minChange)) return false
+      if (filters.maxChange && s.changePct > parseFloat(filters.maxChange)) return false
+      if (filters.minVolume && s.volume    < parseFloat(filters.minVolume)) return false
+      if (filters.minEps    && s.eps       < parseFloat(filters.minEps))    return false
+      if (filters.minDps    && s.dps       < parseFloat(filters.minDps))    return false
       if (filters.maxPE) {
-        const pe = q.eps > 0 ? q.price / q.eps : null
+        const pe = s.eps > 0 ? s.price / s.eps : null
         if (pe === null || pe > parseFloat(filters.maxPE)) return false
       }
-      if (filters.onlyXDiv && !q.xd) return false
+      if (filters.onlyXDiv && !s.xd) return false
       return true
     })
-  }, [quotes, filters])
+  }, [quotes, filters, search])
 
   function update<K extends keyof Filters>(key: K, value: Filters[K]) {
     setFilters(prev => ({ ...prev, [key]: value }))
@@ -105,6 +108,33 @@ export default function ScreenerPage() {
         <p className="text-sm mt-0.5" style={{ color: 'var(--text-secondary)' }}>
           Filter PSX stocks by price, technicals, and fundamentals
         </p>
+      </div>
+
+      {/* Search by symbol / company name */}
+      <div className="relative">
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                style={{ color: 'var(--text-muted)' }} />
+        <input
+          type="text"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Search by symbol or company name…"
+          className="w-full pl-9 pr-4 py-2.5 rounded-lg border text-sm focus:outline-none transition-colors"
+          style={{
+            backgroundColor: 'var(--bg-card)',
+            borderColor: 'var(--bg-border)',
+            color: 'var(--text-primary)',
+          }}
+        />
+        {search && (
+          <button
+            onClick={() => setSearch('')}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-xs hover:opacity-70"
+            style={{ color: 'var(--text-muted)' }}
+          >
+            ✕
+          </button>
+        )}
       </div>
 
       {/* Price / Technical filters */}
