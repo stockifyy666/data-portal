@@ -107,21 +107,29 @@ export default function SectorHeatmap() {
 
       {/* Sector grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-        {sectors.map(sector => {
+        {(() => {
+          const totalVol = sectors.reduce((s, sec) => s + sec.totalVolume, 0) || 1
+          return sectors.map(sector => {
           // Show top stocks; how many depends on sector size
           const topStocks = sector.stocks.slice(0, Math.min(sector.stocks.length, 12))
           const big   = topStocks.slice(0, 2)    // large boxes
           const small = topStocks.slice(2, 12)    // small boxes
+          const volPct = ((sector.totalVolume / totalVol) * 100).toFixed(1)
 
           return (
             <div key={sector.code} className="card p-2 flex flex-col gap-1.5 min-h-[130px]">
               {/* Sector header */}
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold uppercase tracking-wide leading-none truncate"
-                      style={{ color: 'var(--text-primary)' }}>
-                  {sector.name}
-                </span>
-                <span className={`text-[9px] font-bold px-1 py-0.5 rounded leading-none
+              <div className="flex items-center justify-between gap-1">
+                <div className="min-w-0">
+                  <span className="text-[10px] font-bold uppercase tracking-wide leading-none truncate block"
+                        style={{ color: 'var(--text-primary)' }}>
+                    {sector.name}
+                  </span>
+                  <span className="text-[9px] leading-none" style={{ color: 'var(--text-muted)' }}>
+                    {volPct}% vol
+                  </span>
+                </div>
+                <span className={`text-[9px] font-bold px-1 py-0.5 rounded leading-none shrink-0
                   ${sector.avgChangePct >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
                   {sector.avgChangePct >= 0 ? '+' : ''}{sector.avgChangePct.toFixed(2)}%
                 </span>
@@ -150,7 +158,7 @@ export default function SectorHeatmap() {
               </div>
             </div>
           )
-        })}
+        })})()}
       </div>
 
       <p className="text-[10px] pt-2" style={{ color: 'var(--text-muted)' }}>

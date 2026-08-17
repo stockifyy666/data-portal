@@ -14,7 +14,7 @@ const TABS: { label: string; value: Tab }[] = [
   { label: 'Top Losers',  value: 'losers'  },
   { label: 'Most Active', value: 'active'  },
 ]
-const PAGE_SIZE = 20
+const PAGE_SIZE = 10
 
 export default function DashboardQuoteTable() {
   const [quotes,  setQuotes]  = useState<StockQuote[]>([])

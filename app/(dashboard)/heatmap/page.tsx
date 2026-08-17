@@ -8,7 +8,7 @@ import MarketStatus      from '@/components/market/MarketStatus'
 type HeatView = 'sector' | 'combined'
 
 export default function HeatmapPage() {
-  const [view, setView] = useState<HeatView>('sector')
+  const [view, setView] = useState<HeatView>('combined')
 
   return (
     <div className="space-y-5 animate-data">

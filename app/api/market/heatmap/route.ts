@@ -69,7 +69,8 @@ export async function GET() {
 
     for (const [symbol, s] of Object.entries(eq) as [string, any][]) {
       if (!s.c || s.c <= 0) continue           // skip stocks with no price
-      const code   = String(s.sc ?? 'OTHER')
+      const rawCode = s.sc != null ? String(s.sc).padStart(4, '0') : ''
+      const code    = rawCode || 'OTHER'
       const label  = SECTOR_NAMES[code] ?? `Sector ${code}`
 
       if (!sectors[code]) {

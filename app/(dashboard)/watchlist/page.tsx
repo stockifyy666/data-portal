@@ -6,14 +6,14 @@ import { Star, TrendingUp, TrendingDown, Trash2 } from 'lucide-react'
 import { formatPrice, formatChange, formatPercent, formatVolume, getChangeColor } from '@/lib/utils/format'
 
 const DUMMY_WATCHLIST = [
-  { symbol: 'ENGRO',  name: 'Engro Corporation Limited',       price: 285.40, change:  4.20, changePct:  1.49, volume: 1_240_000 },
-  { symbol: 'LUCK',   name: 'Lucky Cement Limited',            price: 932.00, change: -8.50, changePct: -0.90, volume:   318_000 },
-  { symbol: 'HBL',    name: 'Habib Bank Limited',              price: 177.30, change:  1.80, changePct:  1.03, volume: 2_100_000 },
-  { symbol: 'PSO',    name: 'Pakistan State Oil Co. Ltd',      price: 341.60, change: -3.40, changePct: -0.99, volume:   670_000 },
-  { symbol: 'OGDC',   name: 'Oil & Gas Dev. Co. Limited',      price: 126.50, change:  0.90, changePct:  0.72, volume: 3_450_000 },
-  { symbol: 'PPL',    name: 'Pakistan Petroleum Limited',      price: 112.80, change:  1.30, changePct:  1.17, volume: 1_890_000 },
-  { symbol: 'MCB',    name: 'MCB Bank Limited',                price: 225.60, change: -2.10, changePct: -0.92, volume:   540_000 },
-  { symbol: 'MARI',   name: 'Mari Petroleum Company Limited',  price: 2145.0, change: 22.50, changePct:  1.06, volume:    98_000 },
+  { symbol: 'ENGRO',  name: 'Engro Corporation Limited',       price: 285.40, change:  4.20, changePct:  1.49, volume: 1_240_000, addedPrice: 271.00 },
+  { symbol: 'LUCK',   name: 'Lucky Cement Limited',            price: 932.00, change: -8.50, changePct: -0.90, volume:   318_000, addedPrice: 945.00 },
+  { symbol: 'HBL',    name: 'Habib Bank Limited',              price: 177.30, change:  1.80, changePct:  1.03, volume: 2_100_000, addedPrice: 168.50 },
+  { symbol: 'PSO',    name: 'Pakistan State Oil Co. Ltd',      price: 341.60, change: -3.40, changePct: -0.99, volume:   670_000, addedPrice: 350.00 },
+  { symbol: 'OGDC',   name: 'Oil & Gas Dev. Co. Limited',      price: 126.50, change:  0.90, changePct:  0.72, volume: 3_450_000, addedPrice: 122.00 },
+  { symbol: 'PPL',    name: 'Pakistan Petroleum Limited',      price: 112.80, change:  1.30, changePct:  1.17, volume: 1_890_000, addedPrice: 108.00 },
+  { symbol: 'MCB',    name: 'MCB Bank Limited',                price: 225.60, change: -2.10, changePct: -0.92, volume:   540_000, addedPrice: 232.00 },
+  { symbol: 'MARI',   name: 'Mari Petroleum Company Limited',  price: 2145.0, change: 22.50, changePct:  1.06, volume:    98_000, addedPrice: 2080.0 },
 ]
 
 export default function WatchlistPage() {
@@ -53,7 +53,7 @@ export default function WatchlistPage() {
           <table className="w-full text-xs">
             <thead>
               <tr style={{ borderBottom: '1px solid var(--bg-border)' }}>
-                {['Symbol', 'Company', 'Price', 'Change', '% Chg', 'Volume', ''].map(col => (
+                {['Symbol', 'Company', 'Added Price', 'Price', 'Change', '% Chg', 'Volume', ''].map(col => (
                   <th key={col}
                       className="text-left py-2 px-2 text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap"
                       style={{ color: 'var(--text-muted)' }}>
@@ -80,6 +80,9 @@ export default function WatchlistPage() {
                     </td>
                     <td className="py-2.5 px-2 max-w-[180px] truncate" style={{ color: 'var(--text-secondary)' }}>
                       {item.name}
+                    </td>
+                    <td className="py-2.5 px-2 font-number" style={{ color: 'var(--text-muted)' }}>
+                      {formatPrice(item.addedPrice)}
                     </td>
                     <td className="py-2.5 px-2 font-number font-semibold" style={{ color: 'var(--text-primary)' }}>
                       {formatPrice(item.price)}

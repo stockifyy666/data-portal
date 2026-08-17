@@ -19,7 +19,7 @@ function parseEquities(eq: Record<string, any>): StockQuote[] {
     low52:     s.l52  ?? 0,
     lastClose: s.ldcp ?? 0,
     eps:       s.eps  ?? 0,
-    sector:    s.sc   ?? '',
+    sector:    s.sc != null ? String(s.sc).padStart(4, '0') : '',
     indexKeys: Array.isArray(s.li) ? s.li : [],
     dps:       s.dps  ?? 0,
     xd:        s.xd   ?? false,

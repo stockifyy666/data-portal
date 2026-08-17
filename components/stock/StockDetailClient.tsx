@@ -50,7 +50,6 @@ const TABS = [
   { id: 'financials',    label: 'Financials',     Icon: FileText   },
   { id: 'fundamentals',  label: 'Fundamentals',   Icon: BarChart2  },
   { id: 'shareholders',  label: 'Shareholders',   Icon: Users      },
-  { id: 'profile',       label: 'Company',        Icon: Building2  },
   { id: 'news',          label: 'News',           Icon: Newspaper  },
   { id: 'announcements', label: 'Announcements',  Icon: Bell       },
 ] as const
@@ -99,28 +98,116 @@ function fmtNum(v: number | null | undefined, decimals = 2): string {
   return v.toFixed(decimals)
 }
 
-/* ── Mini SVG line chart ─────────────────────────────────────────── */
-function MiniChart({ candles }: { candles: Candle[] }) {
+/* ── Interactive SVG chart with tooltip ─────────────────────────── */
+function MiniChart({ candles, mode }: { candles: Candle[]; mode: 'intraday' | 'weekly' }) {
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null)
+  const svgRef = useRef<SVGSVGElement>(null)
+
   if (!candles.length) return null
+
   const prices = candles.map(c => c.close)
   const min    = Math.min(...prices)
   const max    = Math.max(...prices)
   const range  = max - min || 1
-  const W = 600; const H = 200
+  const W = 600; const H = 200; const PAD = 10
 
-  const pts = candles.map((c, i) => {
-    const x = (i / (candles.length - 1)) * W
-    const y = H - ((c.close - min) / range) * H
-    return `${x},${y}`
-  }).join(' ')
+  const points = candles.map((c, i) => ({
+    x: candles.length > 1 ? (i / (candles.length - 1)) * W : W / 2,
+    y: H - PAD - ((c.close - min) / range) * (H - PAD * 2),
+    c,
+  }))
 
-  const isUp = candles[candles.length - 1].close >= candles[0].close
-  const color = isUp ? '#16a34a' : '#dc2626'
+  const ptStr  = points.map(p => `${p.x},${p.y}`).join(' ')
+  const areaD  = `M0,${H} L${ptStr.replace(/ /g, ' L')} L${W},${H} Z`
+  const isUp   = candles[candles.length - 1].close >= candles[0].close
+  const color  = isUp ? '#16a34a' : '#dc2626'
+  const fillOp = isUp ? '#16a34a18' : '#dc262618'
+
+  function onMouseMove(e: React.MouseEvent<SVGSVGElement>) {
+    const rect = svgRef.current?.getBoundingClientRect()
+    if (!rect) return
+    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
+    setHoverIdx(Math.round(ratio * (candles.length - 1)))
+  }
+
+  const hp  = hoverIdx !== null ? points[hoverIdx] : null
+  const hc  = hoverIdx !== null ? candles[hoverIdx] : null
+
+  function fmtLabel(c: Candle) {
+    if (mode === 'intraday') {
+      // date field for intraday is typically a unix timestamp or "HH:MM" string
+      const d = new Date(Number(c.date) * 1000)
+      return isNaN(d.getTime()) ? c.date : d.toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit' })
+    }
+    const d = new Date(c.date)
+    return isNaN(d.getTime()) ? c.date : d.toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: '2-digit' })
+  }
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 200 }}>
-      <polyline points={pts} fill="none" stroke={color} strokeWidth="2" />
-    </svg>
+    <div className="relative select-none">
+      {/* Hover tooltip */}
+      {hp && hc && (
+        <div
+          className="absolute z-10 pointer-events-none text-[10px] px-2.5 py-1.5 rounded-lg shadow-lg"
+          style={{
+            left:            Math.min(hp.x / W * 100, 75) + '%',
+            top:             4,
+            backgroundColor: 'var(--bg-card)',
+            border:          '1px solid var(--bg-border)',
+            color:           'var(--text-primary)',
+            minWidth:        110,
+          }}
+        >
+          <p className="font-semibold mb-0.5" style={{ color: 'var(--text-muted)' }}>{fmtLabel(hc)}</p>
+          <div className="grid grid-cols-2 gap-x-2">
+            <span style={{ color: 'var(--text-muted)' }}>O</span>
+            <span className="font-number text-right">{hc.open.toFixed(2)}</span>
+            <span style={{ color: 'var(--text-muted)' }}>H</span>
+            <span className="font-number text-right text-green-600">{hc.high.toFixed(2)}</span>
+            <span style={{ color: 'var(--text-muted)' }}>L</span>
+            <span className="font-number text-right text-red-500">{hc.low.toFixed(2)}</span>
+            <span style={{ color: 'var(--text-muted)' }}>C</span>
+            <span className="font-number text-right font-bold" style={{ color }}>{hc.close.toFixed(2)}</span>
+          </div>
+        </div>
+      )}
+
+      <svg
+        ref={svgRef}
+        viewBox={`0 0 ${W} ${H}`}
+        className="w-full"
+        style={{ height: 220, cursor: 'crosshair' }}
+        onMouseMove={onMouseMove}
+        onMouseLeave={() => setHoverIdx(null)}
+      >
+        {/* Area fill */}
+        <path d={areaD} fill={fillOp} />
+        {/* Line */}
+        <polyline points={ptStr} fill="none" stroke={color} strokeWidth="2.5" strokeLinejoin="round" />
+
+        {/* Crosshair & dot */}
+        {hp && (
+          <>
+            <line x1={hp.x} y1={0} x2={hp.x} y2={H}
+                  stroke={color} strokeWidth="1" strokeDasharray="4 3" opacity="0.5" />
+            <line x1={0} y1={hp.y} x2={W} y2={hp.y}
+                  stroke={color} strokeWidth="1" strokeDasharray="4 3" opacity="0.3" />
+            <circle cx={hp.x} cy={hp.y} r={5} fill={color} stroke="white" strokeWidth="2" />
+          </>
+        )}
+
+        {/* Y-axis labels */}
+        {[0, 0.5, 1].map(r => {
+          const val = min + r * range
+          const y   = H - PAD - r * (H - PAD * 2)
+          return (
+            <text key={r} x={4} y={y} fontSize={10} fill="var(--text-muted)" dominantBaseline="middle">
+              {val.toFixed(2)}
+            </text>
+          )
+        })}
+      </svg>
+    </div>
   )
 }
 
@@ -242,7 +329,7 @@ export default function StockDetailClient({
 
   /* Per-tab state */
   const [candles,   setCandles]   = useState<Candle[]>([])
-  const [chartMode, setChartMode] = useState<'intraday' | 'daily'>('intraday')
+  const [chartMode, setChartMode] = useState<'intraday' | 'weekly'>('intraday')
   const [chartLoad, setChartLoad] = useState(false)
 
   const [stmtData,   setStmtData]   = useState<StatementData | null>(null)
@@ -275,7 +362,8 @@ export default function StockDetailClient({
       const res  = await fetch(url)
       const json = await res.json()
       const raw  = Array.isArray(json.data) ? json.data : []
-      setCandles(chartMode === 'intraday' ? [...raw].reverse() : raw.slice(-180))
+      // intraday: reverse chronological → chronological; weekly: last 35 days (~5 weeks)
+      setCandles(chartMode === 'intraday' ? [...raw].reverse() : raw.slice(-35))
     } catch { setCandles([]) }
     setChartLoad(false)
   }, [symbol, chartMode])
@@ -306,7 +394,12 @@ export default function StockDetailClient({
     if (loaded.current.has(tab)) return
     loaded.current.add(tab)
 
-    if (tab === 'chart') {
+    if (tab === 'overview' && !profile) {
+      setProfLoad(true)
+      fetch(`/api/stock/${symbol}/profile`)
+        .then(r => r.json()).then(j => setProfile(j))
+        .catch(() => {}).finally(() => setProfLoad(false))
+    } else if (tab === 'chart') {
       fetchChart()
     } else if (tab === 'financials') {
       fetchStatement()
@@ -443,6 +536,59 @@ export default function StockDetailClient({
               <SectionHeading>Chart · PSX:{symbol}</SectionHeading>
               <TradingViewWidget symbol={symbol} />
             </div>
+
+            {/* Company info — merged from profile tab */}
+            {profLoad ? (
+              <div className="card"><LoadingRows n={4} /></div>
+            ) : profile?.profile?.data ? (
+              <div className="card space-y-3">
+                <SectionHeading>About the Company</SectionHeading>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  <Stat label="Company Name" value={profile.profile.data.name} />
+                  <Stat label="Sector"       value={profile.profile.data.sector_name} />
+                  {profile.profile.data.auditors && (
+                    <Stat label="Auditors" value={profile.profile.data.auditors} />
+                  )}
+                </div>
+                {profile.profile.data.description && (
+                  <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                    {profile.profile.data.description}
+                  </p>
+                )}
+                {profile.profile.data.offices?.length > 0 && (
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                    <span className="font-semibold">Office: </span>
+                    {profile.profile.data.offices[0]}
+                  </p>
+                )}
+                {profile.org?.data?.per && profile.org.data.per.filter(p => !p.ed).length > 0 && (
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider font-semibold mb-2"
+                       style={{ color: 'var(--text-muted)' }}>
+                      Management &amp; Board
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {profile.org.data.per.filter(p => !p.ed).slice(0, 6).map((p, i) => (
+                        <div key={i} className="flex items-center gap-2 p-2 rounded-lg"
+                             style={{ backgroundColor: 'var(--bg-hover)' }}>
+                          <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0
+                                          text-white text-[10px] font-bold"
+                               style={{ background: 'linear-gradient(135deg, #FEA500, #986300)' }}>
+                            {p.nm.charAt(0)}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
+                              {p.nm}
+                            </p>
+                            <p className="text-[9px]" style={{ color: 'var(--text-muted)' }}>{p.des}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : null}
           </div>
         ) : (
           <div className="card"><p style={{ color: 'var(--text-muted)' }}>No overview data available.</p></div>
@@ -453,7 +599,7 @@ export default function StockDetailClient({
       {tab === 'chart' && (
         <div className="card space-y-4">
           <div className="flex items-center gap-2 flex-wrap">
-            {(['intraday', 'daily'] as const).map(m => (
+            {(['intraday', 'weekly'] as const).map(m => (
               <button key={m}
                 onClick={() => setChartMode(m)}
                 className="px-3 py-1 rounded-lg text-xs font-semibold transition-colors"
@@ -461,7 +607,7 @@ export default function StockDetailClient({
                   ? { background: 'linear-gradient(135deg, #FEA500, #986300)', color: 'white' }
                   : { backgroundColor: 'var(--bg-hover)', color: 'var(--text-secondary)' }}
               >
-                {m === 'intraday' ? 'Intraday (1D)' : 'Daily History'}
+                {m === 'intraday' ? 'Intraday (1D)' : 'Weekly History'}
               </button>
             ))}
           </div>
@@ -470,7 +616,7 @@ export default function StockDetailClient({
             <div className="h-52 rounded animate-pulse" style={{ backgroundColor: 'var(--bg-hover)' }} />
           ) : candles.length ? (
             <>
-              <MiniChart candles={candles} />
+              <MiniChart candles={candles} mode={chartMode} />
               <div className="grid grid-cols-3 gap-4 pt-3" style={{ borderTop: '1px solid var(--bg-border)' }}>
                 <Stat label="Open"   value={formatPrice(candles[0]?.open ?? 0)} />
                 <Stat label="High"   value={formatPrice(Math.max(...candles.map(c => c.high)))} />
@@ -588,73 +734,6 @@ export default function StockDetailClient({
             <p className="py-10 text-center text-sm" style={{ color: 'var(--text-muted)' }}>No shareholder data.</p>
           )}
         </div>
-      )}
-
-      {/* ══ COMPANY PROFILE ════════════════════════════════════════ */}
-      {tab === 'profile' && (
-        profLoad ? (
-          <div className="card"><LoadingRows n={8} /></div>
-        ) : profile?.profile?.data ? (
-          <div className="space-y-4">
-            {/* About */}
-            <div className="card space-y-3">
-              <SectionHeading>About</SectionHeading>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4">
-                <Stat label="Name"    value={profile.profile.data.name} />
-                <Stat label="Sector"  value={profile.profile.data.sector_name} />
-                <Stat label="Auditors" value={profile.profile.data.auditors ?? '—'} />
-              </div>
-              {profile.profile.data.description && (
-                <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-                  {profile.profile.data.description}
-                </p>
-              )}
-              {profile.profile.data.offices?.length > 0 && (
-                <div>
-                  <p className="text-[10px] uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>
-                    Registered Office
-                  </p>
-                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                    {profile.profile.data.offices[0]}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Management */}
-            {profile.org?.data?.per && (
-              <div className="card">
-                <SectionHeading>Management & Board</SectionHeading>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {profile.org.data.per
-                    .filter(p => !p.ed) // Only current members
-                    .map((p, i) => (
-                      <div key={i} className="flex items-center gap-3 p-2 rounded-lg"
-                           style={{ backgroundColor: 'var(--bg-hover)' }}>
-                        <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-white text-xs font-bold"
-                             style={{ background: 'linear-gradient(135deg, #FEA500, #986300)' }}>
-                          {p.nm.charAt(0)}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
-                            {p.nm}
-                          </p>
-                          <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{p.des}</p>
-                        </div>
-                      </div>
-                    ))
-                  }
-                </div>
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="card">
-            <p className="py-8 text-center text-sm" style={{ color: 'var(--text-muted)' }}>
-              No profile available.
-            </p>
-          </div>
-        )
       )}
 
       {/* ══ NEWS ═══════════════════════════════════════════════════ */}
