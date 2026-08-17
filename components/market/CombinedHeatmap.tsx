@@ -39,7 +39,8 @@ export default function CombinedHeatmap() {
     const maxVol = list[0]?.volume || 1
     return list.map(q => {
       const w = q.volume / maxVol
-      const size: StockWithWeight['size'] = w >= 0.3 ? 'lg' : w >= 0.1 ? 'md' : w >= 0.03 ? 'sm' : 'xs'
+      // wider thresholds so more boxes get 'md'/'lg' and show percentage
+      const size: StockWithWeight['size'] = w >= 0.25 ? 'lg' : w >= 0.05 ? 'md' : w >= 0.01 ? 'sm' : 'xs'
       return { ...q, weight: w, size }
     })
   }, [quotes, index])
@@ -104,7 +105,7 @@ export default function CombinedHeatmap() {
           const bg = heatColor(stock.changePct)
           const span = stock.size === 'lg' ? 3 : stock.size === 'md' ? 2 : 1
           const h    = stock.size === 'lg' ? 80 : stock.size === 'md' ? 64 : stock.size === 'sm' ? 52 : 40
-          const compact = stock.size === 'sm' || stock.size === 'xs'
+          const compact = stock.size === 'xs'
           return (
             <Link
               key={stock.symbol}
