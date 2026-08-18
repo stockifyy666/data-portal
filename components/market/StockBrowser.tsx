@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import Link                             from 'next/link'
 import { Search, X, ChevronDown }       from 'lucide-react'
 import { formatPrice, formatChange, formatPercent, formatVolume, getChangeColor }
@@ -81,6 +81,25 @@ export default function StockBrowser() {
   const [sectorCode, setSectorCode] = useState('')
   const [search,     setSearch]     = useState('')
   const [page,       setPage]       = useState(1)
+  const [dropOpen,   setDropOpen]   = useState(false)
+  const searchRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node))
+        setDropOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const dropResults = useMemo(() => {
+    if (!search.trim()) return []
+    const q = search.toUpperCase().trim()
+    return quotes
+      .filter(s => s.price > 0 && (s.symbol.includes(q) || s.name.toUpperCase().includes(q)))
+      .slice(0, 10)
+  }, [search, quotes])
 
   useEffect(() => {
     cachedFetch<{ quotes: StockQuote[] }>('/api/market/quotes')
@@ -166,7 +185,7 @@ export default function StockBrowser() {
         </div>
 
         {/* Search */}
-        <div className="flex flex-col gap-1 flex-1 min-w-[180px]">
+        <div className="flex flex-col gap-1 flex-1 min-w-[180px]" style={{ position: 'relative', zIndex: 40 }} ref={searchRef}>
           <label className="text-[10px] font-semibold uppercase tracking-wider"
                  style={{ color: 'var(--text-muted)' }}>
             Search
@@ -177,7 +196,8 @@ export default function StockBrowser() {
             <input
               type="text"
               value={search}
-              onChange={e => setSearch(e.target.value)}
+              onChange={e => { setSearch(e.target.value); setDropOpen(true) }}
+              onFocus={() => setDropOpen(true)}
               placeholder="Symbol or name…"
               className="w-full rounded-lg border pl-8 pr-3 py-2 text-sm
                          focus:outline-none transition-colors"
@@ -188,6 +208,41 @@ export default function StockBrowser() {
               }}
             />
           </div>
+
+          {/* Dropdown */}
+          {dropOpen && dropResults.length > 0 && (
+            <div className="absolute top-full left-0 right-0 mt-1 rounded-xl overflow-hidden shadow-2xl"
+              style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--bg-border)' }}>
+              {dropResults.map(q => {
+                const up = q.changePct >= 0
+                return (
+                  <Link key={q.symbol} href={`/stocks/${q.symbol}`}
+                    className="flex items-center justify-between px-4 py-2.5 hover:opacity-80 transition-opacity"
+                    style={{ borderBottom: '1px solid var(--bg-border)' }}
+                    onClick={() => { setDropOpen(false) }}>
+                    <div className="flex items-center gap-3">
+                      <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-[10px] font-bold shrink-0"
+                        style={{ background: 'linear-gradient(135deg,#FEA500,#986300)' }}>
+                        {q.symbol.charAt(0)}
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{q.symbol}</p>
+                        <p className="text-[11px] truncate max-w-[200px]" style={{ color: 'var(--text-muted)' }}>{q.name}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-bold font-number" style={{ color: 'var(--text-primary)' }}>
+                        {q.price.toFixed(2)}
+                      </p>
+                      <p className="text-[11px] font-semibold font-number" style={{ color: up ? '#16a34a' : '#dc2626' }}>
+                        {up ? '+' : ''}{q.changePct.toFixed(2)}%
+                      </p>
+                    </div>
+                  </Link>
+                )
+              })}
+            </div>
+          )}
         </div>
 
         {/* Clear button */}
