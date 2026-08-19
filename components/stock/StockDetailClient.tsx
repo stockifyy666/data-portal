@@ -7,6 +7,7 @@ import {
   Newspaper, Bell, Building2, ChevronDown, ExternalLink,
 } from 'lucide-react'
 import { formatPrice, formatChange, formatPercent, formatVolume } from '@/lib/utils/format'
+import type { StockQuote } from '@/types/market'
 import { COMPANY_BRANDS } from '@/data/company-brands'
 
 /* ── Types ──────────────────────────────────────────────────────── */
@@ -46,14 +47,15 @@ type Announcement = {
 
 /* ── Tabs ────────────────────────────────────────────────────────── */
 const TABS = [
-  { id: 'overview',      label: 'Overview',       Icon: BarChart2  },
-  { id: 'chart',         label: 'Chart',           Icon: TrendingUp },
-  { id: 'peers',         label: 'Sector Peers',    Icon: Users      },
-  { id: 'financials',    label: 'Financials',      Icon: FileText   },
-  { id: 'fundamentals',  label: 'Fundamentals',    Icon: BarChart2  },
-  { id: 'shareholders',  label: 'Shareholders',    Icon: Users      },
-  { id: 'news',          label: 'News',            Icon: Newspaper  },
-  { id: 'announcements', label: 'Announcements',   Icon: Bell       },
+  { id: 'overview',      label: 'Overview',        Icon: BarChart2  },
+  { id: 'chart',         label: 'Chart',            Icon: TrendingUp },
+  { id: 'peers',         label: 'Sector Peers',     Icon: Users      },
+  { id: 'compare',       label: 'Compare Sector',   Icon: BarChart2  },
+  { id: 'financials',    label: 'Financials',       Icon: FileText   },
+  { id: 'fundamentals',  label: 'Fundamentals',     Icon: BarChart2  },
+  { id: 'shareholders',  label: 'Shareholders',     Icon: Users      },
+  { id: 'news',          label: 'News',             Icon: Newspaper  },
+  { id: 'announcements', label: 'Announcements',    Icon: Bell       },
 ] as const
 
 type TabId = typeof TABS[number]['id']
@@ -717,12 +719,16 @@ function ShareholdersView({ data }: { data: StatementData }) {
           <div key={group.heading}>
             {/* Group heading */}
             <div className="flex items-center gap-3 mb-3">
-              <h3 className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
-                {group.heading}
-              </h3>
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg shrink-0"
+                style={{ background: 'linear-gradient(135deg,#FEA500,#986300)' }}>
+                <h3 className="text-[11px] font-bold uppercase tracking-widest text-white">
+                  {group.heading}
+                </h3>
+              </div>
               <div className="flex-1 h-px" style={{ backgroundColor: 'var(--bg-border)' }} />
               {latestTotal > 0 && (
-                <span className="text-[10px] font-semibold" style={{ color: 'var(--text-secondary)' }}>
+                <span className="text-[10px] font-semibold px-2 py-1 rounded-lg"
+                  style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-secondary)' }}>
                   Total: {(latestTotal * 100).toFixed(1)}%
                 </span>
               )}
@@ -745,7 +751,7 @@ function ShareholdersView({ data }: { data: StatementData }) {
 
                     {/* Label + latest value + trend */}
                     <div className="flex items-center justify-between gap-2 mb-2">
-                      <span className="text-[11px] font-medium leading-tight" style={{ color: 'var(--text-secondary)' }}>
+                      <span className="text-xs font-bold leading-tight" style={{ color: 'var(--text-primary)' }}>
                         {row.label}
                       </span>
                       <div className="flex items-center gap-2 shrink-0">
@@ -1151,8 +1157,21 @@ export default function StockDetailClient({
   const [profile,   setProfile]   = useState<ProfileData | null>(null)
   const [profLoad,  setProfLoad]  = useState(false)
 
-  const [peers,      setPeers]      = useState<StockQuote[]>([])
-  const [peersLoad,  setPeersLoad]  = useState(false)
+  const [peers,       setPeers]      = useState<StockQuote[]>([])
+  const [peersLoad,   setPeersLoad]  = useState(false)
+
+  // Compare tab state
+  const [cmpSearch,   setCmpSearch]  = useState('')
+  const [cmpDropOpen, setCmpDropOpen] = useState(false)
+  const [cmpSelected, setCmpSelected] = useState<string[]>([])
+  const [cmpResults,  setCmpResults]  = useState<string[] | null>(null)
+  const [radarHover,  setRadarHover]  = useState<number | null>(null)  // axis index
+
+  function cmpToggle(sym: string) {
+    setCmpSelected(prev =>
+      prev.includes(sym) ? prev.filter(s => s !== sym) : prev.length < 3 ? [...prev, sym] : prev
+    )
+  }
 
   type PeerFunds = { roe: number|null; mktCap: number|null; de: number|null; pb: number|null }
   const [peerFunds, setPeerFunds] = useState<Record<string, PeerFunds>>({})
@@ -1274,7 +1293,7 @@ export default function StockDetailClient({
       }).catch(() => {}).finally(() => setVsLoad(false))
     }
 
-    if (tab === 'peers' && !peers.length) {
+    if ((tab === 'peers' || tab === 'compare') && !peers.length) {
       setPeersLoad(true)
       fetch('/api/market/quotes')
         .then(r => r.json())
@@ -1333,7 +1352,7 @@ export default function StockDetailClient({
       fetch(`/api/stock/${symbol}/statement?type=shareholders&interval=annual`)
         .then(r => r.json()).then(j => { if (j.data) setShData(j.data) })
         .catch(() => {}).finally(() => setShLoad(false))
-    } else if (tab === 'profile' && !profile) {
+    } else if ((tab as string) === 'profile' && !profile) {
       setProfLoad(true)
       fetch(`/api/stock/${symbol}/profile`)
         .then(r => r.json()).then(j => setProfile(j))
@@ -1681,12 +1700,10 @@ export default function StockDetailClient({
               <table className="w-full text-sm">
                 <thead>
                   <tr style={{ borderBottom: '2px solid var(--bg-border)' }}>
-                    {['Company', 'Price', 'Chg%', 'EPS', 'P/E', 'ROE', 'Mkt Cap', 'D/E', 'Div Yield', 'P/B'].map(h => (
+                    {['Company','Price','Chg%','EPS','P/E','ROE','Mkt Cap','D/E','Div Yield','P/B'].map(h => (
                       <th key={h}
-                        className={`py-2 text-[10px] font-bold uppercase tracking-wider ${h === 'Company' ? 'text-left pr-3' : 'text-right px-2'}`}
-                        style={{ color: 'var(--text-muted)' }}>
-                        {h}
-                      </th>
+                        className={`py-2 text-[10px] font-bold uppercase tracking-wider ${h==='Company'?'text-left pr-3':'text-right px-2'}`}
+                        style={{ color: 'var(--text-muted)' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -1694,75 +1711,67 @@ export default function StockDetailClient({
                   {(() => {
                     const selfPrice     = Number(overview?.price ?? 0)
                     const selfChangePct = Number(overview?.changePct ?? 0)
-                    const selfQ        = allQuotes.find(q => q.symbol === symbol)
-                    const selfEps      = Number(overview?.eps ?? selfQ?.eps ?? 0)
-                    const selfDps      = selfQ?.dps ?? 0
-                    const selfPe       = selfEps > 0 ? (selfPrice / selfEps).toFixed(1) : '—'
-                    const selfDivY     = selfDps > 0 && selfPrice > 0 ? `${((selfDps / selfPrice) * 100).toFixed(1)}%` : '—'
-                    const selfChgColor = selfChangePct >= 0 ? '#16a34a' : '#dc2626'
-
-                    function fmtMktCap(mc: number) {
+                    const selfQ         = allQuotes.find(q => q.symbol === symbol)
+                    const selfEps       = Number(overview?.eps ?? selfQ?.eps ?? 0)
+                    const selfDps       = selfQ?.dps ?? 0
+                    const selfPe        = selfEps > 0 ? (selfPrice / selfEps).toFixed(1) : '—'
+                    const selfDivY      = selfDps > 0 && selfPrice > 0 ? `${((selfDps/selfPrice)*100).toFixed(1)}%` : '—'
+                    const selfChgColor  = selfChangePct >= 0 ? '#16a34a' : '#dc2626'
+                    function fmtMC(mc: number) {
                       if (!mc) return '—'
                       if (mc >= 1e12) return `${(mc/1e12).toFixed(2)}T`
                       if (mc >= 1e9)  return `${(mc/1e9).toFixed(2)}B`
                       if (mc >= 1e6)  return `${(mc/1e6).toFixed(1)}M`
                       return `${(mc/1e3).toFixed(1)}K`
                     }
-
                     return [
-                      <tr key="__self__" style={{ borderBottom: '1px solid var(--bg-border)', backgroundColor: 'rgba(254,165,0,0.08)' }}>
+                      <tr key="__self__" style={{ borderBottom:'1px solid var(--bg-border)', backgroundColor:'rgba(254,165,0,0.08)' }}>
                         <td className="py-2.5 pr-3">
                           <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded flex items-center justify-center text-white text-[9px] font-bold shrink-0"
-                                 style={{ background: 'linear-gradient(135deg,#FEA500,#986300)' }}>
-                              {symbol.charAt(0)}
-                            </div>
+                            <div className="w-6 h-6 rounded flex items-center justify-center text-white text-[9px] font-bold shrink-0" style={{ background:'linear-gradient(135deg,#FEA500,#986300)' }}>{symbol.charAt(0)}</div>
                             <div>
                               <div className="flex items-center gap-1">
-                                <p className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>{symbol}</p>
-                                <span className="text-[8px] font-bold px-1 py-0.5 rounded" style={{ background: 'linear-gradient(135deg,#FEA500,#986300)', color: 'white' }}>You</span>
+                                <p className="text-xs font-bold" style={{ color:'var(--text-primary)' }}>{symbol}</p>
+                                <span className="text-[8px] font-bold px-1 py-0.5 rounded" style={{ background:'linear-gradient(135deg,#FEA500,#986300)',color:'white' }}>You</span>
                               </div>
-                              <p className="text-[9px] truncate max-w-[100px]" style={{ color: 'var(--text-muted)' }}>{String(overview?.name ?? '')}</p>
+                              <p className="text-[9px] truncate max-w-[100px]" style={{ color:'var(--text-muted)' }}>{String(overview?.name??'')}</p>
                             </div>
                           </div>
                         </td>
-                        <td className="py-2.5 px-2 text-right text-xs font-bold tabular-nums" style={{ color: 'var(--text-primary)' }}>{selfPrice.toFixed(2)}</td>
-                        <td className="py-2.5 px-2 text-right text-xs font-semibold tabular-nums" style={{ color: selfChgColor }}>{selfChangePct >= 0 ? '+' : ''}{selfChangePct.toFixed(2)}%</td>
-                        <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color: selfEps < 0 ? '#dc2626' : 'var(--text-secondary)' }}>{selfEps ? selfEps.toFixed(2) : '—'}</td>
-                        <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color: 'var(--text-secondary)' }}>{selfPe}</td>
-                        <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color: 'var(--text-secondary)' }}>—</td>
-                        <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color: 'var(--text-secondary)' }}>{fmtMktCap(selfQ?.mc ?? 0)}</td>
-                        <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color: 'var(--text-secondary)' }}>—</td>
-                        <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color: 'var(--text-secondary)' }}>{selfDivY}</td>
-                        <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color: 'var(--text-secondary)' }}>—</td>
+                        <td className="py-2.5 px-2 text-right text-xs font-bold tabular-nums" style={{ color:'var(--text-primary)' }}>{selfPrice.toFixed(2)}</td>
+                        <td className="py-2.5 px-2 text-right text-xs font-semibold tabular-nums" style={{ color:selfChgColor }}>{selfChangePct>=0?'+':''}{selfChangePct.toFixed(2)}%</td>
+                        <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color:selfEps<0?'#dc2626':'var(--text-secondary)' }}>{selfEps?selfEps.toFixed(2):'—'}</td>
+                        <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color:'var(--text-secondary)' }}>{selfPe}</td>
+                        <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color:'var(--text-secondary)' }}>—</td>
+                        <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color:'var(--text-secondary)' }}>{fmtMC(selfQ?.mc??0)}</td>
+                        <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color:'var(--text-secondary)' }}>—</td>
+                        <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color:'var(--text-secondary)' }}>{selfDivY}</td>
+                        <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color:'var(--text-secondary)' }}>—</td>
                       </tr>,
                       ...peers.map((peer, i) => {
-                        const pe       = peer.eps > 0 ? (peer.price / peer.eps).toFixed(1) : '—'
-                        const divY     = peer.dps > 0 && peer.price > 0 ? `${((peer.dps / peer.price) * 100).toFixed(1)}%` : '—'
-                        const chgColor = peer.changePct >= 0 ? '#16a34a' : '#dc2626'
+                        const pe      = peer.eps > 0 ? (peer.price/peer.eps).toFixed(1) : '—'
+                        const divY    = peer.dps>0&&peer.price>0 ? `${((peer.dps/peer.price)*100).toFixed(1)}%` : '—'
+                        const chgClr  = peer.changePct>=0?'#16a34a':'#dc2626'
                         return (
-                          <tr key={peer.symbol} style={{ borderBottom: '1px solid var(--bg-border)', backgroundColor: i % 2 === 0 ? 'transparent' : 'var(--bg-hover)' }}>
+                          <tr key={peer.symbol} style={{ borderBottom:'1px solid var(--bg-border)', backgroundColor:i%2===0?'transparent':'var(--bg-hover)' }}>
                             <td className="py-2.5 pr-3">
                               <a href={`/stocks/${peer.symbol}`} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-                                <div className="w-6 h-6 rounded flex items-center justify-center text-white text-[9px] font-bold shrink-0"
-                                     style={{ background: 'linear-gradient(135deg,#FEA500,#986300)' }}>
-                                  {peer.symbol.charAt(0)}
-                                </div>
+                                <div className="w-6 h-6 rounded flex items-center justify-center text-white text-[9px] font-bold shrink-0" style={{ background:'linear-gradient(135deg,#FEA500,#986300)' }}>{peer.symbol.charAt(0)}</div>
                                 <div>
-                                  <p className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>{peer.symbol}</p>
-                                  <p className="text-[9px] truncate max-w-[100px]" style={{ color: 'var(--text-muted)' }}>{peer.name}</p>
+                                  <p className="text-xs font-bold" style={{ color:'var(--text-primary)' }}>{peer.symbol}</p>
+                                  <p className="text-[9px] truncate max-w-[100px]" style={{ color:'var(--text-muted)' }}>{peer.name}</p>
                                 </div>
                               </a>
                             </td>
-                            <td className="py-2.5 px-2 text-right text-xs font-bold tabular-nums" style={{ color: 'var(--text-primary)' }}>{peer.price.toFixed(2)}</td>
-                            <td className="py-2.5 px-2 text-right text-xs font-semibold tabular-nums" style={{ color: chgColor }}>{peer.changePct >= 0 ? '+' : ''}{peer.changePct.toFixed(2)}%</td>
-                            <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color: peer.eps < 0 ? '#dc2626' : 'var(--text-secondary)' }}>{peer.eps ? peer.eps.toFixed(2) : '—'}</td>
-                            <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color: 'var(--text-secondary)' }}>{pe}</td>
-                            <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color: 'var(--text-secondary)' }}>—</td>
-                            <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color: 'var(--text-secondary)' }}>{fmtMktCap(peer.mc)}</td>
-                            <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color: 'var(--text-secondary)' }}>—</td>
-                            <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color: 'var(--text-secondary)' }}>{divY}</td>
-                            <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color: 'var(--text-secondary)' }}>—</td>
+                            <td className="py-2.5 px-2 text-right text-xs font-bold tabular-nums" style={{ color:'var(--text-primary)' }}>{peer.price.toFixed(2)}</td>
+                            <td className="py-2.5 px-2 text-right text-xs font-semibold tabular-nums" style={{ color:chgClr }}>{peer.changePct>=0?'+':''}{peer.changePct.toFixed(2)}%</td>
+                            <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color:peer.eps<0?'#dc2626':'var(--text-secondary)' }}>{peer.eps?peer.eps.toFixed(2):'—'}</td>
+                            <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color:'var(--text-secondary)' }}>{pe}</td>
+                            <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color:'var(--text-secondary)' }}>—</td>
+                            <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color:'var(--text-secondary)' }}>{fmtMC(peer.mc)}</td>
+                            <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color:'var(--text-secondary)' }}>—</td>
+                            <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color:'var(--text-secondary)' }}>{divY}</td>
+                            <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color:'var(--text-secondary)' }}>—</td>
                           </tr>
                         )
                       }),
@@ -1774,6 +1783,374 @@ export default function StockDetailClient({
           )}
         </div>
       )}
+
+      {/* ══ COMPARE SECTOR ═════════════════════════════════════════ */}
+      {tab === 'compare' && (() => {
+        // Pool: self + all peers (peers loaded same time as 'peers' tab)
+        const selfQ    = allQuotes.find(q => q.symbol === symbol)
+        const allPool  = [
+          { symbol, name: String(overview?.name ?? symbol), q: selfQ },
+          ...peers.map(p => ({ symbol: p.symbol, name: p.name, q: p as StockQuote })),
+        ]
+
+        const searchLow = cmpSearch.trim().toLowerCase()
+        const dropItems = allPool.filter(p =>
+          p.symbol !== symbol &&   // exclude self from dropdown (always included)
+          (searchLow === '' || p.symbol.toLowerCase().includes(searchLow) || p.name.toLowerCase().includes(searchLow))
+        )
+
+        type CmpStock = {
+          symbol: string; name: string; color: string
+          price: number; volume: number; eps: number; pe: number
+          dps: number; divY: number; mc: number; roe: number; pb: number
+        }
+        const COLORS = ['#FEA500','#3b82f6','#16a34a','#a855f7']
+
+        function buildStock(sym: string, color: string): CmpStock {
+          const q    = allPool.find(p => p.symbol === sym)?.q
+          const eps  = sym === symbol ? Number(overview?.eps ?? q?.eps ?? 0) : (q?.eps ?? 0)
+          const price= sym === symbol ? Number(overview?.price ?? q?.price ?? 0) : (q?.price ?? 0)
+          const pe   = eps > 0 ? price / eps : 0
+          const dps  = q?.dps ?? 0
+          const divY = dps > 0 && price > 0 ? (dps / price) * 100 : 0
+          return {
+            symbol: sym,
+            name: allPool.find(p => p.symbol === sym)?.name ?? sym,
+            color,
+            price, volume: q?.volume ?? 0, eps, pe, dps, divY,
+            mc: q?.mc ?? 0, roe: 0, pb: 0,
+          }
+        }
+
+        const compareStocks: CmpStock[] = cmpResults
+          ? [buildStock(symbol, COLORS[0]), ...cmpResults.map((s, i) => buildStock(s, COLORS[i+1]))]
+          : []
+
+        // Radar
+        type AxisKey = keyof Pick<CmpStock,'volume'|'eps'|'pe'|'dps'|'mc'|'roe'|'pb'>
+        const AXES: { label: string; key: AxisKey }[] = [
+          { label: 'Volume',  key: 'volume' },
+          { label: 'EPS',     key: 'eps'    },
+          { label: 'P/E',     key: 'pe'     },
+          { label: 'DPS',     key: 'dps'    },
+          { label: 'Mkt Cap', key: 'mc'     },
+          { label: 'ROE',     key: 'roe'    },
+          { label: 'P/B',     key: 'pb'     },
+        ]
+        const CX=170, CY=170, R=120, N=AXES.length
+        function axPt(ai: number, r: number) {
+          const a = (Math.PI*2*ai)/N - Math.PI/2
+          return { x: CX+r*Math.cos(a), y: CY+r*Math.sin(a) }
+        }
+        function normVals(key: AxisKey) {
+          const vals = compareStocks.map(s => Math.max(0, s[key] as number))
+          const max  = Math.max(...vals, 0.0001)
+          return vals.map(v => v/max)
+        }
+        const normalized = AXES.map(a => normVals(a.key))
+        function polygon(si: number) {
+          return AXES.map((_,ai) => { const v=normalized[ai][si]; const p=axPt(ai,v*R); return `${p.x},${p.y}` }).join(' ')
+        }
+        function fmtMC(mc: number) {
+          if (!mc) return '—'
+          if (mc>=1e12) return `${(mc/1e12).toFixed(2)}T`
+          if (mc>=1e9)  return `${(mc/1e9).toFixed(2)}B`
+          if (mc>=1e6)  return `${(mc/1e6).toFixed(1)}M`
+          return mc.toFixed(0)
+        }
+
+        return (
+          <div className="space-y-4">
+            {/* Selection card */}
+            <div className="card space-y-4">
+              <div>
+                <SectionHeading>Compare Sector</SectionHeading>
+                <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                  {symbol} is always included · select up to 3 sector peers to compare
+                </p>
+              </div>
+
+              {/* Always-selected chip */}
+              <div className="flex flex-wrap gap-2 items-center">
+                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold"
+                  style={{ background:'linear-gradient(135deg,#FEA500,#986300)', color:'white' }}>
+                  {symbol}
+                  <span className="text-[9px] opacity-80">You</span>
+                </div>
+                {cmpSelected.map((sym, idx) => (
+                  <div key={sym} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold"
+                    style={{ backgroundColor:`${COLORS[idx+1]}20`, color:COLORS[idx+1], border:`1px solid ${COLORS[idx+1]}40` }}>
+                    <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor:COLORS[idx+1] }} />
+                    {sym}
+                    <button onClick={() => setCmpSelected(p => p.filter(s=>s!==sym))}
+                      className="ml-0.5 opacity-60 hover:opacity-100 font-bold">×</button>
+                  </div>
+                ))}
+                {cmpSelected.length < 3 && (
+                  <span className="text-[11px]" style={{ color:'var(--text-muted)' }}>
+                    {3 - cmpSelected.length} more slot{3-cmpSelected.length!==1?'s':''}
+                  </span>
+                )}
+              </div>
+
+              {/* Search dropdown */}
+              <div className="relative">
+                {peersLoad ? (
+                  <div className="h-9 rounded-lg animate-pulse" style={{ backgroundColor:'var(--bg-hover)' }} />
+                ) : (
+                  <>
+                    <div className="relative">
+                      <svg className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" width="13" height="13" viewBox="0 0 13 13" fill="none">
+                        <circle cx="5.5" cy="5.5" r="4" stroke="var(--text-muted)" strokeWidth="1.5"/>
+                        <path d="M9 9L11.5 11.5" stroke="var(--text-muted)" strokeWidth="1.5" strokeLinecap="round"/>
+                      </svg>
+                      <input
+                        type="text"
+                        value={cmpSearch}
+                        onChange={e => { setCmpSearch(e.target.value); setCmpDropOpen(true) }}
+                        onFocus={() => setCmpDropOpen(true)}
+                        placeholder="Search companies in this sector…"
+                        className="w-full pl-9 pr-4 py-2 rounded-lg border text-xs focus:outline-none"
+                        style={{ backgroundColor:'var(--bg-hover)', borderColor:'var(--bg-border)', color:'var(--text-primary)' }}
+                      />
+                      {cmpSearch && (
+                        <button onClick={() => { setCmpSearch(''); setCmpDropOpen(false) }}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-xs opacity-50 hover:opacity-100"
+                          style={{ color:'var(--text-muted)' }}>✕</button>
+                      )}
+                    </div>
+
+                    {cmpDropOpen && (
+                      <>
+                        <div className="fixed inset-0 z-10" onClick={() => setCmpDropOpen(false)} />
+                        <div className="absolute z-20 top-full mt-1 w-full rounded-xl overflow-hidden shadow-xl max-h-56 overflow-y-auto"
+                          style={{ backgroundColor:'var(--bg-card)', border:'1px solid var(--bg-border)' }}>
+                          {dropItems.length === 0 ? (
+                            <p className="px-4 py-3 text-xs" style={{ color:'var(--text-muted)' }}>No matches</p>
+                          ) : dropItems.map(item => {
+                            const isSel = cmpSelected.includes(item.symbol)
+                            const isFull = !isSel && cmpSelected.length >= 3
+                            const selIdx = cmpSelected.indexOf(item.symbol)
+                            return (
+                              <button key={item.symbol}
+                                disabled={isFull}
+                                onClick={() => { cmpToggle(item.symbol); setCmpSearch(''); setCmpDropOpen(false) }}
+                                className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors"
+                                style={{
+                                  backgroundColor: isSel ? 'rgba(254,165,0,0.06)' : 'transparent',
+                                  opacity: isFull ? 0.4 : 1,
+                                  cursor: isFull ? 'not-allowed' : 'pointer',
+                                }}
+                                onMouseEnter={e => !isFull && ((e.currentTarget as HTMLElement).style.backgroundColor = 'var(--bg-hover)')}
+                                onMouseLeave={e => (e.currentTarget as HTMLElement).style.backgroundColor = isSel ? 'rgba(254,165,0,0.06)' : 'transparent'}
+                              >
+                                <div className="w-5 h-5 rounded border flex items-center justify-center shrink-0 transition-colors"
+                                  style={{
+                                    borderColor: isSel ? COLORS[selIdx+1] : 'var(--bg-border)',
+                                    backgroundColor: isSel ? COLORS[selIdx+1] : 'transparent',
+                                  }}>
+                                  {isSel && <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1.5 4L3 5.5L6.5 2" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                                </div>
+                                <div className="flex items-center gap-2 flex-1 min-w-0">
+                                  <div className="w-6 h-6 rounded flex items-center justify-center text-white text-[9px] font-bold shrink-0"
+                                    style={{ background:'linear-gradient(135deg,#FEA500,#986300)' }}>
+                                    {item.symbol.charAt(0)}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <p className="text-xs font-bold" style={{ color:'var(--text-primary)' }}>{item.symbol}</p>
+                                    <p className="text-[10px] truncate" style={{ color:'var(--text-muted)' }}>{item.name}</p>
+                                  </div>
+                                </div>
+                                {item.q && (
+                                  <span className="text-[10px] font-semibold tabular-nums shrink-0" style={{ color:'var(--text-secondary)' }}>
+                                    Rs {item.q.price.toFixed(2)}
+                                  </span>
+                                )}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {/* Compare button */}
+              <button
+                disabled={cmpSelected.length === 0}
+                onClick={() => setCmpResults([...cmpSelected])}
+                className="w-full py-2.5 rounded-xl text-sm font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                style={{ background:'linear-gradient(135deg,#FEA500,#986300)', color:'white' }}>
+                Compare Sector {cmpSelected.length > 0 ? `(${cmpSelected.length+1} companies)` : ''}
+              </button>
+            </div>
+
+            {/* Results */}
+            {cmpResults && cmpResults.length > 0 && (
+              <div className="card space-y-6">
+                {/* Legend */}
+                <div className="flex items-center justify-between flex-wrap gap-3">
+                  <SectionHeading>Comparison Results</SectionHeading>
+                  <div className="flex flex-wrap gap-3">
+                    {compareStocks.map(s => (
+                      <div key={s.symbol} className="flex items-center gap-1.5">
+                        <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor:s.color }} />
+                        <span className="text-[11px] font-semibold" style={{ color:'var(--text-secondary)' }}>{s.symbol}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Spider / radar chart */}
+                <div className="flex justify-center">
+                  <div className="relative" style={{ width:340, maxWidth:'100%' }}>
+                    <svg width="340" height="340" viewBox="0 0 340 340" style={{ maxWidth:'100%', display:'block' }}
+                      onMouseLeave={() => setRadarHover(null)}>
+                      {/* Grid rings */}
+                      {[0.25,0.5,0.75,1].map(lvl => (
+                        <polygon key={lvl}
+                          points={AXES.map((_,ai)=>{ const p=axPt(ai,lvl*R); return `${p.x},${p.y}` }).join(' ')}
+                          fill="none" stroke="var(--bg-border)" strokeWidth="1"/>
+                      ))}
+                      {/* Axis spokes */}
+                      {AXES.map((_,ai) => {
+                        const p = axPt(ai,R)
+                        const isHov = radarHover === ai
+                        return <line key={ai} x1={CX} y1={CY} x2={p.x} y2={p.y}
+                          stroke={isHov ? '#FEA500' : 'var(--bg-border)'} strokeWidth={isHov ? 2 : 1}/>
+                      })}
+                      {/* Labels */}
+                      {AXES.map((ax,ai) => {
+                        const p = axPt(ai,R+20)
+                        const anchor = p.x < CX-4 ? 'end' : p.x > CX+4 ? 'start' : 'middle'
+                        const isHov  = radarHover === ai
+                        return (
+                          <text key={ai} x={p.x} y={p.y} textAnchor={anchor} dominantBaseline="middle"
+                            style={{ fontSize:10, fill: isHov ? '#FEA500' : 'var(--text-secondary)', fontWeight:700, fontFamily:'inherit' }}>
+                            {ax.label}
+                          </text>
+                        )
+                      })}
+                      {/* Stock polygons (reverse order so first is on top) */}
+                      {[...compareStocks].reverse().map((s,ri) => {
+                        const si = compareStocks.length-1-ri
+                        return (
+                          <polygon key={s.symbol} points={polygon(si)}
+                            fill={s.color} fillOpacity="0.15"
+                            stroke={s.color} strokeWidth="2.5" strokeLinejoin="round"/>
+                        )
+                      })}
+                      {/* Dots — larger on hover axis, with invisible hit target on each axis endpoint */}
+                      {compareStocks.map((s,si) =>
+                        AXES.map((_,ai) => {
+                          const v    = normalized[ai][si]
+                          const p    = axPt(ai, v*R)
+                          const isHov = radarHover === ai
+                          return <circle key={`${si}-${ai}`} cx={p.x} cy={p.y} r={isHov ? 5 : 3.5} fill={s.color}
+                            style={{ transition:'r 0.15s' }}/>
+                        })
+                      )}
+                      {/* Invisible axis hover zones — wide line along each axis */}
+                      {AXES.map((_,ai) => {
+                        const p = axPt(ai, R)
+                        return (
+                          <line key={`hz-${ai}`} x1={CX} y1={CY} x2={p.x} y2={p.y}
+                            stroke="transparent" strokeWidth="24"
+                            style={{ cursor:'crosshair' }}
+                            onMouseEnter={() => setRadarHover(ai)}/>
+                        )
+                      })}
+                    </svg>
+
+                    {/* Tooltip */}
+                    {radarHover !== null && (() => {
+                      const ax   = AXES[radarHover]
+                      const tip  = axPt(radarHover, R + 20)
+                      const svgW = 340
+                      // Position tooltip near label; clamp inside box
+                      const rawLeft = (tip.x / svgW) * 100
+                      const left    = Math.min(Math.max(rawLeft, 5), 75)
+                      const above   = tip.y < CY
+
+                      function fmtVal(key: AxisKey, s: CmpStock): string {
+                        const v = s[key] as number
+                        if (key === 'volume') return v > 0 ? v.toLocaleString() : '—'
+                        if (key === 'mc')     return fmtMC(v)
+                        if (key === 'roe' || key === 'pb') return '—'
+                        return v !== 0 ? v.toFixed(2) : '—'
+                      }
+
+                      return (
+                        <div className="absolute pointer-events-none z-30 rounded-xl shadow-2xl px-3 py-2.5 min-w-[160px]"
+                          style={{
+                            left: `${left}%`,
+                            top: above ? 'auto' : undefined,
+                            bottom: above ? undefined : 'auto',
+                            [above ? 'bottom' : 'top']: '55%',
+                            backgroundColor: 'var(--bg-card)',
+                            border: '1px solid var(--bg-border)',
+                          }}>
+                          <p className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color:'#FEA500' }}>
+                            {ax.label}
+                          </p>
+                          {compareStocks.map(s => (
+                            <div key={s.symbol} className="flex items-center justify-between gap-4 py-0.5">
+                              <div className="flex items-center gap-1.5">
+                                <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor:s.color }}/>
+                                <span className="text-[11px] font-semibold" style={{ color:'var(--text-secondary)' }}>{s.symbol}</span>
+                              </div>
+                              <span className="text-[11px] font-bold tabular-nums" style={{ color:'var(--text-primary)' }}>
+                                {fmtVal(ax.key, s)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )
+                    })()}
+                  </div>
+                </div>
+
+                {/* Individual tables */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {compareStocks.map(s => (
+                    <div key={s.symbol} className="rounded-xl overflow-hidden"
+                      style={{ border:`1px solid ${s.color}50` }}>
+                      <div className="px-3 py-2.5 flex items-center gap-2"
+                        style={{ backgroundColor:`${s.color}15`, borderBottom:`1px solid ${s.color}30` }}>
+                        <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor:s.color }}/>
+                        <span className="text-xs font-bold" style={{ color:'var(--text-primary)' }}>{s.symbol}</span>
+                        {s.symbol === symbol && <span className="text-[8px] font-bold px-1 py-0.5 rounded" style={{ background:'linear-gradient(135deg,#FEA500,#986300)',color:'white' }}>You</span>}
+                        <span className="text-[10px] truncate" style={{ color:'var(--text-muted)' }}>{s.name}</span>
+                      </div>
+                      <table className="w-full text-xs">
+                        <tbody>
+                          {[
+                            { label:'Price',     value: s.price>0 ? `Rs ${s.price.toFixed(2)}` : '—' },
+                            { label:'Volume',    value: s.volume>0 ? s.volume.toLocaleString() : '—' },
+                            { label:'EPS',       value: s.eps!==0 ? s.eps.toFixed(2) : '—' },
+                            { label:'P/E',       value: s.pe>0 ? s.pe.toFixed(1) : '—' },
+                            { label:'DPS',       value: s.dps>0 ? s.dps.toFixed(2) : '—' },
+                            { label:'Div Yield', value: s.divY>0 ? `${s.divY.toFixed(1)}%` : '—' },
+                            { label:'Mkt Cap',   value: fmtMC(s.mc) },
+                            { label:'ROE',       value: '—' },
+                            { label:'P/B',       value: '—' },
+                          ].map((row,ri) => (
+                            <tr key={row.label} style={{ borderBottom: ri<8 ? '1px solid var(--bg-border)' : 'none' }}>
+                              <td className="py-2 px-3 font-medium" style={{ color:'var(--text-muted)' }}>{row.label}</td>
+                              <td className="py-2 px-3 text-right font-bold tabular-nums" style={{ color:'var(--text-primary)' }}>{row.value}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )
+      })()}
 
       {/* ══ FINANCIALS ══════════════════════════════════════════════ */}
       {tab === 'financials' && (
