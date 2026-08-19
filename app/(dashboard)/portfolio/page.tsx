@@ -75,7 +75,7 @@ export default function PortfolioPage() {
         <table className="w-full text-xs">
           <thead>
             <tr style={{ borderBottom: '1px solid var(--bg-border)' }}>
-              {['Symbol', 'Company', 'Qty', 'PP', 'LTP', 'Mkt Value', 'P&L', 'Today P&L', 'Return'].map(col => (
+              {['Symbol', 'Company', 'Qty', 'PP', 'Total Investment', 'LTP', 'Mkt Value', 'P&L', 'Today P&L', 'Return'].map(col => (
                 <th key={col}
                     className="text-left py-2 px-2 text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap"
                     style={{ color: 'var(--text-muted)' }}>
@@ -114,6 +114,9 @@ export default function PortfolioPage() {
                   </td>
                   <td className="py-2.5 px-2 font-number" style={{ color: 'var(--text-secondary)' }}>
                     {formatPrice(h.avgPrice)}
+                  </td>
+                  <td className="py-2.5 px-2 font-number font-semibold" style={{ color: 'var(--text-primary)' }}>
+                    {fmtPKR(cost)}
                   </td>
 
                   <td className="py-2.5 px-2 font-number font-semibold" style={{ color: 'var(--text-primary)' }}>

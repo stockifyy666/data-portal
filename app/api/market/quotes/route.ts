@@ -25,6 +25,11 @@ function parseEquities(eq: Record<string, any>): StockQuote[] {
     xd:        s.xd   ?? false,
     xb:        s.xb   ?? false,
     xr:        s.xr   ?? false,
+    mc:        s.c && s.sh ? s.c * s.sh : 0,
+    sharesOut: s.sh  ?? 0,
+    bvps:      s.as  ?? 0,
+    roe:       s.pm  ?? 0,
+    pat:       s.pat ?? 0,
   }))
 }
 

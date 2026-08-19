@@ -46,13 +46,14 @@ type Announcement = {
 
 /* ── Tabs ────────────────────────────────────────────────────────── */
 const TABS = [
-  { id: 'overview',      label: 'Overview',      Icon: BarChart2  },
-  { id: 'chart',         label: 'Chart',          Icon: TrendingUp },
-  { id: 'financials',    label: 'Financials',     Icon: FileText   },
-  { id: 'fundamentals',  label: 'Fundamentals',   Icon: BarChart2  },
-  { id: 'shareholders',  label: 'Shareholders',   Icon: Users      },
-  { id: 'news',          label: 'News',           Icon: Newspaper  },
-  { id: 'announcements', label: 'Announcements',  Icon: Bell       },
+  { id: 'overview',      label: 'Overview',       Icon: BarChart2  },
+  { id: 'chart',         label: 'Chart',           Icon: TrendingUp },
+  { id: 'peers',         label: 'Sector Peers',    Icon: Users      },
+  { id: 'financials',    label: 'Financials',      Icon: FileText   },
+  { id: 'fundamentals',  label: 'Fundamentals',    Icon: BarChart2  },
+  { id: 'shareholders',  label: 'Shareholders',    Icon: Users      },
+  { id: 'news',          label: 'News',            Icon: Newspaper  },
+  { id: 'announcements', label: 'Announcements',   Icon: Bell       },
 ] as const
 
 type TabId = typeof TABS[number]['id']
@@ -254,30 +255,27 @@ function TrendBar({ values }: { values: (number | null)[] }) {
 
 /* ── Metric detail modal ──────────────────────────────────────────── */
 type MetricRow = { label: string; values: (number | null)[] }
-type MetricPeriod = { period_end: string; year: number; quarter?: string | null }
+type MetricPeriod = { period_end: string; year: string | number; quarter?: string | null }
 
 function MetricModal({
-  row, periods, onClose,
+  row, periods, symbol, onClose,
 }: {
   row: MetricRow
   periods: MetricPeriod[]
+  symbol: string
   onClose: () => void
 }) {
-  const [view, setView] = useState<'chart' | 'table'>('chart')
+  const [qData,    setQData]    = useState<StatementData | null>(null)
+  const [qLoading, setQLoading] = useState(true)
 
-  // Pair each value with its period label, skip nulls for chart
-  const paired = periods
-    .map((p, i) => ({ label: p.quarter ? `${p.year} ${p.quarter}` : String(p.year), value: row.values[i] }))
-    .filter(d => d.value != null)
-    .reverse()           // chronological order
-
-  const vals = paired.map(d => d.value as number)
-  const min  = Math.min(...vals)
-  const max  = Math.max(...vals)
-  const range = max - min || 1
-
-  const barH = 160  // chart area height px
-  const barW = Math.max(28, Math.min(52, Math.floor(480 / paired.length)))
+  useEffect(() => {
+    setQLoading(true)
+    fetch(`/api/stock/${symbol}/statement?type=other&interval=quarterly`)
+      .then(r => r.json())
+      .then(j => { if (j?.data) setQData(j.data) })
+      .catch(() => {})
+      .finally(() => setQLoading(false))
+  }, [symbol])
 
   // Close on backdrop click
   const onBackdrop = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -290,6 +288,125 @@ function MetricModal({
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [onClose])
+
+  // Build paired data for a set of periods + values
+  function buildPaired(ps: MetricPeriod[], vals: (number | null)[]) {
+    return ps
+      .map((p, i) => ({ label: p.quarter ? `${p.year} ${p.quarter}` : String(p.year), value: vals[i] }))
+      .filter(d => d.value != null)
+      .reverse()
+  }
+
+  // Render a bar chart + table section
+  function renderSection(title: string, ps: MetricPeriod[], vals: (number | null)[]) {
+    const paired = buildPaired(ps, vals)
+    if (!paired.length) return (
+      <div>
+        <p className="text-[11px] font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--text-muted)' }}>{title}</p>
+        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>No data available</p>
+      </div>
+    )
+
+    const pvVals = paired.map(d => d.value as number)
+    const min    = Math.min(...pvVals)
+    const max    = Math.max(...pvVals)
+    const range  = max - min || 1
+    const barH   = 130
+    const barW   = Math.max(26, Math.min(52, Math.floor(460 / paired.length)))
+
+    return (
+      <div>
+        <p className="text-[11px] font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--text-muted)' }}>{title}</p>
+
+        {/* Bar chart */}
+        <div className="overflow-x-auto mb-4">
+          <div style={{ minWidth: paired.length * barW + 40, position: 'relative' }}>
+            {[0, 0.25, 0.5, 0.75, 1].map(t => {
+              const yVal = min + t * range
+              return (
+                <div key={t} style={{
+                  position: 'absolute', left: 0, right: 0,
+                  top: barH - t * barH,
+                  borderTop: '1px dashed var(--bg-border)',
+                  display: 'flex', alignItems: 'center',
+                }}>
+                  <span style={{ fontSize: 9, color: 'var(--text-muted)', marginLeft: 2, lineHeight: 1 }}>
+                    {fmtFundVal(row.label, yVal)}
+                  </span>
+                </div>
+              )
+            })}
+            <div style={{ display: 'flex', alignItems: 'flex-end', height: barH, gap: 3, paddingLeft: 36 }}>
+              {paired.map((d, i) => {
+                const v      = d.value!
+                const h      = Math.max(2, ((v - min) / range) * (barH - 4))
+                const isLast = i === paired.length - 1
+                const pos    = v >= 0
+                return (
+                  <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: '1 0 auto', minWidth: barW - 3 }}>
+                    <span style={{ fontSize: 9, color: 'var(--text-muted)', marginBottom: 2, whiteSpace: 'nowrap' }}>
+                      {fmtFundVal(row.label, v)}
+                    </span>
+                    <div style={{
+                      width: '70%', height: h,
+                      borderRadius: '4px 4px 0 0',
+                      backgroundColor: isLast ? (pos ? '#FEA500' : '#dc2626') : (pos ? '#16a34a' : '#ef4444'),
+                      opacity: isLast ? 1 : 0.6,
+                      transition: 'height 0.3s',
+                    }} />
+                  </div>
+                )
+              })}
+            </div>
+            <div style={{ display: 'flex', gap: 3, paddingLeft: 36, marginTop: 4 }}>
+              {paired.map((d, i) => (
+                <div key={i} style={{ flex: '1 0 auto', minWidth: barW - 3, textAlign: 'center' }}>
+                  <span style={{ fontSize: 9, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{d.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Table */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr style={{ borderBottom: '1px solid var(--bg-border)' }}>
+                <th className="text-left py-2 pr-4 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Period</th>
+                <th className="text-right py-2 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Value</th>
+                <th className="text-right py-2 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Change</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[...paired].reverse().map((d, i, arr) => {
+                const prev   = arr[i + 1]?.value ?? null
+                const change = d.value != null && prev != null ? d.value - prev : null
+                const up     = change != null ? change >= 0 : null
+                return (
+                  <tr key={i} style={{ borderBottom: '1px solid var(--bg-border)' }}>
+                    <td className="py-2 pr-4 text-[12px] font-medium" style={{ color: 'var(--text-secondary)' }}>{d.label}</td>
+                    <td className="py-2 text-right text-[12px] font-bold font-number tabular-nums"
+                      style={{ color: (d.value ?? 0) < 0 ? '#dc2626' : 'var(--text-primary)' }}>
+                      {fmtFundVal(row.label, d.value ?? null)}
+                    </td>
+                    <td className="py-2 text-right text-[11px] font-semibold font-number tabular-nums"
+                      style={{ color: up == null ? 'var(--text-muted)' : up ? '#16a34a' : '#dc2626' }}>
+                      {change == null ? '—' : `${up ? '+' : ''}${fmtFundVal(row.label, change)}`}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    )
+  }
+
+  // Find matching quarterly field by label
+  const qField = qData?.fields.find(f => !f.is_heading && f.label.trim().toLowerCase() === row.label.trim().toLowerCase())
+  const qPeriods = qData?.periods ?? []
 
   return (
     <div
@@ -307,149 +424,43 @@ function MetricModal({
           <div>
             <h2 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{row.label}</h2>
             <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
-              {paired.length} periods · {paired[0]?.label} – {paired[paired.length - 1]?.label}
+              Annual &amp; Quarterly history
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            {/* Chart / Table toggle */}
-            <div className="flex rounded-lg overflow-hidden" style={{ border: '1px solid var(--bg-border)' }}>
-              {(['chart', 'table'] as const).map(v => (
-                <button key={v} onClick={() => setView(v)}
-                  className="px-3 py-1 text-[11px] font-semibold capitalize transition-colors"
-                  style={view === v
-                    ? { background: 'linear-gradient(135deg,#FEA500,#986300)', color: 'white' }
-                    : { backgroundColor: 'var(--bg-hover)', color: 'var(--text-secondary)' }}>
-                  {v}
-                </button>
-              ))}
-            </div>
-            <button onClick={onClose}
-              className="rounded-lg px-2 py-1 text-xs font-bold"
-              style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-secondary)' }}>
-              ✕
-            </button>
-          </div>
+          <button onClick={onClose}
+            className="rounded-lg px-2 py-1 text-xs font-bold"
+            style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-secondary)' }}>
+            ✕
+          </button>
         </div>
 
         {/* Body */}
-        <div className="overflow-auto p-5 flex-1">
-          {view === 'chart' ? (
+        <div className="overflow-auto p-5 flex-1 space-y-6">
+          {/* Annual section */}
+          {renderSection('Annual — Year by Year', periods, row.values)}
+
+          {/* Divider */}
+          <div style={{ borderTop: '1px solid var(--bg-border)' }} />
+
+          {/* Quarterly section */}
+          {qLoading ? (
             <div>
-              {/* Latest value hero */}
-              <div className="mb-4 flex items-end gap-3">
-                <span className="text-3xl font-bold font-number" style={{ color: 'var(--text-primary)' }}>
-                  {fmtFundVal(row.label, paired[paired.length - 1]?.value ?? null)}
-                </span>
-                {paired.length >= 2 && (() => {
-                  const cur  = paired[paired.length - 1].value!
-                  const prev = paired[paired.length - 2].value!
-                  const up   = cur >= prev
-                  return (
-                    <span className="text-sm font-semibold mb-1" style={{ color: up ? '#16a34a' : '#dc2626' }}>
-                      {up ? '▲' : '▼'} vs prior
-                    </span>
-                  )
-                })()}
-              </div>
-
-              {/* Bar chart */}
-              <div className="overflow-x-auto">
-                <div style={{ minWidth: paired.length * barW + 40, position: 'relative' }}>
-                  {/* Y-axis grid lines */}
-                  {[0, 0.25, 0.5, 0.75, 1].map(t => {
-                    const yVal = min + t * range
-                    return (
-                      <div key={t} style={{
-                        position: 'absolute', left: 0, right: 0,
-                        top: barH - t * barH,
-                        borderTop: '1px dashed var(--bg-border)',
-                        display: 'flex', alignItems: 'center',
-                      }}>
-                        <span style={{ fontSize: 9, color: 'var(--text-muted)', marginLeft: 2, lineHeight: 1 }}>
-                          {fmtFundVal(row.label, yVal)}
-                        </span>
-                      </div>
-                    )
-                  })}
-
-                  {/* Bars */}
-                  <div style={{ display: 'flex', alignItems: 'flex-end', height: barH, gap: 3, paddingLeft: 36 }}>
-                    {paired.map((d, i) => {
-                      const v   = d.value!
-                      const h   = Math.max(2, ((v - min) / range) * (barH - 4))
-                      const isLast = i === paired.length - 1
-                      const pos  = v >= 0
-                      return (
-                        <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: '1 0 auto', minWidth: barW - 3 }}>
-                          <span style={{ fontSize: 9, color: 'var(--text-muted)', marginBottom: 2, whiteSpace: 'nowrap' }}>
-                            {fmtFundVal(row.label, v)}
-                          </span>
-                          <div style={{
-                            width: '70%', height: h,
-                            borderRadius: '4px 4px 0 0',
-                            backgroundColor: isLast
-                              ? (pos ? '#FEA500' : '#dc2626')
-                              : (pos ? '#16a34a' : '#ef4444'),
-                            opacity: isLast ? 1 : 0.6,
-                            transition: 'height 0.3s',
-                          }} />
-                        </div>
-                      )
-                    })}
-                  </div>
-
-                  {/* X-axis labels */}
-                  <div style={{ display: 'flex', gap: 3, paddingLeft: 36, marginTop: 4 }}>
-                    {paired.map((d, i) => (
-                      <div key={i} style={{ flex: '1 0 auto', minWidth: barW - 3, textAlign: 'center' }}>
-                        <span style={{ fontSize: 9, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                          {d.label}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+              <p className="text-[11px] font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--text-muted)' }}>Quarterly</p>
+              <div className="flex gap-1">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="flex-1 h-20 rounded animate-pulse" style={{ backgroundColor: 'var(--bg-hover)' }} />
+                ))}
               </div>
             </div>
-          ) : (
-            /* Table view */
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr style={{ borderBottom: '1px solid var(--bg-border)' }}>
-                    <th className="text-left py-2 pr-4 text-[11px] font-semibold uppercase tracking-wider"
-                      style={{ color: 'var(--text-muted)' }}>Period</th>
-                    <th className="text-right py-2 text-[11px] font-semibold uppercase tracking-wider"
-                      style={{ color: 'var(--text-muted)' }}>Value</th>
-                    <th className="text-right py-2 text-[11px] font-semibold uppercase tracking-wider"
-                      style={{ color: 'var(--text-muted)' }}>Change</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[...paired].reverse().map((d, i, arr) => {
-                    const prev   = arr[i + 1]?.value ?? null
-                    const change = d.value != null && prev != null ? d.value - prev : null
-                    const up     = change != null ? change >= 0 : null
-                    return (
-                      <tr key={i} style={{ borderBottom: '1px solid var(--bg-border)' }}>
-                        <td className="py-2 pr-4 text-[12px] font-medium" style={{ color: 'var(--text-secondary)' }}>
-                          {d.label}
-                        </td>
-                        <td className="py-2 text-right text-[12px] font-bold font-number tabular-nums"
-                          style={{ color: (d.value ?? 0) < 0 ? '#dc2626' : 'var(--text-primary)' }}>
-                          {fmtFundVal(row.label, d.value ?? null)}
-                        </td>
-                        <td className="py-2 text-right text-[11px] font-semibold font-number tabular-nums"
-                          style={{ color: up == null ? 'var(--text-muted)' : up ? '#16a34a' : '#dc2626' }}>
-                          {change == null ? '—' : `${up ? '+' : ''}${fmtFundVal(row.label, change)}`}
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+          ) : qField
+            ? renderSection('Quarterly', qPeriods as MetricPeriod[], qField.values)
+            : (
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-widest mb-2" style={{ color: 'var(--text-muted)' }}>Quarterly</p>
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>No quarterly data available for this metric</p>
+              </div>
+            )
+          }
         </div>
       </div>
     </div>
@@ -458,45 +469,60 @@ function MetricModal({
 
 /* ── Fundamentals section definitions ─────────────────────────────── */
 const FUND_SECTIONS: { heading: string; match: (lbl: string) => boolean }[] = [
-  {
-    heading: 'Profitability',
-    match: l => /profit.*(margin|before tax)|net profit margin|gross (profit margin|spread)|operating (profit|margin)|ebitda margin|return on (equity|assets|capital)|roce|roa\b|roe\b/i.test(l),
-  },
-  {
-    heading: 'Liquidity',
-    match: l => /current ratio|quick ratio|cash ratio|working capital|acid.?test/i.test(l),
-  },
-  {
-    heading: 'Solvency',
-    match: l => /debt.*(equity|asset|ratio)|interest coverage|leverage|gearing|d\/e|total debt|long.?term debt|asset coverage/i.test(l),
-  },
-  {
-    heading: 'Enterprise Value',
-    match: l => /\bev\b|enterprise value|ev\/(ebitda|revenue|sales|fcf|earnings)/i.test(l),
-  },
-  {
-    heading: 'Sales',
-    match: l => /\bsales\b|revenue(?! growth)|mark.?up per share|markup per share|turnover|gross spread ratio/i.test(l),
-  },
-  {
-    heading: 'Cash Flow',
-    match: l => /cash flow|free cash|operating cash|fcf|capex|cash per share/i.test(l),
-  },
+  // ── 1. Equity Ratios ────────────────────────────────────────────────
   {
     heading: 'Equity Ratios',
-    match: l => /book value per share|earnings per share|\beps\b|nav per share|tangible book|equity per share/i.test(l),
+    match: l => /book value(?! per share)|book value growth|exp.*book value|price to book value|exp.*price to book|return on equity|exp.*return on equity|retention ratio|exp.*retention ratio|equity to assets|return on assets|return on cap|roce|roa\b|roe\b/i.test(l),
   },
+  // ── 2. Dividends ────────────────────────────────────────────────────
+  {
+    heading: 'Dividends',
+    match: l => /dividend|payout ratio|exp.*payout|dividend yield|exp.*yield|dividend cover|exp.*dividend/i.test(l),
+  },
+  // ── 3. Cash ─────────────────────────────────────────────────────────
+  {
+    heading: 'Cash',
+    match: l => /cash flow per share|cash per share|free cash|operating cash|fcf/i.test(l),
+  },
+  // ── 4. Earnings ─────────────────────────────────────────────────────
+  {
+    heading: 'Earnings',
+    match: l => /\beps\b|earnings per share|latest eps|eps last quarter|last annual eps|price.?to.?earn|price earning|p\/e|exp.*earn|exp.*p\/e|earning growth|peg ratio/i.test(l),
+  },
+  // ── 5. Important Ratios ─────────────────────────────────────────────
+  {
+    heading: 'Important Ratios',
+    match: l => /book value per share|debt.?to.?equity|debt.equity|xprice|price date|market price|price to book|p\/b/i.test(l),
+  },
+  // ── 6. Advances & Deposits ──────────────────────────────────────────
+  {
+    heading: 'Advances & Deposits',
+    match: l => /equity to advances|advance.?deposit|cash to deposit/i.test(l),
+  },
+  // ── 7. Profitability ────────────────────────────────────────────────
+  {
+    heading: 'Profitability',
+    match: l => /profit.*margin|net profit|gross (profit|spread)|operating.*margin|ebitda.*margin|markup per share|mark.?up per share/i.test(l),
+  },
+  // ── 8. Valuation ────────────────────────────────────────────────────
   {
     heading: 'Valuation',
-    match: l => /price.*(earn|book|sales|cash|earning)|p\/e|p\/b|p\/s|market price per share|market cap|price earnings|price.?to.?(book|sales|earn)/i.test(l),
+    match: l => /market cap|enterprise value|\bev\b|ev\//i.test(l),
   },
+  // ── 9. Liquidity ────────────────────────────────────────────────────
   {
-    heading: 'Dividends & Returns',
-    match: l => /dividend|payout ratio|retention ratio|yield|dividend cover/i.test(l),
+    heading: 'Liquidity',
+    match: l => /current ratio|quick ratio|working capital|acid.?test/i.test(l),
   },
+  // ── 10. Solvency ────────────────────────────────────────────────────
+  {
+    heading: 'Solvency',
+    match: l => /interest coverage|leverage|gearing|total debt|long.?term debt|asset coverage/i.test(l),
+  },
+  // ── 11. Financial Health ────────────────────────────────────────────
   {
     heading: 'Financial Health',
-    match: l => /revenue growth|sales growth|ebitda(?! margin)|gross profit(?! margin)|total assets|net assets|total equity|working capital/i.test(l),
+    match: l => /revenue growth|sales growth|ebitda(?!.*margin)|gross profit(?!.*margin)|total assets|net assets|total equity/i.test(l),
   },
 ]
 
@@ -507,7 +533,7 @@ function assignFundSection(label: string): string {
   return 'Other'
 }
 
-function FundamentalsView({ data, overview }: { data: StatementData; overview: Overview | null }) {
+function FundamentalsView({ data, overview, symbol }: { data: StatementData; overview: Overview | null; symbol: string }) {
   const periods = data.periods.slice(0, 10)   // more periods available for modal
   const ttmIdx  = 0
 
@@ -529,6 +555,7 @@ function FundamentalsView({ data, overview }: { data: StatementData; overview: O
         <MetricModal
           row={activeRow}
           periods={periods}
+          symbol={symbol}
           onClose={() => setActiveRow(null)}
         />
       )}
@@ -620,12 +647,15 @@ function FundamentalsView({ data, overview }: { data: StatementData; overview: O
                   Market Stats (PSX)
                 </h3>
               </div>
-              <div className="p-3 grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2">
+              <div className="p-3 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
                 {stats.map(s => (
-                  <div key={s.label} className="rounded-xl p-3 flex flex-col gap-1"
+                  <div key={s.label} className="rounded-xl p-3 flex flex-col gap-2"
                     style={{ backgroundColor: 'var(--bg-hover)' }}>
                     <span className="text-[11px] leading-tight" style={{ color: 'var(--text-secondary)' }}>{s.label}</span>
-                    <span className="text-lg font-bold font-number leading-none" style={{ color: 'var(--text-primary)' }}>{s.value}</span>
+                    <div className="flex items-end justify-between gap-1">
+                      <span className="text-lg font-bold font-number leading-none"
+                        style={{ color: 'var(--text-primary)' }}>{s.value}</span>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -885,6 +915,207 @@ function TradingViewWidget({ symbol }: { symbol: string }) {
   return <div ref={containerRef} className="w-full overflow-hidden rounded-lg" style={{ height: 420 }} />
 }
 
+/* ── Index VS Stock — TradingView lightweight-charts ─────────────── */
+function IndexVsStockChart({ stockCandles, indexCandles, symbol }: {
+  stockCandles: Candle[]; indexCandles: Candle[]; symbol: string
+}) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [isLight, setIsLight] = useState(
+    () => typeof document !== 'undefined' && !document.documentElement.classList.contains('dark')
+  )
+
+  useEffect(() => {
+    const update = () => setIsLight(!document.documentElement.classList.contains('dark'))
+    update()
+    const mo = new MutationObserver(update)
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+    return () => mo.disconnect()
+  }, [])
+
+  useEffect(() => {
+    if (!containerRef.current || stockCandles.length < 2 || indexCandles.length < 2) return
+
+    // Build aligned % return series inside the effect so closures are fresh
+    // Strip timestamp — API returns "2026-08-19 16:00:00", chart needs "2026-08-19"
+    const stockMap = new Map(stockCandles.map(c => [c.date.slice(0, 10), c.close]))
+    const indexMap = new Map(indexCandles.map(c => [c.date.slice(0, 10), c.close]))
+    const dates    = [...stockMap.keys()].filter(d => indexMap.has(d)).sort()
+    if (dates.length < 2) return
+
+    const base0S = stockMap.get(dates[0])!
+    const base0I = indexMap.get(dates[0])!
+
+    const stockSeries = dates.map(d => ({
+      time: d as `${number}-${number}-${number}`,
+      value: +((stockMap.get(d)! / base0S - 1) * 100).toFixed(2),
+    }))
+    const indexSeries = dates.map(d => ({
+      time: d as `${number}-${number}-${number}`,
+      value: +((indexMap.get(d)! / base0I - 1) * 100).toFixed(2),
+    }))
+
+    let cancelled = false
+    let dispose: (() => void) | null = null
+
+    import('lightweight-charts').then(({ createChart, ColorType }) => {
+      if (cancelled || !containerRef.current) return
+
+      const bg     = isLight ? '#ffffff' : '#0C1628'
+      const text   = isLight ? '#64748b' : '#5B7499'
+      const grid   = isLight ? '#f1f5f9' : '#0F2040'
+      const border = isLight ? '#e2e8f0' : '#1C3054'
+      const lblBg  = isLight ? '#f8fafc' : '#112040'
+
+      const w = containerRef.current!.getBoundingClientRect().width || 600
+
+      const chart = createChart(containerRef.current!, {
+        width:  w,
+        height: 280,
+        layout: { background: { type: ColorType.Solid, color: bg }, textColor: text },
+        grid:   { vertLines: { color: grid }, horzLines: { color: grid } },
+        crosshair: {
+          vertLine: { color: border, labelBackgroundColor: lblBg },
+          horzLine: { color: border, labelBackgroundColor: lblBg },
+        },
+        rightPriceScale: {
+          borderColor: border,
+          scaleMargins: { top: 0.06, bottom: 0.06 },
+        },
+        timeScale: { borderColor: border, timeVisible: false },
+        handleScroll: true,
+        handleScale:  true,
+      })
+
+      const stockLine = chart.addLineSeries({
+        color:     '#4A8FF4',
+        lineWidth: 2,
+        title: symbol,
+      })
+      stockLine.setData(stockSeries)
+
+      const indexLine = chart.addLineSeries({
+        color:     '#F5A623',
+        lineWidth: 2,
+        lineStyle: 1,
+        title: 'KSE-100',
+      })
+      indexLine.setData(indexSeries)
+
+      chart.timeScale().fitContent()
+
+      // ── Custom tooltip ──────────────────────────────────────────
+      const tooltip = document.createElement('div')
+      Object.assign(tooltip.style, {
+        position:     'absolute',
+        display:      'none',
+        padding:      '8px 10px',
+        background:   isLight ? '#ffffff' : '#1e293b',
+        border:       `1px solid ${isLight ? '#e2e8f0' : '#334155'}`,
+        borderRadius: '6px',
+        boxShadow:    '0 2px 8px rgba(0,0,0,0.12)',
+        fontSize:     '12px',
+        pointerEvents:'none',
+        zIndex:       '10',
+        minWidth:     '120px',
+      })
+      containerRef.current!.style.position = 'relative'
+      containerRef.current!.appendChild(tooltip)
+
+      chart.subscribeCrosshairMove(param => {
+        if (!param.point || !param.time || param.point.x < 0 || param.point.y < 0) {
+          tooltip.style.display = 'none'
+          return
+        }
+        const sVal = param.seriesData.get(stockLine) as { value: number } | undefined
+        const iVal = param.seriesData.get(indexLine) as { value: number } | undefined
+        if (!sVal && !iVal) { tooltip.style.display = 'none'; return }
+
+        // Format date from YYYY-MM-DD string
+        const dateStr = typeof param.time === 'string' ? param.time : ''
+        const d = new Date(dateStr + 'T00:00:00')
+        const label = d.toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: '2-digit' })
+
+        const textColor = isLight ? '#374151' : '#cbd5e1'
+        const boldColor = isLight ? '#111827' : '#f1f5f9'
+
+        tooltip.innerHTML = `
+          <div style="font-weight:600;color:${boldColor};margin-bottom:5px;font-size:11px">${label}</div>
+          ${sVal != null ? `<div style="display:flex;align-items:center;gap:5px;margin-bottom:3px">
+            <span style="width:8px;height:8px;border-radius:50%;background:#4A8FF4;flex-shrink:0"></span>
+            <span style="color:${textColor}">${symbol}:</span>
+            <span style="font-weight:700;color:${boldColor}">${sVal.value.toFixed(1)}%</span>
+          </div>` : ''}
+          ${iVal != null ? `<div style="display:flex;align-items:center;gap:5px">
+            <span style="width:8px;height:8px;border-radius:50%;background:#F5A623;flex-shrink:0"></span>
+            <span style="color:${textColor}">KSE-100:</span>
+            <span style="font-weight:700;color:${boldColor}">${iVal.value.toFixed(1)}%</span>
+          </div>` : ''}
+        `
+
+        const containerW = containerRef.current!.getBoundingClientRect().width
+        const tipW = 145
+        let left = param.point.x + 12
+        if (left + tipW > containerW - 60) left = param.point.x - tipW - 12
+
+        tooltip.style.display = 'block'
+        tooltip.style.left = `${left}px`
+        tooltip.style.top  = `${Math.max(0, param.point.y - 40)}px`
+      })
+
+      const ro = new ResizeObserver(entries => {
+        if (!cancelled && entries[0]) {
+          chart.applyOptions({ width: entries[0].contentRect.width })
+        }
+      })
+      ro.observe(containerRef.current!)
+      dispose = () => { ro.disconnect(); chart.remove() }
+    })
+
+    return () => { cancelled = true; dispose?.() }
+  }, [isLight, stockCandles, indexCandles, symbol])
+
+  // Compute legend returns from props (for header display only)
+  const _sMap = new Map(stockCandles.map(c => [c.date.slice(0, 10), c.close]))
+  const _iMap = new Map(indexCandles.map(c => [c.date.slice(0, 10), c.close]))
+  const _dates = [..._sMap.keys()].filter(d => _iMap.has(d)).sort()
+  const _b0S = _dates.length ? _sMap.get(_dates[0])! : 1
+  const _b0I = _dates.length ? _iMap.get(_dates[0])! : 1
+  const _last = _dates[_dates.length - 1]
+  const stockRet = _last ? +(_sMap.get(_last)! / _b0S - 1).toFixed(4) * 100 : 0
+  const indexRet = _last ? +(_iMap.get(_last)! / _b0I - 1).toFixed(4) * 100 : 0
+  const fmt = (v: number) => `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`
+
+  return (
+    <div className="mt-2 rounded-lg overflow-hidden" style={{ border: '1px solid var(--bg-border)' }}>
+      {/* Legend header */}
+      <div className="flex items-center justify-between px-4 py-2.5"
+        style={{ borderBottom: '1px solid var(--bg-border)', backgroundColor: 'var(--bg-hover)' }}>
+        <span className="text-[11px] font-bold tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>
+          Index vs Stock — % Return
+        </span>
+        <div className="flex items-center gap-4 text-[12px]">
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block w-4 h-0.5 rounded" style={{ backgroundColor: '#4A8FF4' }} />
+            <span className="font-bold" style={{ color: 'var(--text-primary)' }}>{symbol}</span>
+            <span className="font-extrabold tabular-nums" style={{ color: stockRet >= 0 ? '#16a34a' : '#dc2626' }}>
+              {fmt(stockRet)}
+            </span>
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block w-4" style={{ borderTop: '2px dashed #F5A623' }} />
+            <span className="font-bold" style={{ color: 'var(--text-primary)' }}>KSE-100</span>
+            <span className="font-extrabold tabular-nums" style={{ color: indexRet >= 0 ? '#16a34a' : '#dc2626' }}>
+              {fmt(indexRet)}
+            </span>
+          </span>
+        </div>
+      </div>
+      {/* Chart */}
+      <div ref={containerRef} style={{ height: 280 }} />
+    </div>
+  )
+}
+
 /* ── Main Component ──────────────────────────────────────────────── */
 export default function StockDetailClient({
   symbol,
@@ -910,8 +1141,9 @@ export default function StockDetailClient({
   const [stmtLoad,   setStmtLoad]   = useState(false)
   const [stmtPdfUrl, setStmtPdfUrl] = useState<string | null>(null)
 
-  const [fundData,  setFundData]  = useState<StatementData | null>(null)
-  const [fundLoad,  setFundLoad]  = useState(false)
+  const [fundData,     setFundData]     = useState<StatementData | null>(null)
+  const [fundLoad,     setFundLoad]     = useState(false)
+  const [fundInterval, setFundInterval] = useState<'annual' | 'quarterly'>('annual')
 
   const [shData,    setShData]    = useState<StatementData | null>(null)
   const [shLoad,    setShLoad]    = useState(false)
@@ -919,8 +1151,36 @@ export default function StockDetailClient({
   const [profile,   setProfile]   = useState<ProfileData | null>(null)
   const [profLoad,  setProfLoad]  = useState(false)
 
-  const [peers,     setPeers]     = useState<StockQuote[]>([])
-  const [peersLoad, setPeersLoad] = useState(false)
+  const [peers,      setPeers]      = useState<StockQuote[]>([])
+  const [peersLoad,  setPeersLoad]  = useState(false)
+
+  type PeerFunds = { roe: number|null; mktCap: number|null; de: number|null; pb: number|null }
+  const [peerFunds, setPeerFunds] = useState<Record<string, PeerFunds>>({})
+
+  function parseFunds(fields: Array<{ label: string; values: (number|null)[] }>): PeerFunds {
+    let roe: number|null = null, mktCap: number|null = null, de: number|null = null, pb: number|null = null
+    for (const f of fields) {
+      if (!f.label || f.values[0] == null) continue
+      const l = f.label.toLowerCase()
+      const v = f.values[0]
+      if (/return on equity|roe\b/.test(l))          roe    = v
+      else if (/market cap/.test(l))                  mktCap = v
+      else if (/debt.?to.?equity|debt.equity/.test(l)) de   = v
+      else if (/price to book|p\/b/.test(l))          pb     = v
+    }
+    return { roe, mktCap, de, pb }
+  }
+
+  async function fetchFunds(sym: string): Promise<PeerFunds> {
+    try {
+      const j = await fetch(`/api/stock/${sym}/statement?type=fundamentals&interval=annual`).then(r => r.json())
+      return parseFunds(j?.data?.fields ?? [])
+    } catch { return { roe: null, mktCap: null, de: null, pb: null } }
+  }
+
+  const [indexCandles, setIndexCandles] = useState<Candle[]>([])
+  const [stockCandles, setStockCandles] = useState<Candle[]>([])
+  const [vsLoad,       setVsLoad]       = useState(false)
 
   // Stock search
   const [allQuotes,    setAllQuotes]    = useState<StockQuote[]>([])
@@ -1003,27 +1263,50 @@ export default function StockDetailClient({
     if (loaded.current.has(tab)) return
     loaded.current.add(tab)
 
+    if (tab === 'overview' && !stockCandles.length) {
+      setVsLoad(true)
+      Promise.all([
+        fetch(`/api/stock/${symbol}/daily`).then(r => r.json()),
+        fetch(`/api/stock/KSE100/daily`).then(r => r.json()),
+      ]).then(([sj, ij]) => {
+        setStockCandles(Array.isArray(sj.data) ? sj.data : [])
+        setIndexCandles(Array.isArray(ij.data) ? ij.data : [])
+      }).catch(() => {}).finally(() => setVsLoad(false))
+    }
+
+    if (tab === 'peers' && !peers.length) {
+      setPeersLoad(true)
+      fetch('/api/market/quotes')
+        .then(r => r.json())
+        .then(async j => {
+          const all: StockQuote[] = j.quotes ?? []
+          const sectorCode = all.find(q => q.symbol === symbol)?.sector ?? ''
+          if (sectorCode) {
+            const filtered = all
+              .filter(q =>
+                q.sector === sectorCode &&
+                q.symbol !== symbol &&
+                q.price > 0 &&
+                !/\(R\d*\)|\bRight\b/i.test(q.name) &&
+                !/R\d*$/.test(q.symbol)
+              )
+              .sort((a, b) => b.volume - a.volume)
+            setPeers(filtered)
+            // Fetch fundamentals for self + top 10 peers in parallel
+            const symbols = [symbol, ...filtered.slice(0, 10).map(p => p.symbol)]
+            const results = await Promise.all(symbols.map(s => fetchFunds(s).then(f => [s, f] as const)))
+            setPeerFunds(Object.fromEntries(results))
+          }
+        })
+        .catch(() => {})
+        .finally(() => setPeersLoad(false))
+    }
+
     if (tab === 'overview' && !profile) {
       setProfLoad(true)
       fetch(`/api/stock/${symbol}/profile`)
         .then(r => r.json()).then(j => setProfile(j))
         .catch(() => {}).finally(() => setProfLoad(false))
-
-      setPeersLoad(true)
-      fetch('/api/market/quotes')
-        .then(r => r.json())
-        .then(j => {
-          const all: StockQuote[] = j.quotes ?? []
-          const sectorCode = all.find(q => q.symbol === symbol)?.sector ?? ''
-          if (sectorCode) {
-            const filtered = all
-              .filter(q => q.sector === sectorCode && q.symbol !== symbol && q.price > 0)
-              .sort((a, b) => b.volume - a.volume)
-            setPeers(filtered)
-          }
-        })
-        .catch(() => {})
-        .finally(() => setPeersLoad(false))
     } else if (tab === 'chart') {
       fetchChart()
     } else if (tab === 'financials') {
@@ -1040,8 +1323,8 @@ export default function StockDetailClient({
           if (fin?.pdf_id) setStmtPdfUrl(fin.pdf_id)
         })
         .catch(() => {})
-    } else if (tab === 'fundamentals' && !fundData) {
-      setFundLoad(true)
+    } else if (tab === 'fundamentals') {
+      setFundLoad(true); setFundData(null)
       fetch(`/api/stock/${symbol}/statement?type=fundamentals&interval=annual`)
         .then(r => r.json()).then(j => { if (j.data) setFundData(j.data) })
         .catch(() => {}).finally(() => setFundLoad(false))
@@ -1077,6 +1360,7 @@ export default function StockDetailClient({
   useEffect(() => {
     if (tab === 'financials') fetchStatement()
   }, [stmtType, stmtInt]) // eslint-disable-line react-hooks/exhaustive-deps
+
 
 
   const isUp   = Number(overview?.changePct ?? 0) >= 0
@@ -1215,6 +1499,17 @@ export default function StockDetailClient({
               </div>
             </div>
 
+            {/* ── Index vs Stock chart ─────────────────────────────── */}
+            <div className="card">
+              <SectionHeading>Index VS Stocks</SectionHeading>
+              {vsLoad ? (
+                <div className="h-72 rounded animate-pulse mt-3" style={{ backgroundColor: 'var(--bg-hover)' }} />
+              ) : stockCandles.length > 1 && indexCandles.length > 1
+                ? <IndexVsStockChart stockCandles={stockCandles} indexCandles={indexCandles} symbol={symbol} />
+                : <p className="text-sm py-4 text-center mt-3" style={{ color: 'var(--text-muted)' }}>Chart data not available.</p>
+              }
+            </div>
+
             {/* ── About / Brands ───────────────────────────────────── */}
             <div className="card space-y-4">
               <SectionHeading>About the Company</SectionHeading>
@@ -1323,116 +1618,6 @@ export default function StockDetailClient({
               )
             })()}
 
-            {/* ── Peer Comparison ───────────────────────────────────── */}
-            <div className="card space-y-3">
-              <SectionHeading>Sector Peer Comparison</SectionHeading>
-              <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                Top companies in the same sector · ranked by trading volume
-              </p>
-
-              {peersLoad ? (
-                <div className="space-y-2">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <div key={i} className="h-10 rounded animate-pulse" style={{ backgroundColor: 'var(--bg-hover)' }} />
-                  ))}
-                </div>
-              ) : peers.length === 0 ? (
-                <p className="text-sm py-4 text-center" style={{ color: 'var(--text-muted)' }}>No peer data available.</p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr style={{ borderBottom: '2px solid var(--bg-border)' }}>
-                        {['Company', 'Price', 'Chg%', 'EPS', 'P/E', 'DPS', 'Div Yield', '52W High', '52W Low'].map(h => (
-                          <th key={h}
-                            className={`py-2 text-[10px] font-bold uppercase tracking-wider ${h === 'Company' ? 'text-left pr-3' : 'text-right px-2'}`}
-                            style={{ color: 'var(--text-muted)' }}>
-                            {h}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(() => {
-                        // Build current stock row from overview data
-                        const selfPrice    = Number(overview?.price ?? 0)
-                        const selfChangePct = Number(overview?.changePct ?? 0)
-                        const selfEps      = Number(overview?.eps ?? 0)
-                        const selfDps      = Number((overview as any)?.dps ?? 0)
-                        const selfHigh52   = Number(overview?.high52 ?? 0)
-                        const selfLow52    = Number(overview?.low52 ?? 0)
-                        const selfPe       = selfEps > 0 ? (selfPrice / selfEps).toFixed(1) : '—'
-                        const selfDivY     = selfDps > 0 && selfPrice > 0 ? `${((selfDps / selfPrice) * 100).toFixed(1)}%` : '—'
-                        const selfChgColor = selfChangePct >= 0 ? '#16a34a' : '#dc2626'
-
-                        const allRows = [
-                          // Current stock first, rendered separately with highlight
-                          <tr key="__self__"
-                            style={{ borderBottom: '1px solid var(--bg-border)', backgroundColor: 'rgba(254,165,0,0.08)' }}>
-                            <td className="py-2.5 pr-3">
-                              <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 rounded flex items-center justify-center text-white text-[9px] font-bold shrink-0"
-                                     style={{ background: 'linear-gradient(135deg,#FEA500,#986300)' }}>
-                                  {symbol.charAt(0)}
-                                </div>
-                                <div>
-                                  <div className="flex items-center gap-1">
-                                    <p className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>{symbol}</p>
-                                    <span className="text-[8px] font-bold px-1 py-0.5 rounded" style={{ background: 'linear-gradient(135deg,#FEA500,#986300)', color: 'white' }}>You</span>
-                                  </div>
-                                  <p className="text-[9px] truncate max-w-[100px]" style={{ color: 'var(--text-muted)' }}>{String(overview?.name ?? '')}</p>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="py-2.5 px-2 text-right text-xs font-bold font-number tabular-nums" style={{ color: 'var(--text-primary)' }}>{selfPrice.toFixed(2)}</td>
-                            <td className="py-2.5 px-2 text-right text-xs font-semibold font-number tabular-nums" style={{ color: selfChgColor }}>{selfChangePct >= 0 ? '+' : ''}{selfChangePct.toFixed(2)}%</td>
-                            <td className="py-2.5 px-2 text-right text-xs font-number tabular-nums" style={{ color: selfEps < 0 ? '#dc2626' : 'var(--text-secondary)' }}>{selfEps ? selfEps.toFixed(2) : '—'}</td>
-                            <td className="py-2.5 px-2 text-right text-xs font-number tabular-nums" style={{ color: 'var(--text-secondary)' }}>{selfPe}</td>
-                            <td className="py-2.5 px-2 text-right text-xs font-number tabular-nums" style={{ color: 'var(--text-secondary)' }}>{selfDps ? selfDps.toFixed(2) : '—'}</td>
-                            <td className="py-2.5 px-2 text-right text-xs font-number tabular-nums" style={{ color: 'var(--text-secondary)' }}>{selfDivY}</td>
-                            <td className="py-2.5 px-2 text-right text-xs font-number tabular-nums" style={{ color: 'var(--text-secondary)' }}>{selfHigh52 ? selfHigh52.toFixed(2) : '—'}</td>
-                            <td className="py-2.5 px-2 text-right text-xs font-number tabular-nums" style={{ color: 'var(--text-secondary)' }}>{selfLow52 ? selfLow52.toFixed(2) : '—'}</td>
-                          </tr>,
-                          // Peer rows
-                          ...peers.map((peer, i) => {
-                            const pe       = peer.eps > 0 ? (peer.price / peer.eps).toFixed(1) : '—'
-                            const divY     = peer.dps > 0 && peer.price > 0 ? `${((peer.dps / peer.price) * 100).toFixed(1)}%` : '—'
-                            const chgColor = peer.changePct >= 0 ? '#16a34a' : '#dc2626'
-                            return (
-                              <tr key={peer.symbol}
-                                style={{ borderBottom: '1px solid var(--bg-border)', backgroundColor: i % 2 === 0 ? 'transparent' : 'var(--bg-hover)' }}>
-                                <td className="py-2.5 pr-3">
-                                  <a href={`/stocks/${peer.symbol}`} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-                                    <div className="w-6 h-6 rounded flex items-center justify-center text-white text-[9px] font-bold shrink-0"
-                                         style={{ background: 'linear-gradient(135deg,#FEA500,#986300)' }}>
-                                      {peer.symbol.charAt(0)}
-                                    </div>
-                                    <div>
-                                      <p className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>{peer.symbol}</p>
-                                      <p className="text-[9px] truncate max-w-[100px]" style={{ color: 'var(--text-muted)' }}>{peer.name}</p>
-                                    </div>
-                                  </a>
-                                </td>
-                                <td className="py-2.5 px-2 text-right text-xs font-bold font-number tabular-nums" style={{ color: 'var(--text-primary)' }}>{peer.price.toFixed(2)}</td>
-                                <td className="py-2.5 px-2 text-right text-xs font-semibold font-number tabular-nums" style={{ color: chgColor }}>{peer.changePct >= 0 ? '+' : ''}{peer.changePct.toFixed(2)}%</td>
-                                <td className="py-2.5 px-2 text-right text-xs font-number tabular-nums" style={{ color: peer.eps < 0 ? '#dc2626' : 'var(--text-secondary)' }}>{peer.eps ? peer.eps.toFixed(2) : '—'}</td>
-                                <td className="py-2.5 px-2 text-right text-xs font-number tabular-nums" style={{ color: 'var(--text-secondary)' }}>{pe}</td>
-                                <td className="py-2.5 px-2 text-right text-xs font-number tabular-nums" style={{ color: 'var(--text-secondary)' }}>{peer.dps ? peer.dps.toFixed(2) : '—'}</td>
-                                <td className="py-2.5 px-2 text-right text-xs font-number tabular-nums" style={{ color: 'var(--text-secondary)' }}>{divY}</td>
-                                <td className="py-2.5 px-2 text-right text-xs font-number tabular-nums" style={{ color: 'var(--text-secondary)' }}>{peer.high52 ? peer.high52.toFixed(2) : '—'}</td>
-                                <td className="py-2.5 px-2 text-right text-xs font-number tabular-nums" style={{ color: 'var(--text-secondary)' }}>{peer.low52 ? peer.low52.toFixed(2) : '—'}</td>
-                              </tr>
-                            )
-                          }),
-                        ]
-                        return allRows
-                      })()}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-
           </div>
         ) : (
           <div className="card"><p style={{ color: 'var(--text-muted)' }}>No overview data available.</p></div>
@@ -1471,6 +1656,121 @@ export default function StockDetailClient({
             <p className="py-10 text-center text-sm" style={{ color: 'var(--text-muted)' }}>
               No chart data available.
             </p>
+          )}
+        </div>
+      )}
+
+      {/* ══ INDEX VS STOCK ══════════════════════════════════════════ */}
+      {/* ══ SECTOR PEERS ════════════════════════════════════════════ */}
+      {tab === 'peers' && (
+        <div className="card space-y-3">
+          <SectionHeading>Sector Peer Comparison</SectionHeading>
+          <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+            All companies in the same sector · ranked by trading volume
+          </p>
+          {peersLoad ? (
+            <div className="space-y-2">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="h-10 rounded animate-pulse" style={{ backgroundColor: 'var(--bg-hover)' }} />
+              ))}
+            </div>
+          ) : peers.length === 0 ? (
+            <p className="text-sm py-4 text-center" style={{ color: 'var(--text-muted)' }}>No peer data available.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr style={{ borderBottom: '2px solid var(--bg-border)' }}>
+                    {['Company', 'Price', 'Chg%', 'EPS', 'P/E', 'ROE', 'Mkt Cap', 'D/E', 'Div Yield', 'P/B'].map(h => (
+                      <th key={h}
+                        className={`py-2 text-[10px] font-bold uppercase tracking-wider ${h === 'Company' ? 'text-left pr-3' : 'text-right px-2'}`}
+                        style={{ color: 'var(--text-muted)' }}>
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {(() => {
+                    const selfPrice     = Number(overview?.price ?? 0)
+                    const selfChangePct = Number(overview?.changePct ?? 0)
+                    const selfQ        = allQuotes.find(q => q.symbol === symbol)
+                    const selfEps      = Number(overview?.eps ?? selfQ?.eps ?? 0)
+                    const selfDps      = selfQ?.dps ?? 0
+                    const selfPe       = selfEps > 0 ? (selfPrice / selfEps).toFixed(1) : '—'
+                    const selfDivY     = selfDps > 0 && selfPrice > 0 ? `${((selfDps / selfPrice) * 100).toFixed(1)}%` : '—'
+                    const selfChgColor = selfChangePct >= 0 ? '#16a34a' : '#dc2626'
+
+                    function fmtMktCap(mc: number) {
+                      if (!mc) return '—'
+                      if (mc >= 1e12) return `${(mc/1e12).toFixed(2)}T`
+                      if (mc >= 1e9)  return `${(mc/1e9).toFixed(2)}B`
+                      if (mc >= 1e6)  return `${(mc/1e6).toFixed(1)}M`
+                      return `${(mc/1e3).toFixed(1)}K`
+                    }
+
+                    return [
+                      <tr key="__self__" style={{ borderBottom: '1px solid var(--bg-border)', backgroundColor: 'rgba(254,165,0,0.08)' }}>
+                        <td className="py-2.5 pr-3">
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 rounded flex items-center justify-center text-white text-[9px] font-bold shrink-0"
+                                 style={{ background: 'linear-gradient(135deg,#FEA500,#986300)' }}>
+                              {symbol.charAt(0)}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-1">
+                                <p className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>{symbol}</p>
+                                <span className="text-[8px] font-bold px-1 py-0.5 rounded" style={{ background: 'linear-gradient(135deg,#FEA500,#986300)', color: 'white' }}>You</span>
+                              </div>
+                              <p className="text-[9px] truncate max-w-[100px]" style={{ color: 'var(--text-muted)' }}>{String(overview?.name ?? '')}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-2.5 px-2 text-right text-xs font-bold tabular-nums" style={{ color: 'var(--text-primary)' }}>{selfPrice.toFixed(2)}</td>
+                        <td className="py-2.5 px-2 text-right text-xs font-semibold tabular-nums" style={{ color: selfChgColor }}>{selfChangePct >= 0 ? '+' : ''}{selfChangePct.toFixed(2)}%</td>
+                        <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color: selfEps < 0 ? '#dc2626' : 'var(--text-secondary)' }}>{selfEps ? selfEps.toFixed(2) : '—'}</td>
+                        <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color: 'var(--text-secondary)' }}>{selfPe}</td>
+                        <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color: 'var(--text-secondary)' }}>—</td>
+                        <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color: 'var(--text-secondary)' }}>{fmtMktCap(selfQ?.mc ?? 0)}</td>
+                        <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color: 'var(--text-secondary)' }}>—</td>
+                        <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color: 'var(--text-secondary)' }}>{selfDivY}</td>
+                        <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color: 'var(--text-secondary)' }}>—</td>
+                      </tr>,
+                      ...peers.map((peer, i) => {
+                        const pe       = peer.eps > 0 ? (peer.price / peer.eps).toFixed(1) : '—'
+                        const divY     = peer.dps > 0 && peer.price > 0 ? `${((peer.dps / peer.price) * 100).toFixed(1)}%` : '—'
+                        const chgColor = peer.changePct >= 0 ? '#16a34a' : '#dc2626'
+                        return (
+                          <tr key={peer.symbol} style={{ borderBottom: '1px solid var(--bg-border)', backgroundColor: i % 2 === 0 ? 'transparent' : 'var(--bg-hover)' }}>
+                            <td className="py-2.5 pr-3">
+                              <a href={`/stocks/${peer.symbol}`} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                                <div className="w-6 h-6 rounded flex items-center justify-center text-white text-[9px] font-bold shrink-0"
+                                     style={{ background: 'linear-gradient(135deg,#FEA500,#986300)' }}>
+                                  {peer.symbol.charAt(0)}
+                                </div>
+                                <div>
+                                  <p className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>{peer.symbol}</p>
+                                  <p className="text-[9px] truncate max-w-[100px]" style={{ color: 'var(--text-muted)' }}>{peer.name}</p>
+                                </div>
+                              </a>
+                            </td>
+                            <td className="py-2.5 px-2 text-right text-xs font-bold tabular-nums" style={{ color: 'var(--text-primary)' }}>{peer.price.toFixed(2)}</td>
+                            <td className="py-2.5 px-2 text-right text-xs font-semibold tabular-nums" style={{ color: chgColor }}>{peer.changePct >= 0 ? '+' : ''}{peer.changePct.toFixed(2)}%</td>
+                            <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color: peer.eps < 0 ? '#dc2626' : 'var(--text-secondary)' }}>{peer.eps ? peer.eps.toFixed(2) : '—'}</td>
+                            <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color: 'var(--text-secondary)' }}>{pe}</td>
+                            <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color: 'var(--text-secondary)' }}>—</td>
+                            <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color: 'var(--text-secondary)' }}>{fmtMktCap(peer.mc)}</td>
+                            <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color: 'var(--text-secondary)' }}>—</td>
+                            <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color: 'var(--text-secondary)' }}>{divY}</td>
+                            <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color: 'var(--text-secondary)' }}>—</td>
+                          </tr>
+                        )
+                      }),
+                    ]
+                  })()}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       )}
@@ -1526,14 +1826,9 @@ export default function StockDetailClient({
       {/* ══ FUNDAMENTALS ════════════════════════════════════════════ */}
       {tab === 'fundamentals' && (
         <div className="card space-y-4">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <SectionHeading>Financial Ratios &amp; Metrics</SectionHeading>
-            <span className="text-[10px] px-2 py-1 rounded-lg" style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-muted)' }}>
-              Annual · For quarterly EPS see Financials tab
-            </span>
-          </div>
+          <SectionHeading>Financial Ratios &amp; Metrics</SectionHeading>
           {fundLoad ? <LoadingRows /> : fundData
-            ? <FundamentalsView data={fundData} overview={overview} />
+            ? <FundamentalsView data={fundData} overview={overview} symbol={symbol} />
             : <p className="py-10 text-center text-sm" style={{ color: 'var(--text-muted)' }}>No fundamentals data.</p>
           }
         </div>

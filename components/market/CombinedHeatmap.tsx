@@ -29,11 +29,11 @@ const SECTOR_NAMES: Record<string, string> = {
 }
 
 const INDICES = [
+  { value: 'ALLSHR',    label: 'All Share' },
   { value: 'KSE100',    label: 'KSE-100'   },
   { value: 'KSE30',     label: 'KSE-30'    },
   { value: 'KMI30',     label: 'KMI-30'    },
   { value: 'KMIALLSHR', label: 'KMI All'   },
-  { value: 'ALLSHR',    label: 'All Share' },
 ]
 
 const CONTAINER_H = 540   // px height of the heatmap canvas
@@ -105,7 +105,7 @@ export default function CombinedHeatmap() {
   const [quotes,  setQuotes]  = useState<StockQuote[]>([])
   const [loading, setLoading] = useState(true)
   const [error,   setError]   = useState('')
-  const [index,   setIndex]   = useState('KSE100')
+  const [index,   setIndex]   = useState('ALLSHR')
 
   useEffect(() => {
     cachedFetch<{ quotes: StockQuote[] }>('/api/market/quotes', 5 * 60_000)

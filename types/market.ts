@@ -120,6 +120,11 @@ export type StockQuote = {
   xd:         boolean  // ex-dividend
   xb:         boolean  // ex-bonus
   xr:         boolean  // ex-rights
+  mc:         number   // market cap (Rs)
+  sharesOut:  number   // shares outstanding
+  bvps:       number   // book value per share (s.as)
+  roe:        number   // return on equity % as decimal (s.pr or derived)
+  pat:        number   // profit after tax / net income
 }
 
 // =============================================================================

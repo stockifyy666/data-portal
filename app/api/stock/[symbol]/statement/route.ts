@@ -5,7 +5,7 @@ import { withCache, TTL_SECONDS }    from '@/lib/redis/cache'
 import { trackCSAPICall }            from '@/lib/utils/rateLimit'
 
 const SYMBOL_RE   = /^[A-Z0-9]{2,10}$/
-const VALID_TYPES = ['balance', 'income', 'fundamentals', 'shareholders'] as const
+const VALID_TYPES = ['balance', 'income', 'fundamentals', 'shareholders', 'other'] as const
 const VALID_INT   = ['annual', 'quarterly'] as const
 
 export async function GET(

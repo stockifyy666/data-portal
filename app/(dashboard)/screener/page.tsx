@@ -49,11 +49,21 @@ function FilterInput({
   )
 }
 
+type SortKey = 'price' | 'changePct' | 'volume' | 'eps' | 'pe' | 'dps'
+type SortDir = 'asc' | 'desc'
+
 export default function ScreenerPage() {
-  const [quotes,  setQuotes]  = useState<StockQuote[]>([])
-  const [loading, setLoading] = useState(true)
-  const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS)
-  const [search,  setSearch]  = useState('')
+  const [quotes,   setQuotes]   = useState<StockQuote[]>([])
+  const [loading,  setLoading]  = useState(true)
+  const [filters,  setFilters]  = useState<Filters>(DEFAULT_FILTERS)
+  const [search,   setSearch]   = useState('')
+  const [sortKey,  setSortKey]  = useState<SortKey | null>(null)
+  const [sortDir,  setSortDir]  = useState<SortDir>('desc')
+
+  function handleSort(key: SortKey) {
+    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortKey(key); setSortDir('asc') }
+  }
 
   useEffect(() => {
     cachedFetch<{ quotes: StockQuote[] }>('/api/market/quotes')
@@ -64,8 +74,9 @@ export default function ScreenerPage() {
 
   const results = useMemo(() => {
     const q = search.trim().toUpperCase()
-    return quotes.filter(s => {
+    const filtered = quotes.filter(s => {
       if (s.price <= 0) return false
+      if (/\(R\d*\)|\bRight\b/i.test(s.name) || /R\d*$/.test(s.symbol)) return false
       if (q && !s.symbol.includes(q) && !s.name.toUpperCase().includes(q)) return false
       if (filters.minPrice  && s.price     < parseFloat(filters.minPrice))  return false
       if (filters.maxPrice  && s.price     > parseFloat(filters.maxPrice))  return false
@@ -81,18 +92,26 @@ export default function ScreenerPage() {
       if (filters.onlyXDiv && !s.xd) return false
       return true
     })
-  }, [quotes, filters, search])
+    if (!sortKey) return filtered
+    return [...filtered].sort((a, b) => {
+      let av: number, bv: number
+      if (sortKey === 'price')     { av = a.price;    bv = b.price }
+      else if (sortKey === 'changePct') { av = a.changePct; bv = b.changePct }
+      else if (sortKey === 'volume')    { av = a.volume;    bv = b.volume }
+      else if (sortKey === 'eps')       { av = a.eps;       bv = b.eps }
+      else if (sortKey === 'pe')        { av = a.eps > 0 ? a.price / a.eps : -Infinity; bv = b.eps > 0 ? b.price / b.eps : -Infinity }
+      else                              { av = a.dps;       bv = b.dps }
+      return sortDir === 'asc' ? av - bv : bv - av
+    })
+  }, [quotes, filters, search, sortKey, sortDir])
 
   function update<K extends keyof Filters>(key: K, value: Filters[K]) {
     setFilters(prev => ({ ...prev, [key]: value }))
   }
 
   const PRICE_FILTERS = [
-    { label: 'Min Price',    key: 'minPrice'  as const },
-    { label: 'Max Price',    key: 'maxPrice'  as const },
-    { label: 'Min Change %', key: 'minChange' as const },
-    { label: 'Max Change %', key: 'maxChange' as const },
-    { label: 'Min Volume',   key: 'minVolume' as const },
+    { label: 'Min Price', key: 'minPrice' as const },
+    { label: 'Max Price', key: 'maxPrice' as const },
   ]
 
   const FUND_FILTERS = [
@@ -205,11 +224,32 @@ export default function ScreenerPage() {
         <table className="w-full text-xs">
           <thead>
             <tr style={{ borderBottom: '1px solid var(--bg-border)' }}>
-              {['Symbol', 'Name', 'Price', '% Chg', 'Volume', 'EPS', 'P/E', 'DPS'].map(col => (
+              {(['Symbol', 'Name'] as const).map(col => (
                 <th key={col}
                     className="text-left py-2 px-2 text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap"
                     style={{ color: 'var(--text-muted)' }}>
                   {col}
+                </th>
+              ))}
+              {([
+                { label: 'Price',   key: 'price'     as SortKey },
+                { label: '% Chg',  key: 'changePct' as SortKey },
+                { label: 'Volume', key: 'volume'    as SortKey },
+                { label: 'EPS',    key: 'eps'       as SortKey },
+                { label: 'P/E',    key: 'pe'        as SortKey },
+                { label: 'DPS',    key: 'dps'       as SortKey },
+              ]).map(col => (
+                <th key={col.key}
+                    className="text-left py-2 px-2 text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap">
+                  <button
+                    onClick={() => handleSort(col.key)}
+                    className="flex items-center gap-0.5 hover:opacity-80 transition-opacity"
+                    style={{ color: sortKey === col.key ? '#FEA500' : 'var(--text-muted)' }}>
+                    {col.label}
+                    <span className="ml-0.5 text-[9px]">
+                      {sortKey === col.key ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}
+                    </span>
+                  </button>
                 </th>
               ))}
             </tr>

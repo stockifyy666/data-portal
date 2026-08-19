@@ -41,7 +41,11 @@ export default function DashboardQuoteTable() {
   useEffect(() => { setPage(1) }, [tab, search])
 
   const filtered = useMemo(() => {
-    let list = quotes.filter(q => q.price > 0)
+    let list = quotes.filter(q =>
+      q.price > 0 &&
+      !/\(R\d*\)|\bRight\b/i.test(q.name) &&
+      !/R\d*$/.test(q.symbol)
+    )
 
     if (tab === 'gainers') list = [...list].sort((a, b) => b.changePct - a.changePct).slice(0, 100)
     else if (tab === 'losers')  list = [...list].sort((a, b) => a.changePct - b.changePct).slice(0, 100)
