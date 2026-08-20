@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
 import {
   TrendingUp, TrendingDown, BarChart2, FileText, Users,
   Newspaper, Bell, Building2, ChevronDown, ExternalLink,
@@ -1130,8 +1131,21 @@ export default function StockDetailClient({
   symbol:   string
   overview: Overview | null
 }) {
-  const [tab, setTab]   = useState<TabId>('overview')
-  const loaded          = useRef<Set<TabId>>(new Set())
+  const router       = useRouter()
+  const searchParams = useSearchParams()
+  const validTabIds  = TABS.map(t => t.id)
+  const initialTab   = (searchParams.get('tab') ?? 'overview') as TabId
+  const [tab, setTab] = useState<TabId>(
+    validTabIds.includes(initialTab) ? initialTab : 'overview'
+  )
+  const loaded = useRef<Set<TabId>>(new Set())
+
+  function switchTab(id: TabId) {
+    setTab(id)
+    const params = new URLSearchParams(window.location.search)
+    params.set('tab', id)
+    router.replace(`${window.location.pathname}?${params.toString()}`, { scroll: false })
+  }
 
   const [overview,    setOverview]    = useState<Overview | null>(overviewProp)
   const [overviewLoad, setOverviewLoad] = useState(!overviewProp)
@@ -1161,11 +1175,17 @@ export default function StockDetailClient({
   const [peersLoad,   setPeersLoad]  = useState(false)
 
   // Compare tab state
-  const [cmpSearch,   setCmpSearch]  = useState('')
-  const [cmpDropOpen, setCmpDropOpen] = useState(false)
-  const [cmpSelected, setCmpSelected] = useState<string[]>([])
-  const [cmpResults,  setCmpResults]  = useState<string[] | null>(null)
-  const [radarHover,  setRadarHover]  = useState<number | null>(null)  // axis index
+  const [cmpSearch,        setCmpSearch]        = useState('')
+  const [cmpDropOpen,      setCmpDropOpen]      = useState(false)
+  const [cmpSelected,      setCmpSelected]      = useState<string[]>([])
+  const [cmpResults,       setCmpResults]       = useState<string[] | null>(null)
+  const [radarHover,       setRadarHover]       = useState<number | null>(null)
+  const [cmpMetricSelected,setCmpMetricSelected]= useState<string[]>([])   // multi-select
+  const [cmpMetricDropOpen,setCmpMetricDropOpen]= useState(false)
+  const [cmpMetricCustom,  setCmpMetricCustom]  = useState('')
+  const [cmpMetricLoading, setCmpMetricLoading] = useState(false)
+  // nested: metricLabel → symbol → yearly rows
+  const [cmpMetricData,    setCmpMetricData]    = useState<Record<string,Record<string,{year:string;value:number}[]>>>({})
 
   function cmpToggle(sym: string) {
     setCmpSelected(prev =>
@@ -1454,7 +1474,7 @@ export default function StockDetailClient({
           {TABS.map(t => (
             <button
               key={t.id}
-              onClick={() => setTab(t.id)}
+              onClick={() => switchTab(t.id)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold
                          whitespace-nowrap transition-colors"
               style={tab === t.id
@@ -1826,7 +1846,15 @@ export default function StockDetailClient({
           ? [buildStock(symbol, COLORS[0]), ...cmpResults.map((s, i) => buildStock(s, COLORS[i+1]))]
           : []
 
-        // Radar
+        // All selected metrics (presets + optional custom entry)
+        const customTrimmed = cmpMetricCustom.trim()
+        const effectiveMetrics: string[] = [
+          ...cmpMetricSelected,
+          ...(customTrimmed && !cmpMetricSelected.includes(customTrimmed) ? [customTrimmed] : []),
+        ]
+        const hasCustomMetric = effectiveMetrics.length > 0
+
+        // Radar axes (only used when no custom metric selected)
         type AxisKey = keyof Pick<CmpStock,'volume'|'eps'|'pe'|'dps'|'mc'|'roe'|'pb'>
         const AXES: { label: string; key: AxisKey }[] = [
           { label: 'Volume',  key: 'volume' },
@@ -1922,7 +1950,7 @@ export default function StockDetailClient({
 
                     {cmpDropOpen && (
                       <>
-                        <div className="fixed inset-0 z-10" onClick={() => setCmpDropOpen(false)} />
+                        <div className="fixed inset-0 z-10" onMouseDown={() => setCmpDropOpen(false)} />
                         <div className="absolute z-20 top-full mt-1 w-full rounded-xl overflow-hidden shadow-xl max-h-56 overflow-y-auto"
                           style={{ backgroundColor:'var(--bg-card)', border:'1px solid var(--bg-border)' }}>
                           {dropItems.length === 0 ? (
@@ -1934,6 +1962,7 @@ export default function StockDetailClient({
                             return (
                               <button key={item.symbol}
                                 disabled={isFull}
+                                onMouseDown={e => e.preventDefault()}
                                 onClick={() => { cmpToggle(item.symbol); setCmpSearch(''); setCmpDropOpen(false) }}
                                 className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors"
                                 style={{
@@ -1976,18 +2005,340 @@ export default function StockDetailClient({
                 )}
               </div>
 
+              {/* Metric selector — dropdown with checkboxes */}
+              {(() => {
+                const METRIC_GROUPS = [
+                  { label: 'General',      items: ['Revenue','Net Revenue','Gross Profit','Operating Profit','EBITDA','Net Profit','Total Assets','Total Equity','Total Debt','Cash & Equivalents'] },
+                  { label: 'Banking',      items: ['Advances','Deposits','Net Interest Income','Investments','Markup Income','NPL'] },
+                  { label: 'Cement / Mfg',items: ['Cost of Sales','Depreciation','Capital Expenditure','Inventory'] },
+                  { label: 'Energy',       items: ['Other Income','Finance Cost','Tax Expense','Retained Earnings'] },
+                ]
+                const toggle = (m: string) => {
+                  setCmpMetricSelected(prev =>
+                    prev.includes(m) ? prev.filter(x => x !== m) : [...prev, m]
+                  )
+                  setCmpMetricData({})
+                  setCmpResults(null)
+                }
+                const addCustom = () => {
+                  const t = cmpMetricCustom.trim()
+                  if (t && !cmpMetricSelected.includes(t)) {
+                    setCmpMetricSelected(prev => [...prev, t])
+                    setCmpMetricCustom('')
+                    setCmpMetricData({})
+                    setCmpResults(null)
+                  }
+                }
+                return (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold" style={{ color:'var(--text-secondary)' }}>
+                        Compare by Metrics
+                        <span className="font-normal opacity-60 ml-1">(optional — replaces default)</span>
+                      </span>
+                      {cmpMetricSelected.length > 0 && (
+                        <button onMouseDown={e => e.preventDefault()}
+                          onClick={() => { setCmpMetricSelected([]); setCmpMetricCustom(''); setCmpMetricData({}); setCmpResults(null) }}
+                          className="text-[10px] opacity-50 hover:opacity-100" style={{ color:'var(--text-muted)' }}>
+                          Clear all
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Dropdown trigger */}
+                    <div className="relative">
+                      <button
+                        onClick={() => setCmpMetricDropOpen(p => !p)}
+                        className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg border text-xs font-medium transition-colors"
+                        style={{
+                          backgroundColor: 'var(--bg-hover)',
+                          borderColor: cmpMetricSelected.length > 0 ? '#FEA500' : 'var(--bg-border)',
+                          color: 'var(--text-primary)',
+                        }}>
+                        <span style={{ color: cmpMetricSelected.length === 0 ? 'var(--text-muted)' : 'var(--text-primary)' }}>
+                          {cmpMetricSelected.length === 0
+                            ? 'Select metrics to compare…'
+                            : `${cmpMetricSelected.length} metric${cmpMetricSelected.length > 1 ? 's' : ''} selected`}
+                        </span>
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"
+                          style={{ transform: cmpMetricDropOpen ? 'rotate(180deg)' : 'none', transition:'transform 0.15s', flexShrink:0 }}>
+                          <path d="M2 4L6 8L10 4" stroke="var(--text-muted)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </button>
+
+                      {cmpMetricDropOpen && (
+                        <>
+                          <div className="fixed inset-0 z-10" onMouseDown={() => setCmpMetricDropOpen(false)} />
+                          <div className="absolute z-20 top-full mt-1 w-full rounded-xl shadow-xl overflow-hidden"
+                            style={{ backgroundColor:'var(--bg-card)', border:'1px solid var(--bg-border)', maxHeight:320, overflowY:'auto' }}>
+
+                            {/* Groups with checkboxes */}
+                            {METRIC_GROUPS.map(g => (
+                              <div key={g.label}>
+                                <div className="px-3 pt-3 pb-1">
+                                  <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color:'var(--text-muted)' }}>{g.label}</p>
+                                </div>
+                                {g.items.map(m => {
+                                  const sel = cmpMetricSelected.includes(m)
+                                  return (
+                                    <button key={m}
+                                      onMouseDown={e => e.preventDefault()}
+                                      onClick={() => toggle(m)}
+                                      className="w-full flex items-center gap-3 px-3 py-2 text-left text-xs transition-colors"
+                                      style={{ color:'var(--text-primary)' }}
+                                      onMouseEnter={e => (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--bg-hover)'}
+                                      onMouseLeave={e => (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'}>
+                                      {/* Checkbox */}
+                                      <div className="w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors"
+                                        style={{
+                                          borderColor: sel ? '#FEA500' : 'var(--bg-border)',
+                                          backgroundColor: sel ? '#FEA500' : 'transparent',
+                                        }}>
+                                        {sel && (
+                                          <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+                                            <path d="M1.5 4L3 5.5L6.5 2" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                                          </svg>
+                                        )}
+                                      </div>
+                                      <span className="font-medium" style={{ color: sel ? '#FEA500' : 'var(--text-primary)' }}>{m}</span>
+                                    </button>
+                                  )
+                                })}
+                              </div>
+                            ))}
+
+                            {/* Custom field */}
+                            <div className="px-3 pt-3 pb-3 border-t mt-1" style={{ borderColor:'var(--bg-border)' }}>
+                              <p className="text-[9px] font-bold uppercase tracking-wider mb-2" style={{ color:'var(--text-muted)' }}>Custom Field</p>
+                              <div className="flex gap-2">
+                                <input
+                                  type="text"
+                                  value={cmpMetricCustom}
+                                  onChange={e => setCmpMetricCustom(e.target.value)}
+                                  onKeyDown={e => { if (e.key === 'Enter') addCustom() }}
+                                  placeholder="Type field name…"
+                                  className="flex-1 px-2.5 py-1.5 rounded-lg border text-xs focus:outline-none"
+                                  style={{ backgroundColor:'var(--bg-hover)', borderColor:'var(--bg-border)', color:'var(--text-primary)' }}
+                                />
+                                <button
+                                  onMouseDown={e => e.preventDefault()}
+                                  onClick={addCustom}
+                                  className="px-3 py-1.5 rounded-lg text-[10px] font-bold"
+                                  style={{ background:'linear-gradient(135deg,#FEA500,#986300)', color:'white' }}>
+                                  Add
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Selected chips */}
+                    {cmpMetricSelected.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        {cmpMetricSelected.map(m => (
+                          <div key={m} className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold"
+                            style={{ backgroundColor:'rgba(254,165,0,0.12)', color:'#FEA500', border:'1px solid rgba(254,165,0,0.35)' }}>
+                            {m}
+                            <button onMouseDown={e => e.preventDefault()} onClick={() => toggle(m)}
+                              className="opacity-60 hover:opacity-100 ml-0.5">×</button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
+
               {/* Compare button */}
               <button
                 disabled={cmpSelected.length === 0}
-                onClick={() => setCmpResults([...cmpSelected])}
+                onClick={async () => {
+                  const selected = [...cmpSelected]
+                  setCmpResults(selected)
+                  if (effectiveMetrics.length === 0) return
+                  setCmpMetricLoading(true)
+                  setCmpMetricData({})
+                  // Fetch each company's fundamentals once
+                  const allSyms = [symbol, ...selected]
+                  const fetches = allSyms.map(sym =>
+                    fetch(`/api/stock/${sym}/statement?type=fundamentals&interval=annual`)
+                      .then(r => r.json())
+                      .then(j => ({ sym, data: (j?.data ?? null) as StatementData | null }))
+                      .catch(() => ({ sym, data: null as StatementData | null }))
+                  )
+                  const raw = await Promise.all(fetches)
+                  // Build nested: metricLabel → symbol → rows
+                  const nested: Record<string,Record<string,{year:string;value:number}[]>> = {}
+                  for (const metric of effectiveMetrics) {
+                    nested[metric] = {}
+                    for (const { sym, data } of raw) {
+                      if (!data) continue
+                      const field = data.fields.find(f =>
+                        !f.is_heading &&
+                        f.label.toLowerCase().includes(metric.toLowerCase())
+                      )
+                      if (field) {
+                        nested[metric][sym] = data.periods
+                          .map((p, i) => ({ year: String(p.year), value: (field.values[i] ?? 0) as number }))
+                          .filter(r => r.value != null && r.value !== 0)
+                          .slice(0, 5)
+                      }
+                    }
+                  }
+                  setCmpMetricData(nested)
+                  setCmpMetricLoading(false)
+                }}
                 className="w-full py-2.5 rounded-xl text-sm font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                 style={{ background:'linear-gradient(135deg,#FEA500,#986300)', color:'white' }}>
                 Compare Sector {cmpSelected.length > 0 ? `(${cmpSelected.length+1} companies)` : ''}
+                {effectiveMetrics.length > 0 ? ` · ${effectiveMetrics.length} metric${effectiveMetrics.length>1?'s':''}` : ''}
               </button>
             </div>
 
             {/* Results */}
-            {cmpResults && cmpResults.length > 0 && (
+            {cmpResults && cmpResults.length > 0 && (() => {
+              // ── METRIC MODE: API-fetched single metric ──────────────
+              if (hasCustomMetric) {
+                if (cmpMetricLoading) return (
+                  <div className="card space-y-3">
+                    <div className="h-4 w-40 rounded animate-pulse" style={{ backgroundColor:'var(--bg-hover)' }} />
+                    {[...Array(3)].map((_,i) => (
+                      <div key={i} className="h-20 rounded-lg animate-pulse" style={{ backgroundColor:'var(--bg-hover)' }} />
+                    ))}
+                  </div>
+                )
+
+                // API returns values already in millions (Rs Mn) for financial statements
+                // Detect scale from all values in all metrics to pick a consistent unit label
+                function detectUnit(vals: number[]): { divisor: number; label: string } {
+                  const max = Math.max(...vals.map(Math.abs).filter(Boolean), 0)
+                  if (max >= 1000) return { divisor: 1000, label: 'Rs Bn' }   // values in Mn, show as Bn
+                  if (max >= 1)    return { divisor: 1,    label: 'Rs Mn' }   // values in Mn, show as Mn
+                  return              { divisor: 0.001,    label: 'Rs Th' }   // very small → in thousands
+                }
+                function fmtMetricVal(v: number, divisor: number) {
+                  if (v == null || v === 0) return '—'
+                  const scaled = v / divisor
+                  return scaled >= 100 ? scaled.toFixed(0) : scaled >= 10 ? scaled.toFixed(1) : scaled.toFixed(2)
+                }
+
+                return (
+                  <div className="space-y-4">
+                    {/* Legend */}
+                    <div className="card flex flex-wrap gap-3 items-center py-3">
+                      <span className="text-[11px] font-bold mr-1" style={{ color:'var(--text-secondary)' }}>Companies:</span>
+                      {compareStocks.map(s => (
+                        <div key={s.symbol} className="flex items-center gap-1.5">
+                          <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor:s.color }} />
+                          <span className="text-[11px] font-semibold" style={{ color:'var(--text-secondary)' }}>{s.symbol}</span>
+                          {s.symbol === symbol && <span className="text-[8px] font-bold px-1 py-0.5 rounded" style={{ background:'linear-gradient(135deg,#FEA500,#986300)',color:'white' }}>You</span>}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* One card per metric */}
+                    {effectiveMetrics.map(metric => {
+                      const mData = cmpMetricData[metric] ?? {}
+                      const allYears = [...new Set(
+                        Object.values(mData).flatMap(rows => rows.map(r => r.year))
+                      )].sort((a,b) => Number(b) - Number(a))
+
+                      const latestVals = compareStocks.map(s => ({
+                        ...s, val: mData[s.symbol]?.[0]?.value ?? 0,
+                      }))
+                      const maxVal = Math.max(...latestVals.map(s => Math.abs(s.val)), 0.0001)
+                      const noData = Object.keys(mData).length === 0
+
+                      // Detect a consistent unit for all values in this metric
+                      const allVals = Object.values(mData).flatMap(rows => rows.map(r => r.value))
+                      const unit = detectUnit(allVals)
+
+                      return (
+                        <div key={metric} className="card space-y-4">
+                          <div className="flex items-start justify-between gap-3 flex-wrap">
+                            <SectionHeading>{metric}</SectionHeading>
+                            {!noData && (
+                              <span className="text-[10px] font-semibold px-2 py-1 rounded-lg tabular-nums"
+                                style={{ backgroundColor:'var(--bg-hover)', color:'var(--text-muted)' }}>
+                                Figures in {unit.label}
+                              </span>
+                            )}
+                          </div>
+
+                          {noData ? (
+                            <div className="rounded-xl px-4 py-4 text-center text-xs" style={{ backgroundColor:'var(--bg-hover)', color:'var(--text-muted)' }}>
+                              No data found for &ldquo;{metric}&rdquo; in any company&apos;s statements.
+                            </div>
+                          ) : (
+                            <>
+                              {/* Bar chart — latest value */}
+                              <div className="space-y-2.5">
+                                <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color:'var(--text-muted)' }}>
+                                  Latest Year — {allYears[0] ?? ''}
+                                </p>
+                                {latestVals.map(s => (
+                                  <div key={s.symbol}>
+                                    <div className="flex items-center justify-between mb-1">
+                                      <div className="flex items-center gap-1.5">
+                                        <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor:s.color }} />
+                                        <span className="text-xs font-bold" style={{ color:'var(--text-primary)' }}>{s.symbol}</span>
+                                      </div>
+                                      <span className="text-xs font-bold tabular-nums" style={{ color: s.val ? s.color : 'var(--text-muted)' }}>
+                                        {s.val ? `${fmtMetricVal(s.val, unit.divisor)} ${unit.label}` : '—'}
+                                      </span>
+                                    </div>
+                                    <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor:'var(--bg-hover)' }}>
+                                      <div className="h-full rounded-full"
+                                        style={{ width: s.val ? `${(Math.abs(s.val)/maxVal)*100}%` : '0%', backgroundColor: s.color }} />
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+
+                              {/* Year-by-year table */}
+                              {allYears.length > 0 && (
+                                <div className="overflow-x-auto">
+                                  <table className="w-full text-xs">
+                                    <thead>
+                                      <tr style={{ borderBottom:'1px solid var(--bg-border)' }}>
+                                        <th className="py-2 px-3 text-left font-semibold" style={{ color:'var(--text-muted)' }}>Year</th>
+                                        {compareStocks.map(s => (
+                                          <th key={s.symbol} className="py-2 px-3 text-right font-bold" style={{ color: s.color }}>{s.symbol}</th>
+                                        ))}
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {allYears.map((yr, ri) => (
+                                        <tr key={yr} style={{ borderBottom: ri < allYears.length-1 ? '1px solid var(--bg-border)' : 'none' }}>
+                                          <td className="py-2 px-3 font-semibold" style={{ color:'var(--text-secondary)' }}>{yr}</td>
+                                          {compareStocks.map(s => {
+                                            const row = mData[s.symbol]?.find(r => r.year === yr)
+                                            return (
+                                              <td key={s.symbol} className="py-2 px-3 text-right font-bold tabular-nums"
+                                                style={{ color: row ? 'var(--text-primary)' : 'var(--text-muted)' }}>
+                                                {row ? fmtMetricVal(row.value, unit.divisor) : '—'}
+                                              </td>
+                                            )
+                                          })}
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )
+              }
+
+              // ── DEFAULT MODE: radar + individual tables ─────────────
+              return (
               <div className="card space-y-6">
                 {/* Legend */}
                 <div className="flex items-center justify-between flex-wrap gap-3">
@@ -2007,20 +2358,17 @@ export default function StockDetailClient({
                   <div className="relative" style={{ width:340, maxWidth:'100%' }}>
                     <svg width="340" height="340" viewBox="0 0 340 340" style={{ maxWidth:'100%', display:'block' }}
                       onMouseLeave={() => setRadarHover(null)}>
-                      {/* Grid rings */}
                       {[0.25,0.5,0.75,1].map(lvl => (
                         <polygon key={lvl}
                           points={AXES.map((_,ai)=>{ const p=axPt(ai,lvl*R); return `${p.x},${p.y}` }).join(' ')}
                           fill="none" stroke="var(--bg-border)" strokeWidth="1"/>
                       ))}
-                      {/* Axis spokes */}
                       {AXES.map((_,ai) => {
                         const p = axPt(ai,R)
                         const isHov = radarHover === ai
                         return <line key={ai} x1={CX} y1={CY} x2={p.x} y2={p.y}
                           stroke={isHov ? '#FEA500' : 'var(--bg-border)'} strokeWidth={isHov ? 2 : 1}/>
                       })}
-                      {/* Labels */}
                       {AXES.map((ax,ai) => {
                         const p = axPt(ai,R+20)
                         const anchor = p.x < CX-4 ? 'end' : p.x > CX+4 ? 'start' : 'middle'
@@ -2032,7 +2380,6 @@ export default function StockDetailClient({
                           </text>
                         )
                       })}
-                      {/* Stock polygons (reverse order so first is on top) */}
                       {[...compareStocks].reverse().map((s,ri) => {
                         const si = compareStocks.length-1-ri
                         return (
@@ -2041,7 +2388,6 @@ export default function StockDetailClient({
                             stroke={s.color} strokeWidth="2.5" strokeLinejoin="round"/>
                         )
                       })}
-                      {/* Dots — larger on hover axis, with invisible hit target on each axis endpoint */}
                       {compareStocks.map((s,si) =>
                         AXES.map((_,ai) => {
                           const v    = normalized[ai][si]
@@ -2051,7 +2397,6 @@ export default function StockDetailClient({
                             style={{ transition:'r 0.15s' }}/>
                         })
                       )}
-                      {/* Invisible axis hover zones — wide line along each axis */}
                       {AXES.map((_,ai) => {
                         const p = axPt(ai, R)
                         return (
@@ -2063,12 +2408,10 @@ export default function StockDetailClient({
                       })}
                     </svg>
 
-                    {/* Tooltip */}
                     {radarHover !== null && (() => {
                       const ax   = AXES[radarHover]
                       const tip  = axPt(radarHover, R + 20)
                       const svgW = 340
-                      // Position tooltip near label; clamp inside box
                       const rawLeft = (tip.x / svgW) * 100
                       const left    = Math.min(Math.max(rawLeft, 5), 75)
                       const above   = tip.y < CY
@@ -2085,8 +2428,6 @@ export default function StockDetailClient({
                         <div className="absolute pointer-events-none z-30 rounded-xl shadow-2xl px-3 py-2.5 min-w-[160px]"
                           style={{
                             left: `${left}%`,
-                            top: above ? 'auto' : undefined,
-                            bottom: above ? undefined : 'auto',
                             [above ? 'bottom' : 'top']: '55%',
                             backgroundColor: 'var(--bg-card)',
                             border: '1px solid var(--bg-border)',
@@ -2135,8 +2476,8 @@ export default function StockDetailClient({
                             { label:'Mkt Cap',   value: fmtMC(s.mc) },
                             { label:'ROE',       value: '—' },
                             { label:'P/B',       value: '—' },
-                          ].map((row,ri) => (
-                            <tr key={row.label} style={{ borderBottom: ri<8 ? '1px solid var(--bg-border)' : 'none' }}>
+                          ].map((row,ri,arr) => (
+                            <tr key={row.label} style={{ borderBottom: ri<arr.length-1 ? '1px solid var(--bg-border)' : 'none' }}>
                               <td className="py-2 px-3 font-medium" style={{ color:'var(--text-muted)' }}>{row.label}</td>
                               <td className="py-2 px-3 text-right font-bold tabular-nums" style={{ color:'var(--text-primary)' }}>{row.value}</td>
                             </tr>
@@ -2147,7 +2488,8 @@ export default function StockDetailClient({
                   ))}
                 </div>
               </div>
-            )}
+              )
+            })()}
           </div>
         )
       })()}

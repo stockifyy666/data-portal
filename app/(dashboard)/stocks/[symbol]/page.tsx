@@ -1,4 +1,5 @@
 import { notFound }        from 'next/navigation'
+import { Suspense }         from 'react'
 import Link                 from 'next/link'
 import { ArrowLeft }        from 'lucide-react'
 import WatchlistButton      from '@/components/market/WatchlistButton'
@@ -51,12 +52,12 @@ export default async function StockDetailPage({ params }: { params: Promise<Para
             <h1 className="text-2xl font-black" style={{ color: 'var(--text-primary)' }}>
               {symbol}
             </h1>
-            {overview?.name && (
+            {!!overview?.name && (
               <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
                 {String(overview.name)}
               </span>
             )}
-            {overview?.indexKeys && (
+            {!!overview?.indexKeys && (
               <div className="flex gap-1 flex-wrap">
                 {(overview.indexKeys as string[]).slice(0, 3).map(k => (
                   <span key={k}
@@ -76,7 +77,9 @@ export default async function StockDetailPage({ params }: { params: Promise<Para
       </div>
 
       {/* Tabbed detail view */}
-      <StockDetailClient symbol={symbol} overview={overview as Record<string, number | string> | null} />
+      <Suspense>
+        <StockDetailClient symbol={symbol} overview={overview as Record<string, number | string> | null} />
+      </Suspense>
     </div>
   )
 }
