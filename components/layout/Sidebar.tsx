@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, TrendingUp, BookMarked,
   Briefcase, SlidersHorizontal, Bell, Settings, LogOut, User,
-  Grid2x2, Sun, Moon, X, Calculator, BookOpen,
+  Grid2x2, Sun, Moon, X, Calculator, BookOpen, BarChart2,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useTheme }     from '@/components/providers/ThemeProvider'
@@ -21,7 +21,8 @@ const NAV_ITEMS = [
   { icon: SlidersHorizontal, label: 'Screener',  href: '/screener'  },
   { icon: Bell,              label: 'Alerts',    href: '/alerts'    },
   { icon: Calculator,        label: 'Tools',     href: '/tools'     },
-  { icon: BookOpen,          label: 'Reports',   href: '/reports'   },
+  { icon: BookOpen,          label: 'Reports',        href: '/reports' },
+  { icon: BarChart2,        label: 'Technical Chart', href: '/chart'   },
 ]
 
 function StockifyySVGLogo() {
