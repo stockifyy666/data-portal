@@ -1,21 +1,35 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { cachedFetch }         from '@/lib/utils/clientCache'
 
-type Status = { isOpen: boolean; status: string; message: string; currentTime: string }
+type Status = {
+  isOpen: boolean
+  status: string
+  code: string
+  label: string
+  nextOpen: string
+  currentTime: string
+}
+
+async function fetchStatus(): Promise<Status> {
+  const r = await fetch('/api/market/status', { cache: 'no-store' })
+  return r.json()
+}
+
+const CODE_STYLES: Record<string, { bg: string; text: string; border: string; dot: string }> = {
+  open:          { bg: '#f0fdf4', text: '#15803d', border: '#bbf7d0', dot: '#22c55e' },
+  pre_market:    { bg: '#fffbeb', text: '#b45309', border: '#fde68a', dot: '#f59e0b' },
+  after_hours:   { bg: '#f8fafc', text: '#64748b', border: '#e2e8f0', dot: '#94a3b8' },
+  friday_break:  { bg: '#faf5ff', text: '#7c3aed', border: '#ddd6fe', dot: '#8b5cf6' },
+  weekend:       { bg: '#f8fafc', text: '#64748b', border: '#e2e8f0', dot: '#94a3b8' },
+}
 
 export default function MarketStatusBanner() {
-  const [status,  setStatus]  = useState<Status | null>(null)
+  const [status, setStatus] = useState<Status | null>(null)
 
   useEffect(() => {
-    cachedFetch<Status>('/api/market/status', 60_000)
-      .then(j => { if (j.status !== undefined) setStatus(j) })
-      .catch(() => {})
-    const iv = setInterval(() => {
-      cachedFetch<Status>('/api/market/status', 60_000)
-        .then(j => { if (j.status !== undefined) setStatus(j) }).catch(() => {})
-    }, 60_000)
+    fetchStatus().then(setStatus).catch(() => {})
+    const iv = setInterval(() => fetchStatus().then(setStatus).catch(() => {}), 30_000)
     return () => clearInterval(iv)
   }, [])
 
@@ -24,6 +38,8 @@ export default function MarketStatusBanner() {
         timeZone: 'Asia/Karachi', hour: '2-digit', minute: '2-digit',
       })
     : null
+
+  const style = status ? (CODE_STYLES[status.code] ?? CODE_STYLES.after_hours) : null
 
   return (
     <div className="flex items-center justify-between">
@@ -36,25 +52,33 @@ export default function MarketStatusBanner() {
         </p>
       </div>
 
-      {status ? (
+      {status && style ? (
         <div className="flex items-center gap-3">
           {timeStr && (
             <span className="text-xs hidden sm:block" style={{ color: 'var(--text-muted)' }}>
               {timeStr} PKT
             </span>
           )}
-          <div className={`
-            inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border
-            ${status.isOpen
-              ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800'
-              : 'bg-red-50  text-red-600  border-red-200  dark:bg-red-950  dark:text-red-400  dark:border-red-800'}
-          `}>
-            <span className={`w-2 h-2 rounded-full ${status.isOpen ? 'bg-green-500 animate-pulse' : 'bg-red-400'}`} />
-            {status.isOpen ? 'MARKET OPEN' : 'MARKET CLOSED'}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
+            <div
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold border"
+              style={{ background: style.bg, color: style.text, borderColor: style.border, borderRadius: '9999px' }}
+            >
+              <span
+                className={status.isOpen ? 'animate-pulse' : ''}
+                style={{ width: 8, height: 8, borderRadius: '50%', background: style.dot, display: 'inline-block', flexShrink: 0 }}
+              />
+              {status.label.toUpperCase()}
+            </div>
+            {status.nextOpen && (
+              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                Opens {status.nextOpen}
+              </span>
+            )}
           </div>
         </div>
       ) : (
-        <div className="h-8 w-36 rounded-full animate-pulse" style={{ backgroundColor: 'var(--bg-hover)' }} />
+        <div className="h-8 w-40 rounded-full animate-pulse" style={{ backgroundColor: 'var(--bg-hover)' }} />
       )}
     </div>
   )
