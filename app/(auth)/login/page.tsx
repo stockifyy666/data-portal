@@ -1,155 +1,359 @@
-// =============================================================================
-// FILE: app/(auth)/login/page.tsx
-// PURPOSE: The login page — first thing a user sees when not logged in.
-//          Handles both regular email/password login AND broker SSO login.
-//          Uses Supabase Auth for session management.
-//          After login, redirects to dashboard or the page they came from.
-// =============================================================================
-
 'use client'
 
-import { useState }       from 'react'
-import { useRouter }      from 'next/navigation'
-import Link               from 'next/link'
-import { createClient }   from '@/lib/supabase/client'
+import { useState } from 'react'
+import Link from 'next/link'
+import Image from 'next/image'
+import { createClient } from '@/lib/supabase/client'
+import { Eye, EyeOff } from 'lucide-react'
 
 export default function LoginPage() {
-  const router   = useRouter()
   const supabase = createClient()
-
   const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
+  const [showPw,   setShowPw]   = useState(false)
   const [loading,  setLoading]  = useState(false)
+  const [gLoading, setGLoading] = useState(false)
   const [error,    setError]    = useState<string | null>(null)
+
+  function safeRedirect(fallback = '/dashboard') {
+    const next = new URLSearchParams(window.location.search).get('next') ?? ''
+    // Only allow internal paths — block open redirects
+    const destination = next.startsWith('/') && !next.startsWith('//') ? next : fallback
+    window.location.replace(destination)
+  }
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
-    setLoading(true)
-    setError(null)
-
+    setLoading(true); setError(null)
     try {
-      const { error: authError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
-
-      if (authError) {
-        setError(authError.message)
-        return
-      }
-
-      // Small delay so Supabase can finish writing the session cookie
-      await new Promise(resolve => setTimeout(resolve, 100))
-      window.location.replace('/dashboard')
+      const { error: authError } = await supabase.auth.signInWithPassword({ email, password })
+      if (authError) { setError(authError.message); return }
+      safeRedirect()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
-    } finally {
-      setLoading(false)
-    }
+      setError(err instanceof Error ? err.message : 'Something went wrong.')
+    } finally { setLoading(false) }
+  }
+
+  async function handleGoogle() {
+    setGLoading(true); setError(null)
+    const next = new URLSearchParams(window.location.search).get('next') ?? '/dashboard'
+    const destination = next.startsWith('/') && !next.startsWith('//') ? next : '/dashboard'
+    const { error: oauthError } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}/api/auth/callback?next=${encodeURIComponent(destination)}` },
+    })
+    if (oauthError) { setError(oauthError.message); setGLoading(false) }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#0f1117] px-4">
-      <div className="w-full max-w-sm">
+    <div className="a-page">
+
+      {/* ── Background ── */}
+      <div className="a-bg" aria-hidden>
+        {/* Gradient blobs */}
+        <div className="a-blob a-blob-1" />
+        <div className="a-blob a-blob-2" />
+        <div className="a-blob a-blob-3" />
+      </div>
+
+      <div className="a-card">
 
         {/* Logo */}
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-white tracking-tight">Stockifyy</h1>
-          <p className="text-sm text-slate-400 mt-1">Pakistan Stock Analytics Platform</p>
+        <div className="a-logo">
+          <Image src="/images/logo.svg" alt="Stockifyy" width={160} height={44} style={{ objectFit: 'contain' }} />
         </div>
 
-        {/* Login Card */}
-        <div className="bg-[#0f172a] border border-[#1e293b] rounded-xl p-6">
-          <h2 className="text-lg font-semibold text-white mb-6">Sign in to your account</h2>
+        <h1 className="a-title">Sign in to your account</h1>
 
-          <form onSubmit={handleLogin} className="space-y-4">
+        {/* Google */}
+        <button className="a-google" onClick={handleGoogle} disabled={gLoading || loading}>
+          <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden>
+            <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/>
+            <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/>
+            <path fill="#FBBC05" d="M3.964 10.707A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.039l3.007-2.332z"/>
+            <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.961L3.964 7.293C4.672 5.163 6.656 3.58 9 3.58z"/>
+          </svg>
+          {gLoading ? 'Redirecting…' : 'Continue with Google'}
+        </button>
 
-            {/* Email */}
-            <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1.5">
-                Email Address
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                required
-                placeholder="you@example.com"
-                className="w-full bg-[#0f1117] border border-[#1e293b] rounded-lg px-3 py-2.5
-                           text-sm text-white placeholder-slate-600
-                           focus:outline-none focus:border-blue-600 transition-colors"
-              />
+        {/* Divider */}
+        <div className="a-divider">
+          <span className="a-divider-line" />
+          <span className="a-divider-text">or continue with email</span>
+          <span className="a-divider-line" />
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleLogin} className="a-form">
+          <div className="a-field">
+            <label className="a-label">Email</label>
+            <input
+              type="email" value={email} onChange={e => setEmail(e.target.value)}
+              required placeholder="you@example.com" className="a-input"
+            />
+          </div>
+
+          <div className="a-field">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <label className="a-label" style={{ margin: 0 }}>Password</label>
+              <Link href="/forgot-password" className="a-forgot">Forgot password?</Link>
             </div>
-
-            {/* Password */}
-            <div>
-              <div className="flex justify-between items-center mb-1.5">
-                <label className="text-xs font-medium text-slate-400">Password</label>
-                <Link
-                  href="/forgot-password"
-                  className="text-xs text-blue-500 hover:text-blue-400"
-                >
-                  Forgot password?
-                </Link>
-              </div>
+            <div className="a-input-wrap">
               <input
-                type="password"
-                value={password}
+                type={showPw ? 'text' : 'password'} value={password}
                 onChange={e => setPassword(e.target.value)}
-                required
-                placeholder="••••••••"
-                className="w-full bg-[#0f1117] border border-[#1e293b] rounded-lg px-3 py-2.5
-                           text-sm text-white placeholder-slate-600
-                           focus:outline-none focus:border-blue-600 transition-colors"
+                required placeholder="••••••••" className="a-input" style={{ paddingRight: 42 }}
               />
+              <button type="button" className="a-eye" onClick={() => setShowPw(p => !p)}>
+                {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
+              </button>
             </div>
-
-            {/* Error message */}
-            {error && (
-              <div className="bg-red-950 border border-red-800 rounded-lg px-3 py-2.5">
-                <p className="text-sm text-red-400">{error}</p>
-              </div>
-            )}
-
-            {/* Submit */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50
-                         text-white text-sm font-semibold rounded-lg px-4 py-2.5
-                         transition-colors cursor-pointer disabled:cursor-not-allowed"
-            >
-              {loading ? 'Signing in...' : 'Sign In'}
-            </button>
-
-          </form>
-
-          {/* Divider */}
-          <div className="flex items-center gap-3 my-4">
-            <div className="flex-1 h-px bg-[#1e293b]" />
-            <span className="text-xs text-slate-600">or</span>
-            <div className="flex-1 h-px bg-[#1e293b]" />
           </div>
 
-          {/* Broker SSO note */}
-          <div className="bg-[#0d2137] border border-blue-900 rounded-lg px-3 py-3">
-            <p className="text-xs text-slate-400">
-              <span className="text-blue-400 font-semibold">Broker users: </span>
-              Log into your broker terminal first. You will be redirected here automatically
-              via your broker&apos;s platform.
-            </p>
-          </div>
-        </div>
+          {error && <div className="a-error">{error}</div>}
 
-        {/* Register link */}
-        <p className="text-center text-sm text-slate-500 mt-4">
+          <button type="submit" disabled={loading || gLoading} className="a-submit">
+            {loading ? 'Signing in…' : 'Sign In'}
+          </button>
+        </form>
+
+        <p className="a-switch">
           Don&apos;t have an account?{' '}
-          <Link href="/register" className="text-blue-500 hover:text-blue-400 font-medium">
-            Create one
-          </Link>
+          <Link href="/register" className="a-link">Create one free</Link>
         </p>
 
+        {/* Trust bar */}
+        <div className="a-trust">
+          <span>🔒 Secured by Supabase</span>
+          <span>·</span>
+          <span>PSX Live Data</span>
+          <span>·</span>
+          <span>Free forever</span>
+        </div>
       </div>
+
+      <style>{`
+        .a-page {
+          min-height: 100vh;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 24px 16px;
+          background-color: var(--bg-page);
+          position: relative;
+          overflow: hidden;
+        }
+
+        /* ── Background ── */
+        .a-bg {
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          z-index: 0;
+          overflow: hidden;
+        }
+        .a-blob {
+          position: absolute;
+          border-radius: 50%;
+          filter: blur(80px);
+        }
+        .a-blob-1 {
+          width: 750px; height: 750px;
+          top: -300px; left: -200px;
+          background: radial-gradient(circle, #FEA500AA 0%, #FEA50055 35%, transparent 65%);
+        }
+        .a-blob-2 {
+          width: 650px; height: 650px;
+          bottom: -250px; right: -180px;
+          background: radial-gradient(circle, #FEA50099 0%, #FEA50044 35%, transparent 65%);
+        }
+        .a-blob-3 {
+          width: 500px; height: 500px;
+          top: 30%; left: 52%;
+          background: radial-gradient(circle, #98630055 0%, transparent 60%);
+        }
+
+        .a-card {
+          position: relative;
+          z-index: 1;
+          width: 100%;
+          max-width: 420px;
+          background: var(--bg-card);
+          border: 1px solid var(--bg-border);
+          padding: 40px 36px 32px;
+          box-shadow: 0 8px 40px rgba(0,0,0,0.08);
+        }
+
+        .a-logo {
+          display: flex;
+          justify-content: center;
+          margin-bottom: 28px;
+        }
+
+        .a-title {
+          font-size: 18px;
+          font-weight: 700;
+          color: var(--text-primary);
+          text-align: center;
+          margin: 0 0 24px;
+          letter-spacing: -.01em;
+        }
+
+        /* Google btn */
+        .a-google {
+          width: 100%;
+          padding: 11px 16px;
+          background: var(--bg-hover);
+          border: 1px solid var(--bg-border);
+          color: var(--text-primary);
+          font-size: 14px;
+          font-weight: 600;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          transition: border-color .15s, background .15s;
+          font-family: inherit;
+        }
+        .a-google:hover:not(:disabled) {
+          border-color: var(--brand);
+          background: var(--bg-card);
+        }
+        .a-google:disabled { opacity: .6; cursor: not-allowed; }
+
+        /* Divider */
+        .a-divider {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          margin: 20px 0;
+        }
+        .a-divider-line {
+          flex: 1;
+          height: 1px;
+          background: var(--bg-border);
+          display: block;
+        }
+        .a-divider-text {
+          font-size: 12px;
+          color: var(--text-muted);
+          white-space: nowrap;
+        }
+
+        /* Form */
+        .a-form { display: flex; flex-direction: column; gap: 16px; }
+
+        .a-field { display: flex; flex-direction: column; gap: 6px; }
+
+        .a-label {
+          font-size: 13px;
+          font-weight: 600;
+          color: var(--text-secondary);
+          margin-bottom: 6px;
+          display: block;
+        }
+
+        .a-forgot {
+          font-size: 12px;
+          color: var(--brand);
+          text-decoration: none;
+          font-weight: 500;
+        }
+        .a-forgot:hover { text-decoration: underline; }
+
+        .a-input-wrap { position: relative; }
+
+        .a-input {
+          width: 100%;
+          padding: 10px 14px;
+          background: var(--bg-page);
+          border: 1px solid var(--bg-border);
+          color: var(--text-primary);
+          font-size: 14px;
+          outline: none;
+          transition: border-color .15s;
+          font-family: inherit;
+          box-sizing: border-box;
+        }
+        .a-input:focus { border-color: var(--brand); }
+        .a-input::placeholder { color: var(--text-muted); }
+
+        .a-eye {
+          position: absolute;
+          right: 12px;
+          top: 50%;
+          transform: translateY(-50%);
+          background: none;
+          border: none;
+          cursor: pointer;
+          color: var(--text-muted);
+          display: flex;
+          align-items: center;
+          padding: 0;
+        }
+        .a-eye:hover { color: var(--text-secondary); }
+
+        /* Error */
+        .a-error {
+          padding: 10px 14px;
+          background: #fef2f2;
+          border: 1px solid #fecaca;
+          color: #dc2626;
+          font-size: 13px;
+          line-height: 1.5;
+        }
+        .dark .a-error {
+          background: #1a0808;
+          border-color: #7f1d1d;
+          color: #f87171;
+        }
+
+        /* Submit */
+        .a-submit {
+          width: 100%;
+          padding: 11px 16px;
+          margin-top: 4px;
+          background: linear-gradient(135deg, #FEA500, #986300);
+          border: none;
+          color: #fff;
+          font-size: 14px;
+          font-weight: 700;
+          letter-spacing: .02em;
+          cursor: pointer;
+          transition: opacity .15s;
+          font-family: inherit;
+        }
+        .a-submit:hover:not(:disabled) { opacity: .9; }
+        .a-submit:disabled { opacity: .6; cursor: not-allowed; }
+
+        /* Switch */
+        .a-switch {
+          text-align: center;
+          font-size: 13px;
+          color: var(--text-muted);
+          margin-top: 20px;
+        }
+        .a-link { color: var(--brand); font-weight: 600; text-decoration: none; }
+        .a-link:hover { text-decoration: underline; }
+
+        /* Trust bar */
+        .a-trust {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          margin-top: 20px;
+          padding-top: 20px;
+          border-top: 1px solid var(--bg-border);
+          font-size: 11px;
+          color: var(--text-muted);
+        }
+
+        @media (max-width: 480px) {
+          .a-card { padding: 28px 20px 24px; }
+        }
+      `}</style>
     </div>
   )
 }

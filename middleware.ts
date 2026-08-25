@@ -1,12 +1,17 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createServerClient }             from '@supabase/ssr'
 
+// Routes that don't require authentication
+const PUBLIC_ROUTES = ['/login', '/register', '/forgot-password', '/api/auth']
+
+function isPublic(pathname: string) {
+  return PUBLIC_ROUTES.some(r => pathname.startsWith(r))
+}
+
 export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl
   let response = NextResponse.next({ request })
 
-  // Refresh the Supabase session on every request so access tokens stay valid.
-  // Without this, getUser() returns null once the access token expires,
-  // causing 401s on all authenticated API routes.
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -26,9 +31,22 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // This silently refreshes the session cookie if the access token has expired.
-  // Must be called before any code that reads the session.
-  await supabase.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  // Not logged in and trying to access a protected route → send to /login
+  if (!user && !isPublic(pathname)) {
+    const loginUrl = new URL('/login', request.url)
+    // Only preserve deep-link destinations — root just bounces to dashboard anyway
+    if (pathname !== '/') {
+      loginUrl.searchParams.set('next', pathname)
+    }
+    return NextResponse.redirect(loginUrl)
+  }
+
+  // Already logged in and trying to access login/register → send to /dashboard
+  if (user && (pathname === '/login' || pathname === '/register')) {
+    return NextResponse.redirect(new URL('/dashboard', request.url))
+  }
 
   return response
 }

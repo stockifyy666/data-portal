@@ -1,29 +1,37 @@
-// =============================================================================
-// FILE: app/api/auth/callback/route.ts
-// PURPOSE: Supabase Auth callback handler — exchanges the one-time code from
-//          the email confirmation link (or OAuth provider) for a session.
-//          Supabase sends the user here after they click the verification email.
-//          We exchange the code, then redirect to /dashboard.
-//          If anything fails, redirect to /login with an error flag.
-// =============================================================================
+﻿import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
+import { NextRequest, NextResponse } from 'next/server'
 
-import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
-  const code         = searchParams.get('code')
-  const redirectTo   = searchParams.get('next') ?? '/dashboard'
+  const code = searchParams.get('code')
+  const rawNext = searchParams.get('next') ?? '/dashboard'
+  // Server-side open-redirect guard — only allow internal paths
+  const next = rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : '/dashboard'
 
   if (code) {
-    const supabase = await createClient()
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
+    const cookieStore = await cookies()
 
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() { return cookieStore.getAll() },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            )
+          },
+        },
+      }
+    )
+
+    const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
-      return NextResponse.redirect(`${origin}${redirectTo}`)
+      return NextResponse.redirect(`${origin}${next}`)
     }
   }
 
-  // Code missing or exchange failed — back to login with error
-  return NextResponse.redirect(`${origin}/login?error=auth_callback_failed`)
+  return NextResponse.redirect(`${origin}/login?error=oauth_failed`)
 }
