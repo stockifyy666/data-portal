@@ -1165,6 +1165,10 @@ export default function StockDetailClient({
   const [fundLoad,     setFundLoad]     = useState(false)
   const [fundInterval, setFundInterval] = useState<'annual' | 'quarterly'>('annual')
 
+  // Snapshot fundamentals — loaded on overview tab so Company Snapshot shows immediately
+  const [snapFunds,    setSnapFunds]    = useState<StatementData | null>(null)
+  const [snapLoad,     setSnapLoad]     = useState(false)
+
   const [shData,    setShData]    = useState<StatementData | null>(null)
   const [shLoad,    setShLoad]    = useState(false)
 
@@ -1302,15 +1306,28 @@ export default function StockDetailClient({
     if (loaded.current.has(tab)) return
     loaded.current.add(tab)
 
-    if (tab === 'overview' && !stockCandles.length) {
-      setVsLoad(true)
-      Promise.all([
-        fetch(`/api/stock/${symbol}/daily`).then(r => r.json()),
-        fetch(`/api/stock/KSE100/daily`).then(r => r.json()),
-      ]).then(([sj, ij]) => {
-        setStockCandles(Array.isArray(sj.data) ? sj.data : [])
-        setIndexCandles(Array.isArray(ij.data) ? ij.data : [])
-      }).catch(() => {}).finally(() => setVsLoad(false))
+    if (tab === 'overview') {
+      // Chart data
+      if (!stockCandles.length) {
+        setVsLoad(true)
+        Promise.all([
+          fetch(`/api/stock/${symbol}/daily`).then(r => r.json()),
+          fetch(`/api/stock/KSE100/daily`).then(r => r.json()),
+        ]).then(([sj, ij]) => {
+          setStockCandles(Array.isArray(sj.data) ? sj.data : [])
+          setIndexCandles(Array.isArray(ij.data) ? ij.data : [])
+        }).catch(() => {}).finally(() => setVsLoad(false))
+      }
+
+      // Snapshot fundamentals (Company Snapshot card)
+      if (!snapFunds) {
+        setSnapLoad(true)
+        fetch(`/api/stock/${symbol}/statement?type=fundamentals&interval=annual`)
+          .then(r => r.json())
+          .then(j => { if (j.data) setSnapFunds(j.data) })
+          .catch(() => {})
+          .finally(() => setSnapLoad(false))
+      }
     }
 
     if ((tab === 'peers' || tab === 'compare') && !peers.length) {
@@ -1527,15 +1544,119 @@ export default function StockDetailClient({
                 <Stat label="52W Low"   value={formatPrice(Number(overview.low52))} />
               </div>
             </div>
-            {/* Key metrics */}
+            {/* ── Company Snapshot ──────────────────────────────────── */}
             <div className="card">
-              <SectionHeading>Key Metrics</SectionHeading>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <Stat label="Prev Close" value={formatPrice(Number(overview.lastClose))} />
-                <Stat label="EPS"        value={overview.eps ? formatPrice(Number(overview.eps)) : '—'} />
-                <Stat label="Sector"     value={sector || '—'} />
-                <Stat label="Symbol"     value={symbol} />
-              </div>
+              <SectionHeading>Company Snapshot</SectionHeading>
+
+              {(() => {
+                // ── field extractor ──
+                function pick(pattern: RegExp): number | null {
+                  if (!snapFunds) return null
+                  return snapFunds.fields.find(f => !f.is_heading && pattern.test(f.label.trim()))?.values[0] ?? null
+                }
+
+                // ── formatter ──
+                function fmtSnap(key: string, raw: number | null): string {
+                  if (raw == null || isNaN(raw)) return '—'
+                  switch (key) {
+                    // Percentage fields (stored as decimal 0–1 in fundamentals)
+                    case 'divYield':
+                    case 'netMargin':
+                      return `${(raw * 100).toFixed(2)}%`
+                    case 'freeFloatPct':
+                      // May be stored as 0–100 or 0–1; cap heuristic
+                      return `${raw > 1 ? raw.toFixed(1) : (raw * 100).toFixed(1)}%`
+                    // Ratio / per-share fields — display as-is
+                    case 'eps':
+                    case 'pe':
+                    case 'pb':
+                    case 'peg':
+                      return raw.toFixed(2)
+                    // Large count / monetary fields (stored in thousands by CS API)
+                    case 'mktCap':
+                    case 'sharesOut':
+                    case 'freeFloat': {
+                      const abs = Math.abs(raw)
+                      if (abs >= 1_000_000) return `${(raw / 1_000_000).toFixed(2)}B`
+                      if (abs >= 1_000)     return `${(raw / 1_000).toFixed(2)}M`
+                      if (abs >= 1)         return `${raw.toFixed(2)}K`
+                      return raw.toFixed(2)
+                    }
+                    case 'weeklyVol': {
+                      const abs = Math.abs(raw)
+                      if (abs >= 1_000_000) return `${(raw / 1_000_000).toFixed(2)}M`
+                      if (abs >= 1_000)     return `${(raw / 1_000).toFixed(1)}K`
+                      return raw.toFixed(0)
+                    }
+                    default: return raw.toFixed(2)
+                  }
+                }
+
+                const snap = {
+                  mktCap:      pick(/market cap/i),
+                  sharesOut:   pick(/shares outstanding/i),
+                  freeFloat:   pick(/free float(?!.*%)/i),
+                  weeklyVol:   pick(/weekly.*vol|average.*vol/i),
+                  freeFloatPct:pick(/free float.*%|free.*float.*percent/i),
+                  divYield:    pick(/dividend yield/i),
+                  eps:         pick(/\beps\b|latest eps|earnings per share/i),
+                  netMargin:   pick(/net.*income.*margin|net.*profit.*margin/i),
+                  pb:          pick(/price.*book.*value|price.*to.*book|p\/b\b/i),
+                  pe:          pick(/price.*to.*earn|price.*earnings|p\/e\b/i),
+                  peg:         pick(/peg/i),
+                }
+
+                // ── Fundamentals rows (from snapshot fetch) ──
+                const fundRows: { label: string; key: keyof typeof snap; value: string }[] = [
+                  { label: 'Market Cap',         key: 'mktCap',       value: fmtSnap('mktCap',       snap.mktCap)       },
+                  { label: 'Shares Outstanding', key: 'sharesOut',    value: fmtSnap('sharesOut',    snap.sharesOut)    },
+                  { label: 'Free Float Shares',  key: 'freeFloat',    value: fmtSnap('freeFloat',    snap.freeFloat)    },
+                  { label: 'Weekly Avg Volume',  key: 'weeklyVol',    value: fmtSnap('weeklyVol',    snap.weeklyVol)    },
+                  { label: 'Free Float %',       key: 'freeFloatPct', value: fmtSnap('freeFloatPct', snap.freeFloatPct) },
+                  { label: 'Dividend Yield',     key: 'divYield',     value: fmtSnap('divYield',     snap.divYield)     },
+                  { label: 'Earnings Per Share', key: 'eps',          value: fmtSnap('eps',          snap.eps ?? (overview.eps ? Number(overview.eps) : null)) },
+                  { label: 'Net Income Margin',  key: 'netMargin',    value: fmtSnap('netMargin',    snap.netMargin)    },
+                  { label: 'Price to Book',      key: 'pb',           value: fmtSnap('pb',           snap.pb)           },
+                  { label: 'Price to Earnings',  key: 'pe',           value: fmtSnap('pe',           snap.pe)           },
+                  { label: 'PEG Ratio',          key: 'peg',          value: fmtSnap('peg',          snap.peg)          },
+                ]
+
+                const SnapCell = ({ label, value, loading = false }: { label: string; value: string; loading?: boolean }) => (
+                  <div className="flex flex-col gap-1 px-4 py-3"
+                    style={{ borderRight: '1px solid var(--bg-border)', borderBottom: '1px solid var(--bg-border)' }}>
+                    <p className="text-[10px] font-semibold uppercase tracking-wider leading-none"
+                      style={{ color: 'var(--text-muted)' }}>
+                      {label}
+                    </p>
+                    {loading
+                      ? <div className="h-4 w-16 rounded animate-pulse mt-0.5" style={{ backgroundColor: 'var(--bg-hover)' }} />
+                      : <p className="text-sm font-bold font-number leading-none mt-0.5"
+                          style={{ color: 'var(--text-primary)' }}>
+                          {value}
+                        </p>
+                    }
+                  </div>
+                )
+
+                return (
+                  <div className="rounded-xl overflow-hidden"
+                    style={{ border: '1px solid var(--bg-border)' }}>
+
+                    {/* Section: Company Info */}
+                    <div className="px-4 py-2"
+                      style={{ backgroundColor: 'var(--bg-hover)', borderBottom: '1px solid var(--bg-border)' }}>
+                      <span className="text-[10px] font-bold uppercase tracking-widest"
+                        style={{ color: 'var(--brand)' }}>Company Info</span>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+                      {fundRows.map(r => (
+                        <SnapCell key={r.label} label={r.label} value={r.value} loading={snapLoad} />
+                      ))}
+                    </div>
+
+                  </div>
+                )
+              })()}
             </div>
 
             {/* ── Index vs Stock chart ─────────────────────────────── */}

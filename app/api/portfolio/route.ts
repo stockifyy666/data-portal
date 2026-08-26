@@ -19,18 +19,18 @@ const HoldingSchema = z.object({
 
 export async function GET() {
   const supabase = await createClient()
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data: portfolios } = await supabase
+  const { data: portfolios } = await (supabase as any)
     .from('portfolios')
     .select(`
       id, name,
       portfolio_holdings (
-        id, symbol, quantity, average_price, last_updated
+        id, symbol, quantity, avg_buy_price, updated_at
       )
     `)
-    .eq('user_id', session.user.id)
+    .eq('user_id', user.id)
 
   const allHoldings = (portfolios ?? []).flatMap(
     (p: { portfolio_holdings: unknown[] }) => p.portfolio_holdings
@@ -41,10 +41,27 @@ export async function GET() {
   })
 }
 
+export async function DELETE(request: Request) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { holdingId } = await request.json()
+  if (!holdingId) return NextResponse.json({ error: 'holdingId required' }, { status: 400 })
+
+  const { error } = await (supabase as any)
+    .from('portfolio_holdings')
+    .delete()
+    .eq('id', holdingId)
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ success: true })
+}
+
 export async function POST(request: Request) {
   const supabase = await createClient()
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body   = await request.json()
   const parsed = HoldingSchema.safeParse(body)
@@ -57,35 +74,45 @@ export async function POST(request: Request) {
   // Find or create the default portfolio
   let pid = portfolioId
   if (!pid) {
-    const { data: existing } = await supabase
+    const { data: existing, error: findErr } = await (supabase as any)
       .from('portfolios')
       .select('id')
-      .eq('user_id', session.user.id)
-      .eq('is_default', true)
+      .eq('user_id', user.id)
+      .limit(1)
       .single()
+
+    if (findErr && findErr.code !== 'PGRST116') {
+      // PGRST116 = "no rows found" — that's fine, we'll create one
+      console.error('[portfolio POST] find error:', findErr)
+      return NextResponse.json({ error: findErr.message }, { status: 500 })
+    }
 
     if (existing) {
       pid = existing.id
     } else {
-      const { data: created } = await supabase
+      const { data: created, error: createErr } = await (supabase as any)
         .from('portfolios')
-        .insert({ user_id: session.user.id, name: 'My Portfolio', is_default: true })
+        .insert({ user_id: user.id, name: 'My Portfolio' })
         .select('id')
         .single()
+      if (createErr) {
+        console.error('[portfolio POST] create error:', createErr)
+        return NextResponse.json({ error: createErr.message }, { status: 500 })
+      }
       pid = created?.id
     }
   }
 
-  if (!pid) return NextResponse.json({ error: 'Failed to create portfolio' }, { status: 500 })
+  if (!pid) return NextResponse.json({ error: 'Failed to resolve portfolio id' }, { status: 500 })
 
-  const { error } = await supabase
+  const { error } = await (supabase as any)
     .from('portfolio_holdings')
     .upsert({
       portfolio_id:  pid,
       symbol,
       quantity,
-      average_price: averagePrice,
-      last_updated:  new Date().toISOString(),
+      avg_buy_price: averagePrice,
+      updated_at:    new Date().toISOString(),
     }, { onConflict: 'portfolio_id,symbol' })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
