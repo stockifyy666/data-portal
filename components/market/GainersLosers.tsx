@@ -25,7 +25,7 @@ export default function GainersLosers({ type }: Props) {
 
   async function fetchMovers() {
     try {
-      const json = await cachedFetch<{ movers: Mover[] }>(`/api/market/movers?type=${type}`)
+      const json = await cachedFetch<{ movers: Mover[] }>(`/api/market/movers?type=${type}`, 15 * 60 * 1000)
       if (json.movers) setMovers(json.movers.slice(0, 5))
     } catch {
       // Silent fail

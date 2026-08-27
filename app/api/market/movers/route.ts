@@ -29,7 +29,11 @@ export async function GET(request: Request) {
     }))
 
     const movers = stocks
-      .filter(s => s.price > 0)
+      .filter(s =>
+        s.price > 0 &&
+        s.volume > 0 &&
+        (type === 'gainers' ? s.changePct > 0 : s.changePct < 0)
+      )
       .sort((a, b) => type === 'gainers' ? b.changePct - a.changePct : a.changePct - b.changePct)
       .slice(0, 10)
 
