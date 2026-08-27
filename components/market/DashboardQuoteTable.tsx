@@ -2,7 +2,10 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import Link                             from 'next/link'
-import { Search, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Search, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
+
+type SortCol = 'symbol' | 'name' | 'price' | 'change' | 'changePct' | 'volume' | 'high' | 'low'
+type SortDir = 'asc' | 'desc'
 import { formatPrice, formatChange, formatPercent, formatVolume, getChangeColor } from '@/lib/utils/format'
 import { cachedFetch } from '@/lib/utils/clientCache'
 import type { StockQuote } from '@/types/market'
@@ -23,6 +26,8 @@ export default function DashboardQuoteTable() {
   const [search,  setSearch]  = useState('')
   const [tab,     setTab]     = useState<Tab>('all')
   const [page,    setPage]    = useState(1)
+  const [sortCol, setSortCol] = useState<SortCol>('changePct')
+  const [sortDir, setSortDir] = useState<SortDir>('desc')
 
   useEffect(() => {
     let cancelled = false
@@ -38,8 +43,12 @@ export default function DashboardQuoteTable() {
     return () => { cancelled = true; clearInterval(iv) }
   }, [])
 
-  // Reset page on tab/search change
-  useEffect(() => { setPage(1) }, [tab, search])
+  useEffect(() => { setPage(1) }, [tab, search, sortCol, sortDir])
+
+  function handleSort(col: SortCol) {
+    if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortCol(col); setSortDir('desc') }
+  }
 
   const filtered = useMemo(() => {
     let list = quotes.filter(q =>
@@ -48,16 +57,26 @@ export default function DashboardQuoteTable() {
       !/R\d*$/.test(q.symbol)
     )
 
-    if (tab === 'gainers') list = [...list].sort((a, b) => b.changePct - a.changePct).slice(0, 100)
-    else if (tab === 'losers')  list = [...list].sort((a, b) => a.changePct - b.changePct).slice(0, 100)
+    if (tab === 'gainers') list = [...list].filter(s => s.changePct > 0).sort((a, b) => b.changePct - a.changePct).slice(0, 100)
+    else if (tab === 'losers')  list = [...list].filter(s => s.changePct < 0).sort((a, b) => a.changePct - b.changePct).slice(0, 100)
     else if (tab === 'active')  list = [...list].sort((a, b) => b.volume - a.volume).slice(0, 100)
 
     if (search.trim()) {
       const q = search.toUpperCase().trim()
       list = list.filter(s => s.symbol.includes(q) || s.name.toUpperCase().includes(q))
     }
+
+    // Apply column sort
+    list = [...list].sort((a, b) => {
+      const av = a[sortCol as keyof typeof a]
+      const bv = b[sortCol as keyof typeof b]
+      if (typeof av === 'string' && typeof bv === 'string')
+        return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av)
+      return sortDir === 'asc' ? (av as number) - (bv as number) : (bv as number) - (av as number)
+    })
+
     return list
-  }, [quotes, tab, search])
+  }, [quotes, tab, search, sortCol, sortDir])
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE)
   const pageData   = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
@@ -104,13 +123,29 @@ export default function DashboardQuoteTable() {
         <table className="w-full text-xs">
           <thead>
             <tr style={{ borderBottom: '1px solid var(--bg-border)' }}>
-              {['Symbol','Name','Price','Change','% Chg','Volume','High','Low'].map(col => (
-                <th key={col}
-                    className="text-left py-2 px-2 text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap"
-                    style={{ color: 'var(--text-muted)' }}>
-                  {col}
-                </th>
-              ))}
+              {([
+                { label: 'Symbol',  col: 'symbol'    },
+                { label: 'Name',    col: 'name'      },
+                { label: 'Price',   col: 'price'     },
+                { label: 'Change',  col: 'change'    },
+                { label: '% Chg',   col: 'changePct' },
+                { label: 'Volume',  col: 'volume'    },
+                { label: 'High',    col: 'high'      },
+                { label: 'Low',     col: 'low'       },
+              ] as { label: string; col: SortCol }[]).map(({ label, col }) => {
+                const active = sortCol === col
+                const Icon = active ? (sortDir === 'desc' ? ArrowDown : ArrowUp) : ArrowUpDown
+                return (
+                  <th key={col}
+                      onClick={() => handleSort(col)}
+                      className="text-left py-2 px-2 text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap cursor-pointer select-none hover:opacity-80 transition-opacity"
+                      style={{ color: active ? '#FEA500' : 'var(--text-muted)' }}>
+                    <span className="flex items-center gap-0.5">
+                      {label} <Icon size={9} />
+                    </span>
+                  </th>
+                )
+              })}
             </tr>
           </thead>
           <tbody>
