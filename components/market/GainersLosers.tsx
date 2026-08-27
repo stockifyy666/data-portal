@@ -1,11 +1,14 @@
 'use client'
 
-import { useState, useEffect }      from 'react'
-import Link                         from 'next/link'
-import { TrendingUp, TrendingDown } from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
+import Link                              from 'next/link'
+import { TrendingUp, TrendingDown, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 import { formatPrice, formatPercent, formatVolume } from '@/lib/utils/format'
 import { cachedFetch } from '@/lib/utils/clientCache'
 import KMIBadge, { isKMI } from '@/components/ui/KMIBadge'
+
+type SortCol = 'changePct' | 'price' | 'volume'
+type SortDir = 'asc' | 'desc'
 
 type Mover = {
   symbol:    string
@@ -22,6 +25,8 @@ type Props = { type: 'gainers' | 'losers' }
 export default function GainersLosers({ type }: Props) {
   const [movers,  setMovers]  = useState<Mover[]>([])
   const [loading, setLoading] = useState(true)
+  const [sortCol, setSortCol] = useState<SortCol>('changePct')
+  const [sortDir, setSortDir] = useState<SortDir>(type === 'gainers' ? 'desc' : 'asc')
 
   async function fetchMovers() {
     try {
@@ -39,6 +44,22 @@ export default function GainersLosers({ type }: Props) {
     const interval = setInterval(fetchMovers, 5 * 60 * 1000)
     return () => clearInterval(interval)
   }, [type])
+
+  function handleSort(col: SortCol) {
+    if (sortCol === col) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortCol(col)
+      setSortDir(col === 'changePct' ? (type === 'gainers' ? 'desc' : 'asc') : 'desc')
+    }
+  }
+
+  const sorted = useMemo(() => {
+    return [...movers].sort((a, b) => {
+      const diff = a[sortCol] - b[sortCol]
+      return sortDir === 'asc' ? diff : -diff
+    })
+  }, [movers, sortCol, sortDir])
 
   const isGainers = type === 'gainers'
   const color     = isGainers ? 'text-green-600' : 'text-red-500'
@@ -78,12 +99,24 @@ export default function GainersLosers({ type }: Props) {
           <div className="flex text-[10px] uppercase tracking-wider pb-1"
                style={{ borderBottom: '1px solid var(--bg-border)', color: 'var(--text-muted)' }}>
             <span className="flex-1">Symbol</span>
-            <span className="w-20 text-right">Price</span>
-            <span className="w-16 text-right">%</span>
-            <span className="w-16 text-right hidden sm:block">Volume</span>
+            {(['price', 'changePct', 'volume'] as SortCol[]).map(col => {
+              const labels: Record<SortCol, string> = { price: 'Price', changePct: '%', volume: 'Volume' }
+              const active = sortCol === col
+              const Icon = active ? (sortDir === 'desc' ? ArrowDown : ArrowUp) : ArrowUpDown
+              const cls = col === 'volume' ? 'w-16 hidden sm:flex' : col === 'price' ? 'w-20' : 'w-16'
+              return (
+                <button key={col}
+                  onClick={() => handleSort(col)}
+                  className={`${cls} flex items-center justify-end gap-0.5 cursor-pointer hover:opacity-80 transition-opacity`}
+                  style={{ color: active ? '#FEA500' : 'var(--text-muted)' }}>
+                  {labels[col]}
+                  <Icon size={9} />
+                </button>
+              )
+            })}
           </div>
 
-          {movers.map(m => (
+          {sorted.map(m => (
             <Link
               key={m.symbol}
               href={`/stocks/${m.symbol}`}
