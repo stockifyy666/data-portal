@@ -8,7 +8,7 @@ type Status = {
   code: string
   label: string
   nextOpen: string
-  currentTime: string
+  currentTime: string   // pre-formatted "9:32 AM PKT" string from API
 }
 
 async function fetchStatus(): Promise<Status> {
@@ -19,6 +19,7 @@ async function fetchStatus(): Promise<Status> {
 const CODE_STYLES: Record<string, { bg: string; text: string; border: string; dot: string }> = {
   open:          { bg: '#f0fdf4', text: '#15803d', border: '#bbf7d0', dot: '#22c55e' },
   pre_market:    { bg: '#fffbeb', text: '#b45309', border: '#fde68a', dot: '#f59e0b' },
+  post_market:   { bg: '#eff6ff', text: '#1d4ed8', border: '#bfdbfe', dot: '#3b82f6' },
   after_hours:   { bg: '#f8fafc', text: '#64748b', border: '#e2e8f0', dot: '#94a3b8' },
   friday_break:  { bg: '#faf5ff', text: '#7c3aed', border: '#ddd6fe', dot: '#8b5cf6' },
   weekend:       { bg: '#f8fafc', text: '#64748b', border: '#e2e8f0', dot: '#94a3b8' },
@@ -33,11 +34,7 @@ export default function MarketStatusBanner() {
     return () => clearInterval(iv)
   }, [])
 
-  const timeStr = status?.currentTime
-    ? new Date(status.currentTime).toLocaleTimeString('en-PK', {
-        timeZone: 'Asia/Karachi', hour: '2-digit', minute: '2-digit',
-      })
-    : null
+  const timeStr = status?.currentTime ?? null
 
   const style = status ? (CODE_STYLES[status.code] ?? CODE_STYLES.after_hours) : null
 
