@@ -1,7 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createServerClient }             from '@supabase/ssr'
 
-// Routes that don't require authentication
 const PUBLIC_ROUTES = ['/login', '/register', '/forgot-password', '/api/auth']
 
 function isPublic(pathname: string) {
@@ -17,9 +16,7 @@ export async function middleware(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll() {
-          return request.cookies.getAll()
-        },
+        getAll() { return request.cookies.getAll() },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
           response = NextResponse.next({ request })
@@ -31,20 +28,16 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
+  // Use getSession() — reads from cookie, no network call, safe for middleware
+  const { data: { session } } = await supabase.auth.getSession()
 
-  // Not logged in and trying to access a protected route → send to /login
-  if (!user && !isPublic(pathname)) {
+  if (!session && !isPublic(pathname)) {
     const loginUrl = new URL('/login', request.url)
-    // Only preserve deep-link destinations — root just bounces to dashboard anyway
-    if (pathname !== '/') {
-      loginUrl.searchParams.set('next', pathname)
-    }
+    if (pathname !== '/') loginUrl.searchParams.set('next', pathname)
     return NextResponse.redirect(loginUrl)
   }
 
-  // Already logged in and trying to access login/register → send to /dashboard
-  if (user && (pathname === '/login' || pathname === '/register')) {
+  if (session && (pathname === '/login' || pathname === '/register')) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
