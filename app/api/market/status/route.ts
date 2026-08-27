@@ -14,11 +14,23 @@ function fmtTime(h: number, m: number) {
 }
 
 function getPSXStatus() {
+  // Use Intl to get the correct PKT time — works reliably on all environments
   const now = new Date()
-  // PKT = UTC+5 — extract hours/minutes directly from UTC
-  const day = now.getUTCDay()
-  const h   = (now.getUTCHours() + 5) % 24
-  const m   = now.getUTCMinutes()
+  const pkt = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Karachi',
+    hour: 'numeric', minute: 'numeric', second: 'numeric',
+    weekday: 'short', hour12: false,
+  }).formatToParts(now)
+
+  const get = (type: string) => parseInt(pkt.find(p => p.type === type)?.value ?? '0', 10)
+  const weekdayStr = pkt.find(p => p.type === 'weekday')?.value ?? 'Mon'
+  const DAYS: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }
+
+  const day = DAYS[weekdayStr] ?? 1
+  let h     = get('hour')
+  // Intl hour12:false returns 24 for midnight — normalise
+  if (h === 24) h = 0
+  const m   = get('minute')
   const t   = h * 60 + m
 
   type StatusCode = 'open' | 'pre_market' | 'post_market' | 'after_hours' | 'friday_break' | 'weekend'
@@ -114,10 +126,11 @@ function getPSXStatus() {
     }
   }
 
-  // Build correct PKT time string (HH:MM AM/PM PKT) — no double-offset
-  const pktH    = h % 12 || 12
-  const suffix  = h >= 12 ? 'PM' : 'AM'
-  const pktTime = `${pktH}:${pad(m)} ${suffix} PKT`
+  // Build PKT time string using Intl for correctness on all platforms
+  const pktTime = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Karachi',
+    hour: 'numeric', minute: '2-digit', hour12: true,
+  }).format(now) + ' PKT'
 
   return {
     isOpen,

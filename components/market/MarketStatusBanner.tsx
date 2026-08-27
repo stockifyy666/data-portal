@@ -53,7 +53,7 @@ export default function MarketStatusBanner() {
         <div className="flex items-center gap-3">
           {timeStr && (
             <span className="text-xs hidden sm:block" style={{ color: 'var(--text-muted)' }}>
-              {timeStr} PKT
+              {timeStr}
             </span>
           )}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
