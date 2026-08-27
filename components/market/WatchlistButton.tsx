@@ -8,12 +8,14 @@ type Props = { symbol: string; currentPrice?: number }
 
 export default function WatchlistButton({ symbol, currentPrice = 0 }: Props) {
   const router = useRouter()
-  const [watched,   setWatched]   = useState(false)
-  const [loggedIn,  setLoggedIn]  = useState(true)
-  const [loading,   setLoading]   = useState(true)
-  const [working,   setWorking]   = useState(false)
+  const [watched,  setWatched]  = useState(false)
+  const [loggedIn, setLoggedIn] = useState(true)
+  const [loading,  setLoading]  = useState(true)
+  const [working,  setWorking]  = useState(false)
+  const [livePrice, setLivePrice] = useState(currentPrice)
 
   useEffect(() => {
+    // Fetch watchlist status
     fetch('/api/watchlist')
       .then(r => {
         if (r.status === 401) { setLoggedIn(false); return null }
@@ -29,7 +31,18 @@ export default function WatchlistButton({ symbol, currentPrice = 0 }: Props) {
       })
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [symbol])
+
+    // If no price passed from server, fetch it from quotes
+    if (!currentPrice) {
+      fetch('/api/market/quotes')
+        .then(r => r.json())
+        .then(json => {
+          const q = (json.quotes ?? []).find((q: any) => q.symbol === symbol)
+          if (q?.price) setLivePrice(q.price)
+        })
+        .catch(() => {})
+    }
+  }, [symbol, currentPrice])
 
   async function toggle() {
     if (!loggedIn) { router.push('/login'); return }
@@ -42,7 +55,7 @@ export default function WatchlistButton({ symbol, currentPrice = 0 }: Props) {
         const res = await fetch('/api/watchlist', {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ symbol, addedPrice: currentPrice }),
+          body:    JSON.stringify({ symbol, addedPrice: livePrice }),
         })
         if (res.ok) setWatched(true)
       }
@@ -56,11 +69,9 @@ export default function WatchlistButton({ symbol, currentPrice = 0 }: Props) {
 
   if (!loggedIn) {
     return (
-      <button
-        onClick={() => router.push('/login')}
+      <button onClick={() => router.push('/login')}
         className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border transition-colors"
-        style={{ borderColor: 'var(--bg-border)', color: 'var(--text-muted)', backgroundColor: 'var(--bg-card)' }}
-      >
+        style={{ borderColor: 'var(--bg-border)', color: 'var(--text-muted)', backgroundColor: 'var(--bg-card)' }}>
         <LogIn size={14} />
         Login to Watch
       </button>
@@ -68,14 +79,11 @@ export default function WatchlistButton({ symbol, currentPrice = 0 }: Props) {
   }
 
   return (
-    <button
-      onClick={toggle}
-      disabled={working}
+    <button onClick={toggle} disabled={working}
       className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border transition-colors disabled:opacity-50"
       style={watched
         ? { backgroundColor: '#fefce8', color: '#b45309', borderColor: '#fde68a' }
-        : { backgroundColor: 'var(--bg-card)', color: 'var(--text-secondary)', borderColor: 'var(--bg-border)' }}
-    >
+        : { backgroundColor: 'var(--bg-card)', color: 'var(--text-secondary)', borderColor: 'var(--bg-border)' }}>
       <Star size={14} className={watched ? 'fill-amber-500 text-amber-500' : ''} />
       {watched ? 'Watching' : 'Add to Watchlist'}
     </button>

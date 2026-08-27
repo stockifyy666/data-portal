@@ -73,7 +73,7 @@ export default async function StockDetailPage({ params }: { params: Promise<Para
             Pakistan Stock Exchange
           </p>
         </div>
-        <WatchlistButton symbol={symbol} />
+        <WatchlistButton symbol={symbol} currentPrice={typeof overview?.price === 'number' ? overview.price : 0} />
       </div>
 
       {/* Tabbed detail view */}
