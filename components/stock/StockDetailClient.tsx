@@ -10,6 +10,7 @@ import {
 import { formatPrice, formatChange, formatPercent, formatVolume } from '@/lib/utils/format'
 import type { StockQuote } from '@/types/market'
 import { COMPANY_BRANDS } from '@/data/company-brands'
+import KMIBadge, { isKMI } from '@/components/ui/KMIBadge'
 
 /* ── Types ──────────────────────────────────────────────────────── */
 type Overview = Record<string, number | string>
@@ -1465,7 +1466,10 @@ export default function StockDetailClient({
                       {q.symbol.charAt(0)}
                     </div>
                     <div>
-                      <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{q.symbol}</p>
+                      <div className="flex items-center gap-1">
+                        <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{q.symbol}</p>
+                        {isKMI(q.indexKeys) && <KMIBadge />}
+                      </div>
                       <p className="text-[11px] truncate max-w-[220px]" style={{ color: 'var(--text-muted)' }}>{q.name}</p>
                     </div>
                   </div>

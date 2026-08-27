@@ -5,6 +5,10 @@
 
 import { NextResponse } from 'next/server'
 
+// Force dynamic so Vercel never caches this route — time must be computed fresh each request
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 function pad(n: number) { return n.toString().padStart(2, '0') }
 
 function fmtTime(h: number, m: number) {

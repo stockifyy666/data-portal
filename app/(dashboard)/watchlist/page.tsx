@@ -67,7 +67,7 @@ export default function WatchlistPage() {
   const [items,    setItems]    = useState<EnrichedItem[]>([])
   const [loading,  setLoading]  = useState(true)
   const [removing, setRemoving] = useState<string | null>(null)
-  const [view,     setView]     = useState<View>('list')
+  const [view,     setView]     = useState<View>('sector')
 
   const loadData = useCallback(async () => {
     setLoading(true)

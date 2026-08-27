@@ -111,11 +111,10 @@ export default function DashboardClient() {
     else { setSortCol(col); setSortDir('desc') }
   }
 
-  // Stocks filtered to selected index, excluding stale (volume=0) and rights issues
+  // Stocks filtered to selected index — exclude rights issues only, keep all price>0
   const indexStocks = useMemo(() => {
     return quotes.filter(q =>
       q.price > 0 &&
-      q.volume > 0 &&                            // must have traded today
       q.indexKeys?.includes(activeIndex.key) &&
       !/\(R\d*\)|\bRight\b/i.test(q.name) &&
       !/R\d*$/.test(q.symbol)
@@ -125,9 +124,9 @@ export default function DashboardClient() {
   const filtered = useMemo(() => {
     let list = [...indexStocks]
 
-    if (tab === 'gainers') list = list.filter(s => s.changePct > 0).sort((a, b) => b.changePct - a.changePct).slice(0, 100)
-    else if (tab === 'losers') list = list.filter(s => s.changePct < 0).sort((a, b) => a.changePct - b.changePct).slice(0, 100)
-    else if (tab === 'active') list = list.sort((a, b) => b.volume - a.volume).slice(0, 100)
+    if (tab === 'gainers') list = list.filter(s => s.changePct > 0).sort((a, b) => b.changePct - a.changePct)
+    else if (tab === 'losers') list = list.filter(s => s.changePct < 0).sort((a, b) => a.changePct - b.changePct)
+    else if (tab === 'active') list = list.filter(s => s.volume > 0).sort((a, b) => b.volume - a.volume)
 
     if (search.trim()) {
       const q = search.toUpperCase().trim()
