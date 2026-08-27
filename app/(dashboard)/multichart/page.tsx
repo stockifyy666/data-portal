@@ -27,30 +27,7 @@ const CHART_TYPES = [
   { label: 'Heikin',  value: '8' },
 ]
 
-/* ── TradingView script loader ─────────────────────────────────────── */
-const TV_SCRIPT_SRC = 'https://s3.tradingview.com/tv.js'
-
-function loadTvScript(): Promise<void> {
-  if (typeof window !== 'undefined' && (window as any).TradingView) return Promise.resolve()
-  return new Promise((resolve, reject) => {
-    const existing = document.querySelector(`script[src="${TV_SCRIPT_SRC}"]`)
-    if (existing) {
-      const check = setInterval(() => {
-        if ((window as any).TradingView) { clearInterval(check); resolve() }
-      }, 100)
-      setTimeout(() => { clearInterval(check); reject(new Error('timeout')) }, 10000)
-      return
-    }
-    const s = document.createElement('script')
-    s.src = TV_SCRIPT_SRC
-    s.async = true
-    s.onload = () => resolve()
-    s.onerror = reject
-    document.head.appendChild(s)
-  })
-}
-
-/* ── Single TradingView panel ──────────────────────────────────────── */
+/* ── Single TradingView panel — uses embed widget (no login required) ── */
 function ChartPanel({
   symbol, interval, chartType, theme, containerId,
 }: {
@@ -60,65 +37,48 @@ function ChartPanel({
   theme: string
   containerId: string
 }) {
-  const widgetRef = useRef<any>(null)
-  const [err, setErr] = useState<string | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    let cancelled = false
-    setErr(null)
+    const container = containerRef.current
+    if (!container) return
+    container.innerHTML = ''
 
-    async function init() {
-      try { await loadTvScript() }
-      catch { if (!cancelled) setErr('Failed to load TradingView.'); return }
-      if (cancelled || !(window as any).TradingView) return
+    const wrapper = document.createElement('div')
+    wrapper.className = 'tradingview-widget-container'
+    wrapper.style.cssText = 'width:100%;height:100%'
 
-      if (widgetRef.current) {
-        try { widgetRef.current.remove() } catch {}
-        widgetRef.current = null
-      }
+    const inner = document.createElement('div')
+    inner.className = 'tradingview-widget-container__widget'
+    inner.style.cssText = 'width:100%;height:100%'
+    wrapper.appendChild(inner)
 
-      const el = document.getElementById(containerId)
-      if (!el) return
-      el.innerHTML = ''
-
-      try {
-        widgetRef.current = new (window as any).TradingView.widget({
-          container_id:        containerId,
-          autosize:            true,
-          symbol:              tvSymbol(symbol),
-          interval,
-          timezone:            'Asia/Karachi',
-          theme,
-          style:               chartType,
-          locale:              'en',
-          toolbar_bg:          theme === 'dark' ? '#131720' : '#f8fafc',
-          enable_publishing:   false,
-          allow_symbol_change: true,
-          save_image:          false,
-          hide_side_toolbar:   true,
-          withdateranges:      false,
-          details:             false,
-          hotlist:             false,
-          calendar:            false,
-        })
-      } catch (e) {
-        if (!cancelled) setErr(String(e))
-      }
-    }
-
-    init()
-    return () => { cancelled = true }
+    const script = document.createElement('script')
+    script.type = 'text/javascript'
+    script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js'
+    script.async = true
+    script.innerHTML = JSON.stringify({
+      symbol:              `PSX:${symbol}`,
+      interval,
+      timezone:            'Asia/Karachi',
+      theme,
+      style:               chartType,
+      locale:              'en',
+      enable_publishing:   false,
+      allow_symbol_change: false,
+      hide_side_toolbar:   true,
+      save_image:          false,
+      height:              '100%',
+      width:               '100%',
+    })
+    wrapper.appendChild(script)
+    container.appendChild(wrapper)
   }, [symbol, interval, chartType, theme, containerId])
 
   return (
     <div className="relative flex flex-col rounded-2xl overflow-hidden"
       style={{ border: '1px solid var(--bg-border)', backgroundColor: 'var(--bg-card)', minHeight: 0 }}>
-      <div className="flex-1" style={{ minHeight: 0 }}>
-        {err
-          ? <div className="flex items-center justify-center h-full text-xs" style={{ color: 'var(--text-muted)' }}>{err}</div>
-          : <div id={containerId} style={{ width: '100%', height: '100%' }} />
-        }
-      </div>
+      <div ref={containerRef} className="flex-1" style={{ minHeight: 0, width: '100%', height: '100%' }} />
     </div>
   )
 }
@@ -133,14 +93,13 @@ export default function MultiChartPage() {
 
   useEffect(() => {
     function sync() {
-      const d = document.documentElement
-      const dark = d.dataset.theme === 'dark' ||
-        (!d.dataset.theme && window.matchMedia('(prefers-color-scheme: dark)').matches)
+      // ThemeProvider toggles the 'dark' class on <html>
+      const dark = document.documentElement.classList.contains('dark')
       setTvTheme(dark ? 'dark' : 'light')
     }
     sync()
     const obs = new MutationObserver(sync)
-    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class'] })
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
     return () => obs.disconnect()
   }, [])
 
