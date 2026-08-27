@@ -5,6 +5,7 @@ import Link                         from 'next/link'
 import { TrendingUp, TrendingDown } from 'lucide-react'
 import { formatPrice, formatPercent, formatVolume } from '@/lib/utils/format'
 import { cachedFetch } from '@/lib/utils/clientCache'
+import KMIBadge, { isKMI } from '@/components/ui/KMIBadge'
 
 type Mover = {
   symbol:    string
@@ -13,6 +14,7 @@ type Mover = {
   change:    number
   changePct: number
   volume:    number
+  indexKeys?: string[]
 }
 
 type Props = { type: 'gainers' | 'losers' }
@@ -90,9 +92,12 @@ export default function GainersLosers({ type }: Props) {
               onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.backgroundColor = 'transparent'}
             >
               <div className="flex-1">
-                <span className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>
-                  {m.symbol}
-                </span>
+                <div className="flex items-center gap-1">
+                  <span className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>
+                    {m.symbol}
+                  </span>
+                  {isKMI(m.indexKeys) && <KMIBadge />}
+                </div>
                 <p className="text-[10px] truncate max-w-[80px]" style={{ color: 'var(--text-muted)' }}>
                   {m.name}
                 </p>

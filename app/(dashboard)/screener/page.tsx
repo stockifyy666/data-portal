@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import Link                             from 'next/link'
 import { SlidersHorizontal, Search }    from 'lucide-react'
 import { formatPrice, formatPercent, formatVolume, getChangeColor } from '@/lib/utils/format'
 import { cachedFetch } from '@/lib/utils/clientCache'
 import type { StockQuote }              from '@/types/market'
+import KMIBadge, { isKMI }             from '@/components/ui/KMIBadge'
 
 type Filters = {
   minPrice:   string
@@ -53,12 +54,31 @@ type SortKey = 'price' | 'changePct' | 'volume' | 'eps' | 'pe' | 'dps'
 type SortDir = 'asc' | 'desc'
 
 export default function ScreenerPage() {
-  const [quotes,   setQuotes]   = useState<StockQuote[]>([])
-  const [loading,  setLoading]  = useState(true)
-  const [filters,  setFilters]  = useState<Filters>(DEFAULT_FILTERS)
-  const [search,   setSearch]   = useState('')
-  const [sortKey,  setSortKey]  = useState<SortKey | null>(null)
-  const [sortDir,  setSortDir]  = useState<SortDir>('desc')
+  const [quotes,      setQuotes]      = useState<StockQuote[]>([])
+  const [loading,     setLoading]     = useState(true)
+  const [filters,     setFilters]     = useState<Filters>(DEFAULT_FILTERS)
+  const [search,      setSearch]      = useState('')
+  const [sortKey,     setSortKey]     = useState<SortKey | null>(null)
+  const [sortDir,     setSortDir]     = useState<SortDir>('desc')
+  const [searchFocus, setSearchFocus] = useState(false)
+  const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const handleSearchFocus = useCallback(() => {
+    if (blurTimer.current) clearTimeout(blurTimer.current)
+    setSearchFocus(true)
+  }, [])
+
+  const handleSearchBlur = useCallback(() => {
+    blurTimer.current = setTimeout(() => setSearchFocus(false), 150)
+  }, [])
+
+  const dropResults = useMemo(() => {
+    if (!search.trim()) return []
+    const q = search.trim().toUpperCase()
+    return quotes
+      .filter(s => s.price > 0 && (s.symbol.includes(q) || s.name.toUpperCase().includes(q)))
+      .slice(0, 8)
+  }, [search, quotes])
 
   function handleSort(key: SortKey) {
     if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
@@ -130,13 +150,15 @@ export default function ScreenerPage() {
       </div>
 
       {/* Search by symbol / company name */}
-      <div className="relative">
+      <div className="relative" style={{ zIndex: 50 }}>
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-                style={{ color: 'var(--text-muted)' }} />
+                style={{ color: 'var(--text-muted)', zIndex: 1 }} />
         <input
           type="text"
           value={search}
           onChange={e => setSearch(e.target.value)}
+          onFocus={handleSearchFocus}
+          onBlur={handleSearchBlur}
           placeholder="Search by symbol or company name…"
           className="w-full pl-9 pr-4 py-2.5 rounded-lg border text-sm focus:outline-none transition-colors"
           style={{
@@ -153,6 +175,57 @@ export default function ScreenerPage() {
           >
             ✕
           </button>
+        )}
+
+        {/* Search dropdown */}
+        {searchFocus && dropResults.length > 0 && (
+          <div
+            className="absolute left-0 right-0 mt-1 rounded-xl shadow-2xl"
+            style={{
+              top: '100%',
+              backgroundColor: 'var(--bg-card)',
+              border: '1px solid var(--bg-border)',
+              zIndex: 60,
+              overflow: 'hidden',
+            }}
+          >
+            {dropResults.map(q => {
+              const up = q.changePct >= 0
+              return (
+                <Link
+                  key={q.symbol}
+                  href={`/stocks/${q.symbol}`}
+                  className="flex items-center justify-between px-4 py-3 hover:opacity-80 transition-opacity"
+                  style={{ borderBottom: '1px solid var(--bg-border)' }}
+                  onMouseDown={e => e.preventDefault()}
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-[10px] font-bold shrink-0"
+                      style={{ background: 'linear-gradient(135deg,#FEA500,#986300)' }}
+                    >
+                      {q.symbol.charAt(0)}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{q.symbol}</span>
+                        {isKMI(q.indexKeys) && <KMIBadge />}
+                      </div>
+                      <p className="text-[11px] truncate max-w-[260px]" style={{ color: 'var(--text-muted)' }}>{q.name}</p>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0 ml-4">
+                    <p className="text-sm font-bold font-number" style={{ color: 'var(--text-primary)' }}>
+                      {q.price.toFixed(2)}
+                    </p>
+                    <p className="text-[11px] font-semibold font-number" style={{ color: up ? '#16a34a' : '#dc2626' }}>
+                      {up ? '+' : ''}{q.changePct.toFixed(2)}%
+                    </p>
+                  </div>
+                </Link>
+              )
+            })}
+          </div>
         )}
       </div>
 

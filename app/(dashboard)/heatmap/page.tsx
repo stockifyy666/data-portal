@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import SectorHeatmap            from '@/components/market/SectorHeatmap'
-import CombinedHeatmap          from '@/components/market/CombinedHeatmap'
-import { cachedFetch }          from '@/lib/utils/clientCache'
+import { useState, useEffect }          from 'react'
+import SectorHeatmap                    from '@/components/market/SectorHeatmap'
+import CombinedHeatmap                  from '@/components/market/CombinedHeatmap'
+import { cachedFetch }                  from '@/lib/utils/clientCache'
 
 type HeatView = 'sector' | 'combined'
 type Status   = { isOpen: boolean; status: string; message: string; currentTime: string }
@@ -50,6 +50,7 @@ export default function HeatmapPage() {
 
   return (
     <div className="space-y-5 animate-data">
+      {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>

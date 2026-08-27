@@ -4,9 +4,9 @@ import { useState, useEffect } from 'react'
 import { Star, LogIn }         from 'lucide-react'
 import { useRouter }           from 'next/navigation'
 
-type Props = { symbol: string }
+type Props = { symbol: string; currentPrice?: number }
 
-export default function WatchlistButton({ symbol }: Props) {
+export default function WatchlistButton({ symbol, currentPrice = 0 }: Props) {
   const router = useRouter()
   const [watched,   setWatched]   = useState(false)
   const [loggedIn,  setLoggedIn]  = useState(true)
@@ -42,7 +42,7 @@ export default function WatchlistButton({ symbol }: Props) {
         const res = await fetch('/api/watchlist', {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ symbol }),
+          body:    JSON.stringify({ symbol, addedPrice: currentPrice }),
         })
         if (res.ok) setWatched(true)
       }

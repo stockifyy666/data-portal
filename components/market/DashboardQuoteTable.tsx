@@ -6,6 +6,7 @@ import { Search, ChevronLeft, ChevronRight } from 'lucide-react'
 import { formatPrice, formatChange, formatPercent, formatVolume, getChangeColor } from '@/lib/utils/format'
 import { cachedFetch } from '@/lib/utils/clientCache'
 import type { StockQuote } from '@/types/market'
+import KMIBadge, { isKMI } from '@/components/ui/KMIBadge'
 
 type Tab = 'all' | 'gainers' | 'losers' | 'active'
 const TABS: { label: string; value: Tab }[] = [
@@ -138,11 +139,14 @@ export default function DashboardQuoteTable() {
                       onMouseEnter={e => (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--bg-hover)'}
                       onMouseLeave={e => (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'}>
                     <td className="py-2 px-2">
-                      <Link href={`/stocks/${q.symbol}`}
-                            className="font-bold hover:underline"
-                            style={{ color: '#FEA500' }}>
-                        {q.symbol}
-                      </Link>
+                      <div className="flex items-center gap-1">
+                        <Link href={`/stocks/${q.symbol}`}
+                              className="font-bold hover:underline"
+                              style={{ color: '#FEA500' }}>
+                          {q.symbol}
+                        </Link>
+                        {isKMI(q.indexKeys) && <KMIBadge />}
+                      </div>
                     </td>
                     <td className="py-2 px-2 max-w-[140px] truncate" style={{ color: 'var(--text-secondary)' }}>
                       {q.name}

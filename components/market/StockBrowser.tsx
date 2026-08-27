@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import Link                             from 'next/link'
 import { Search, X, ChevronDown }       from 'lucide-react'
 import { formatPrice, formatChange, formatPercent, formatVolume, getChangeColor }
   from '@/lib/utils/format'
 import { cachedFetch }  from '@/lib/utils/clientCache'
 import type { StockQuote } from '@/types/market'
+import KMIBadge, { isKMI } from '@/components/ui/KMIBadge'
 
 const INDEX_OPTIONS = [
   { value: '',         label: 'All Indices' },
@@ -80,17 +81,17 @@ export default function StockBrowser() {
   const [indexKey,   setIndexKey]   = useState('')
   const [sectorCode, setSectorCode] = useState('')
   const [search,     setSearch]     = useState('')
-  const [page,       setPage]       = useState(1)
-  const [dropOpen,   setDropOpen]   = useState(false)
-  const searchRef = useRef<HTMLDivElement>(null)
+  const [page,        setPage]        = useState(1)
+  const [searchFocus, setSearchFocus] = useState(false)
+  const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(e.target as Node))
-        setDropOpen(false)
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
+  const handleSearchFocus = useCallback(() => {
+    if (blurTimer.current) clearTimeout(blurTimer.current)
+    setSearchFocus(true)
+  }, [])
+
+  const handleSearchBlur = useCallback(() => {
+    blurTimer.current = setTimeout(() => setSearchFocus(false), 150)
   }, [])
 
   const dropResults = useMemo(() => {
@@ -185,7 +186,7 @@ export default function StockBrowser() {
         </div>
 
         {/* Search */}
-        <div className="flex flex-col gap-1 flex-1 min-w-[180px]" style={{ position: 'relative', zIndex: 40 }} ref={searchRef}>
+        <div className="flex flex-col gap-1 flex-1 min-w-[180px]" style={{ position: 'relative', zIndex: 50 }}>
           <label className="text-[10px] font-semibold uppercase tracking-wider"
                  style={{ color: 'var(--text-muted)' }}>
             Search
@@ -196,8 +197,9 @@ export default function StockBrowser() {
             <input
               type="text"
               value={search}
-              onChange={e => { setSearch(e.target.value); setDropOpen(true) }}
-              onFocus={() => setDropOpen(true)}
+              onChange={e => setSearch(e.target.value)}
+              onFocus={handleSearchFocus}
+              onBlur={handleSearchBlur}
               placeholder="Symbol or name…"
               className="w-full rounded-lg border pl-8 pr-3 py-2 text-sm
                          focus:outline-none transition-colors"
@@ -207,42 +209,50 @@ export default function StockBrowser() {
                 color:           'var(--text-primary)',
               }}
             />
-          </div>
 
-          {/* Dropdown */}
-          {dropOpen && dropResults.length > 0 && (
-            <div className="absolute top-full left-0 right-0 mt-1 rounded-xl overflow-hidden shadow-2xl"
-              style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--bg-border)' }}>
-              {dropResults.map(q => {
-                const up = q.changePct >= 0
-                return (
-                  <Link key={q.symbol} href={`/stocks/${q.symbol}`}
-                    className="flex items-center justify-between px-4 py-2.5 hover:opacity-80 transition-opacity"
-                    style={{ borderBottom: '1px solid var(--bg-border)' }}
-                    onClick={() => { setDropOpen(false) }}>
-                    <div className="flex items-center gap-3">
-                      <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-[10px] font-bold shrink-0"
-                        style={{ background: 'linear-gradient(135deg,#FEA500,#986300)' }}>
-                        {q.symbol.charAt(0)}
+            {/* Dropdown */}
+            {searchFocus && dropResults.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-1 rounded-xl shadow-2xl"
+                style={{
+                  backgroundColor: 'var(--bg-card)',
+                  border: '1px solid var(--bg-border)',
+                  zIndex: 60,
+                  overflow: 'hidden',
+                }}>
+                {dropResults.map(q => {
+                  const up = q.changePct >= 0
+                  return (
+                    <Link key={q.symbol} href={`/stocks/${q.symbol}`}
+                      className="flex items-center justify-between px-4 py-2.5 hover:opacity-80 transition-opacity"
+                      style={{ borderBottom: '1px solid var(--bg-border)' }}
+                      onMouseDown={e => e.preventDefault()}>
+                      <div className="flex items-center gap-3">
+                        <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-[10px] font-bold shrink-0"
+                          style={{ background: 'linear-gradient(135deg,#FEA500,#986300)' }}>
+                          {q.symbol.charAt(0)}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-1">
+                            <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{q.symbol}</p>
+                            {isKMI(q.indexKeys) && <KMIBadge />}
+                          </div>
+                          <p className="text-[11px] truncate max-w-[200px]" style={{ color: 'var(--text-muted)' }}>{q.name}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{q.symbol}</p>
-                        <p className="text-[11px] truncate max-w-[200px]" style={{ color: 'var(--text-muted)' }}>{q.name}</p>
+                      <div className="text-right">
+                        <p className="text-sm font-bold font-number" style={{ color: 'var(--text-primary)' }}>
+                          {q.price.toFixed(2)}
+                        </p>
+                        <p className="text-[11px] font-semibold font-number" style={{ color: up ? '#16a34a' : '#dc2626' }}>
+                          {up ? '+' : ''}{q.changePct.toFixed(2)}%
+                        </p>
                       </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-bold font-number" style={{ color: 'var(--text-primary)' }}>
-                        {q.price.toFixed(2)}
-                      </p>
-                      <p className="text-[11px] font-semibold font-number" style={{ color: up ? '#16a34a' : '#dc2626' }}>
-                        {up ? '+' : ''}{q.changePct.toFixed(2)}%
-                      </p>
-                    </div>
-                  </Link>
-                )
-              })}
-            </div>
-          )}
+                    </Link>
+                  )
+                })}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Clear button */}
@@ -317,11 +327,14 @@ export default function StockBrowser() {
                     onMouseLeave={e => (e.currentTarget as HTMLTableRowElement).style.backgroundColor = 'transparent'}
                   >
                     <td className="py-2 px-2">
-                      <Link href={`/stocks/${q.symbol}`}
-                            className="font-bold hover:underline"
-                            style={{ color: '#FEA500' }}>
-                        {q.symbol}
-                      </Link>
+                      <div className="flex items-center gap-1">
+                        <Link href={`/stocks/${q.symbol}`}
+                              className="font-bold hover:underline"
+                              style={{ color: '#FEA500' }}>
+                          {q.symbol}
+                        </Link>
+                        {isKMI(q.indexKeys) && <KMIBadge />}
+                      </div>
                     </td>
                     <td className="py-2 px-2 max-w-[160px] truncate"
                         style={{ color: 'var(--text-secondary)' }}>

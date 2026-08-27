@@ -28,13 +28,6 @@ const SECTOR_NAMES: Record<string, string> = {
   '0838': 'Real Estate',          '0839': 'Textile (Other)',
 }
 
-const INDICES = [
-  { value: 'ALLSHR',    label: 'All Share' },
-  { value: 'KSE100',    label: 'KSE-100'   },
-  { value: 'KSE30',     label: 'KSE-30'    },
-  { value: 'KMI30',     label: 'KMI-30'    },
-  { value: 'KMIALLSHR', label: 'KMI All'   },
-]
 
 const CONTAINER_H = 540   // px height of the heatmap canvas
 
@@ -99,6 +92,14 @@ type SectorData = {
   code: string; name: string
   stocks: StockQuote[]; totalVolume: number
 }
+
+const INDICES = [
+  { value: 'KSE100',    label: 'KSE-100'      },
+  { value: 'KSE30',     label: 'KSE-30'       },
+  { value: 'KMI30',     label: 'KMI-30'       },
+  { value: 'KMIALLSHR', label: 'KMI All Share' },
+  { value: 'ALLSHR',    label: 'All Share'     },
+]
 
 /* ── Main Component ───────────────────────────────────────────────── */
 export default function CombinedHeatmap() {
@@ -166,11 +167,11 @@ export default function CombinedHeatmap() {
   return (
     <div className="space-y-3">
 
-      {/* Index tabs */}
+      {/* Index selector */}
       <div className="flex gap-1 flex-wrap">
         {INDICES.map(idx => (
           <button key={idx.value} onClick={() => setIndex(idx.value)}
-            className="px-3 py-1 rounded-lg text-xs font-semibold transition-colors"
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
             style={index === idx.value
               ? { background: 'linear-gradient(135deg,#FEA500,#986300)', color: 'white' }
               : { backgroundColor: 'var(--bg-hover)', color: 'var(--text-secondary)' }}>

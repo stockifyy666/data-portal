@@ -25,6 +25,7 @@ export async function GET(request: Request) {
       change:    s.ch ?? 0,
       changePct: +((s.pch ?? 0) * 100).toFixed(2),
       volume:    s.v  ?? 0,
+      indexKeys: Array.isArray(s.li) ? s.li : [],
     }))
 
     const movers = stocks

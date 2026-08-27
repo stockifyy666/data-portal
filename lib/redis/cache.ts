@@ -27,11 +27,11 @@ import { redis } from './client'
 //   Static data (profiles, financials) barely counts — cached 24 hours.
 // =============================================================================
 export const TTL_SECONDS = {
-  // Live market data — refreshes every 5 minutes (market hours only)
-  LIVE_QUOTES:      5  * 60,   // 300 seconds = 5 minutes
-  INDICES:          5  * 60,   // 300 seconds = 5 minutes
-  GAINERS_LOSERS:   5  * 60,   // 300 seconds = 5 minutes
-  VOLUME_LEADERS:   5  * 60,   // 300 seconds = 5 minutes
+  // Live market data — refreshes every 15 minutes (keeps well under 20 req/hr limit)
+  LIVE_QUOTES:      15 * 60,   // 900 seconds = 15 minutes
+  INDICES:          15 * 60,   // 900 seconds = 15 minutes
+  GAINERS_LOSERS:   15 * 60,   // 900 seconds = 15 minutes
+  VOLUME_LEADERS:   15 * 60,   // 900 seconds = 15 minutes
 
   // Market state — changes rarely, check every 10 minutes
   MARKET_STATUS:    10 * 60,   // 600 seconds = 10 minutes
