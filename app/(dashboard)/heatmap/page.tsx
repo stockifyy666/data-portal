@@ -3,6 +3,7 @@
 import { useState, useEffect }          from 'react'
 import SectorHeatmap                    from '@/components/market/SectorHeatmap'
 import CombinedHeatmap                  from '@/components/market/CombinedHeatmap'
+import SectorPerformance                from '@/components/market/SectorPerformance'
 import { cachedFetch }                  from '@/lib/utils/clientCache'
 
 type HeatView = 'sector' | 'combined'
@@ -23,14 +24,12 @@ function MarketBadge() {
 
   if (!status) return <div className="h-7 w-32 rounded-full animate-pulse" style={{ backgroundColor: 'var(--bg-hover)' }} />
 
-  const timeStr = new Date(status.currentTime).toLocaleTimeString('en-PK', {
-    timeZone: 'Asia/Karachi', hour: '2-digit', minute: '2-digit',
-  })
+  const timeStr = status.currentTime
 
   return (
     <div className="flex items-center gap-2">
       <span className="text-xs hidden sm:block" style={{ color: 'var(--text-muted)' }}>
-        {timeStr} PKT
+        {timeStr}
       </span>
       <div className={`
         inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border
@@ -84,6 +83,9 @@ export default function HeatmapPage() {
 
       {view === 'sector'   && <SectorHeatmap />}
       {view === 'combined' && <CombinedHeatmap />}
+
+      {/* Sector Performance — combined view only */}
+      {view === 'combined' && <SectorPerformance />}
     </div>
   )
 }

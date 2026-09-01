@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import Link                             from 'next/link'
@@ -209,9 +209,9 @@ export default function ScreenerPage() {
                     <div>
                       <div className="flex items-center gap-1">
                         <span className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{q.symbol}</span>
-                        {isKMI(q.indexKeys) && <KMIBadge />}
+                        {isKMI(q.indexKeys, q.symbol) && <KMIBadge />}
                       </div>
-                      <p className="text-[11px] truncate max-w-[260px]" style={{ color: 'var(--text-muted)' }}>{q.name}</p>
+                      <Link href={`/stocks/${q.symbol}`} className="text-[11px] truncate max-w-[260px] hover:underline block" style={{ color: 'var(--text-muted)' }}>{q.name}</Link>
                     </div>
                   </div>
                   <div className="text-right shrink-0 ml-4">
@@ -360,8 +360,9 @@ export default function ScreenerPage() {
                         {q.symbol}
                       </Link>
                     </td>
-                    <td className="py-2.5 px-2 max-w-[120px] truncate"
-                        style={{ color: 'var(--text-secondary)' }}>{q.name}</td>
+                    <td className="py-2.5 px-2 max-w-[120px] truncate">
+                      <Link href={`/stocks/${q.symbol}`} className="hover:underline" style={{ color: 'var(--text-secondary)' }}>{q.name}</Link>
+                    </td>
                     <td className="py-2.5 px-2 font-number font-semibold"
                         style={{ color: 'var(--text-primary)' }}>{formatPrice(q.price)}</td>
                     <td className={`py-2.5 px-2 font-number font-semibold ${getChangeColor(q.changePct)}`}>

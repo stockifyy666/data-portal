@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect, useMemo } from 'react'
 import Link                              from 'next/link'
@@ -129,7 +129,7 @@ export default function GainersLosers({ type }: Props) {
                   <span className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>
                     {m.symbol}
                   </span>
-                  {isKMI(m.indexKeys) && <KMIBadge />}
+                  {isKMI(m.indexKeys, m.symbol) && <KMIBadge />}
                 </div>
                 <p className="text-[10px] truncate max-w-[80px]" style={{ color: 'var(--text-muted)' }}>
                   {m.name}

@@ -52,7 +52,10 @@ export async function GET() {
     }> = {}
 
     for (const [symbol, s] of Object.entries(eq) as [string, any][]) {
-      if (!s.c || s.c <= 0) continue           // skip stocks with no price
+      if (!s.c || s.c <= 0) continue
+      // skip right shares — they have extreme % moves that distort sector averages
+      const nm = String(s.nm ?? '')
+      if (/\(R\d*\)|\bRight\b/i.test(nm) || /R\d*$/.test(symbol)) continue
       const rawCode = s.sc != null ? String(s.sc).padStart(4, '0') : ''
       const code    = rawCode || 'OTHER'
       const label  = SECTOR_NAMES[code] ?? `Sector ${code}`

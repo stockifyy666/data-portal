@@ -1,10 +1,10 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import Link from 'next/link'
 import {
   Briefcase, TrendingUp, TrendingDown, Plus, Trash2, X,
-  Search, Loader2, Calendar, History, ArrowDownRight,
+  Search, Loader2, Calendar, History, ArrowDownRight, Download,
 } from 'lucide-react'
 import { formatPrice, getChangeColor } from '@/lib/utils/format'
 import { cachedFetch } from '@/lib/utils/clientCache'
@@ -67,11 +67,11 @@ interface AddModalProps {
 function AddModal({ quotes, onClose, onAdd }: AddModalProps) {
   const [search,     setSearch]     = useState('')
   const [selected,   setSelected]   = useState<StockQuote | null>(null)
-  const [qty,        setQty]        = useState('')
-  const [price,      setPrice]      = useState('')
-  const [commission, setCommission] = useState('')
-  const [saving,     setSaving]     = useState(false)
-  const [err,        setErr]        = useState('')
+  const [qty,           setQty]           = useState('')
+  const [price,         setPrice]         = useState('')
+  const [commissionPct, setCommissionPct] = useState('0.15')
+  const [saving,        setSaving]        = useState(false)
+  const [err,           setErr]           = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => { inputRef.current?.focus() }, [])
@@ -89,17 +89,20 @@ function AddModal({ quotes, onClose, onAdd }: AddModalProps) {
   }
 
   const preview = useMemo(() => {
-    const q = parseFloat(qty), p = parseFloat(price), c = parseFloat(commission) || 0
+    const q = parseFloat(qty), p = parseFloat(price), pct = parseFloat(commissionPct) || 0
     if (!q || q <= 0 || !p || p <= 0) return null
     const investment = q * p
-    const total = investment + c
-    return { investment, commission: c, total, effectivePrice: total / q }
-  }, [qty, price, commission])
+    const commRs = investment * (pct / 100)
+    const total = investment + commRs
+    return { investment, commissionPct: pct, commissionRs: commRs, total, effectivePrice: total / q }
+  }, [qty, price, commissionPct])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!selected) { setErr('Please select a stock'); return }
-    const qtyN = parseFloat(qty), priceN = parseFloat(price), commN = parseFloat(commission) || 0
+    const qtyN = parseFloat(qty), priceN = parseFloat(price)
+    const pctN = parseFloat(commissionPct) || 0
+    const commN = qtyN * priceN * (pctN / 100)
     if (!qtyN || qtyN <= 0)     { setErr('Enter a valid quantity'); return }
     if (!priceN || priceN <= 0) { setErr('Enter a valid purchase price'); return }
     setSaving(true); setErr('')
@@ -143,7 +146,7 @@ function AddModal({ quotes, onClose, onAdd }: AddModalProps) {
                     style={{ borderBottom: '1px solid var(--bg-border)' }}>
                     <span className="flex items-center gap-1">
                       <span className="font-bold" style={{ color: '#FEA500' }}>{q.symbol}</span>
-                      {isKMI(q.indexKeys) && <KMIBadge />}
+                      {isKMI(q.indexKeys, q.symbol) && <KMIBadge />}
                       <span className="ml-1 truncate max-w-[180px] inline-block align-bottom"
                             style={{ color: 'var(--text-secondary)' }}>{q.name}</span>
                     </span>
@@ -181,16 +184,21 @@ function AddModal({ quotes, onClose, onAdd }: AddModalProps) {
             </div>
           </div>
 
-          {/* Commission */}
+          {/* Commission % */}
           <div>
             <label className="block text-[10px] uppercase tracking-wider mb-1.5 font-semibold"
                    style={{ color: 'var(--text-muted)' }}>
-              Commission / Brokerage (Rs) <span style={{ fontWeight: 400 }}>— optional</span>
+              Commission / Brokerage (%) <span style={{ fontWeight: 400 }}>— default 0.15%</span>
             </label>
-            <input type="number" min="0" step="0.01" value={commission} onChange={e => setCommission(e.target.value)}
-              placeholder="e.g. 450.00"
-              className="w-full px-3 py-2 text-sm rounded-lg outline-none font-number"
-              style={{ backgroundColor: 'var(--bg-page)', border: '1px solid var(--bg-border)', color: 'var(--text-primary)' }} />
+            <div className="relative">
+              <input type="number" min="0" max="5" step="0.01" value={commissionPct}
+                onChange={e => setCommissionPct(e.target.value)}
+                placeholder="e.g. 0.15"
+                className="w-full px-3 py-2 pr-8 text-sm rounded-lg outline-none font-number"
+                style={{ backgroundColor: 'var(--bg-page)', border: '1px solid var(--bg-border)', color: 'var(--text-primary)' }} />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold"
+                    style={{ color: 'var(--text-muted)' }}>%</span>
+            </div>
           </div>
 
           {err && <p className="text-xs text-red-500">{err}</p>}
@@ -203,17 +211,17 @@ function AddModal({ quotes, onClose, onAdd }: AddModalProps) {
                 <span style={{ color: 'var(--text-muted)' }}>Investment</span>
                 <span className="font-number" style={{ color: 'var(--text-primary)' }}>{fmtPKR(preview.investment)}</span>
               </div>
-              {preview.commission > 0 && (
+              {preview.commissionRs > 0 && (
                 <div className="flex justify-between">
-                  <span style={{ color: 'var(--text-muted)' }}>Commission</span>
-                  <span className="font-number" style={{ color: '#dc2626' }}>+ {fmtPKR(preview.commission)}</span>
+                  <span style={{ color: 'var(--text-muted)' }}>Commission ({preview.commissionPct}%)</span>
+                  <span className="font-number" style={{ color: '#dc2626' }}>+ {fmtPKR(preview.commissionRs)}</span>
                 </div>
               )}
               <div className="flex justify-between pt-1" style={{ borderTop: '1px solid var(--bg-border)' }}>
                 <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>Total Cost</span>
                 <span className="font-number font-bold" style={{ color: 'var(--text-primary)' }}>{fmtPKR(preview.total)}</span>
               </div>
-              {preview.commission > 0 && (
+              {preview.commissionRs > 0 && (
                 <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
                   Effective avg: <span className="font-number" style={{ color: 'var(--text-primary)' }}>Rs {preview.effectivePrice.toFixed(2)}/share</span>
                 </p>
@@ -249,25 +257,28 @@ interface SellModalProps {
 }
 
 function SellModal({ holding, onClose, onSell }: SellModalProps) {
-  const [qty,        setQty]        = useState(String(holding.quantity))
-  const [sellPrice,  setSellPrice]  = useState(holding.ltp > 0 ? holding.ltp.toFixed(2) : '')
-  const [commission, setCommission] = useState('')
-  const [saving,     setSaving]     = useState(false)
-  const [err,        setErr]        = useState('')
+  const [qty,           setQty]           = useState(String(holding.quantity))
+  const [sellPrice,     setSellPrice]     = useState(holding.ltp > 0 ? holding.ltp.toFixed(2) : '')
+  const [commissionPct, setCommissionPct] = useState('0.15')
+  const [saving,        setSaving]        = useState(false)
+  const [err,           setErr]           = useState('')
 
   const preview = useMemo(() => {
-    const q = parseFloat(qty), sp = parseFloat(sellPrice), c = parseFloat(commission) || 0
+    const q = parseFloat(qty), sp = parseFloat(sellPrice), pct = parseFloat(commissionPct) || 0
     if (!q || q <= 0 || !sp || sp <= 0) return null
     const cost        = q * holding.average_price
-    const proceeds    = q * sp - c
+    const commRs      = q * sp * (pct / 100)
+    const proceeds    = q * sp - commRs
     const realizedPnl = proceeds - cost
     const returnPct   = cost > 0 ? (realizedPnl / cost) * 100 : 0
-    return { cost, proceeds, commission: c, realizedPnl, returnPct }
-  }, [qty, sellPrice, commission, holding.average_price])
+    return { cost, proceeds, commissionPct: pct, commissionRs: commRs, realizedPnl, returnPct }
+  }, [qty, sellPrice, commissionPct, holding.average_price])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    const qtyN = parseFloat(qty), spN = parseFloat(sellPrice), commN = parseFloat(commission) || 0
+    const qtyN = parseFloat(qty), spN = parseFloat(sellPrice)
+    const pctN = parseFloat(commissionPct) || 0
+    const commN = qtyN * spN * (pctN / 100)
     if (!qtyN || qtyN <= 0)              { setErr('Enter a valid quantity'); return }
     if (qtyN > holding.quantity)         { setErr(`Max quantity is ${holding.quantity}`); return }
     if (!spN || spN <= 0)               { setErr('Enter a valid sell price'); return }
@@ -326,17 +337,21 @@ function SellModal({ holding, onClose, onSell }: SellModalProps) {
             </div>
           </div>
 
-          {/* Commission */}
+          {/* Commission % */}
           <div>
             <label className="block text-[10px] uppercase tracking-wider mb-1.5 font-semibold"
                    style={{ color: 'var(--text-muted)' }}>
-              Commission / Brokerage (Rs) <span style={{ fontWeight: 400 }}>— optional</span>
+              Commission / Brokerage (%) <span style={{ fontWeight: 400 }}>— default 0.15%</span>
             </label>
-            <input type="number" min="0" step="0.01"
-              value={commission} onChange={e => setCommission(e.target.value)}
-              placeholder="e.g. 450.00"
-              className="w-full px-3 py-2 text-sm rounded-lg outline-none font-number"
-              style={{ backgroundColor: 'var(--bg-page)', border: '1px solid var(--bg-border)', color: 'var(--text-primary)' }} />
+            <div className="relative">
+              <input type="number" min="0" max="5" step="0.01"
+                value={commissionPct} onChange={e => setCommissionPct(e.target.value)}
+                placeholder="e.g. 0.15"
+                className="w-full px-3 py-2 pr-8 text-sm rounded-lg outline-none font-number"
+                style={{ backgroundColor: 'var(--bg-page)', border: '1px solid var(--bg-border)', color: 'var(--text-primary)' }} />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold"
+                    style={{ color: 'var(--text-muted)' }}>%</span>
+            </div>
           </div>
 
           {err && <p className="text-xs text-red-500">{err}</p>}
@@ -353,10 +368,10 @@ function SellModal({ holding, onClose, onSell }: SellModalProps) {
                 <span style={{ color: 'var(--text-muted)' }}>Gross Proceeds</span>
                 <span className="font-number" style={{ color: 'var(--text-primary)' }}>{fmtPKR(parseFloat(qty) * parseFloat(sellPrice))}</span>
               </div>
-              {preview.commission > 0 && (
+              {preview.commissionRs > 0 && (
                 <div className="flex justify-between">
-                  <span style={{ color: 'var(--text-muted)' }}>Commission</span>
-                  <span className="font-number" style={{ color: '#dc2626' }}>− {fmtPKR(preview.commission)}</span>
+                  <span style={{ color: 'var(--text-muted)' }}>Commission ({preview.commissionPct}%)</span>
+                  <span className="font-number" style={{ color: '#dc2626' }}>− {fmtPKR(preview.commissionRs)}</span>
                 </div>
               )}
               <div className="flex justify-between pt-1 font-semibold" style={{ borderTop: '1px solid var(--bg-border)' }}>
@@ -398,6 +413,7 @@ export default function PortfolioPage() {
   const [holdings,      setHoldings]      = useState<EnrichedHolding[]>([])
   const [transactions,  setTransactions]  = useState<Transaction[]>([])
   const [quotes,        setQuotes]        = useState<StockQuote[]>([])
+  const [kse100Chg,     setKse100Chg]     = useState<number | null>(null)
   const [loading,       setLoading]       = useState(true)
   const [histLoading,   setHistLoading]   = useState(false)
   const [error,         setError]         = useState('')
@@ -422,10 +438,13 @@ export default function PortfolioPage() {
   async function loadData() {
     setLoading(true); setError('')
     try {
-      const [portRes, quotesJson] = await Promise.all([
+      const [portRes, quotesJson, indicesJson] = await Promise.all([
         fetch('/api/portfolio'),
         cachedFetch<{ quotes: StockQuote[] }>('/api/market/quotes', 5 * 60_000),
+        cachedFetch<{ indices: { id: string; changePct: number }[] }>('/api/market/indices', 5 * 60_000).catch(() => ({ indices: [] })),
       ])
+      const kse100 = indicesJson.indices?.find((i: any) => i.key === 'KSE100')
+      if (kse100) setKse100Chg(kse100.changePct)
       if (!portRes.ok) throw new Error('Failed to load portfolio')
       const portJson = await portRes.json()
       const rawHoldings: Holding[]  = portJson.data?.holdings ?? []
@@ -615,7 +634,7 @@ export default function PortfolioPage() {
             <table className="w-full text-xs">
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--bg-border)' }}>
-                  {['Symbol','Company','Qty','Avg Price','Investment','LTP','Mkt Value','P&L','Today P&L','Return','Added',''].map(col => (
+                  {['Symbol','Company','Qty','Avg Price','Investment','LTP','Mkt Value','P&L','Today P&L','vs KSE100','Return','Added',''].map(col => (
                     <th key={col}
                         className="text-left py-2 px-2 text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap"
                         style={{ color: 'var(--text-muted)' }}>{col}</th>
@@ -643,10 +662,10 @@ export default function PortfolioPage() {
                           <Link href={`/stocks/${h.symbol}`} className="font-bold hover:underline" style={{ color: '#FEA500' }}>
                             {h.symbol}
                           </Link>
-                          {isKMI(h.indexKeys) && <KMIBadge />}
+                          {isKMI(h.indexKeys, h.symbol) && <KMIBadge />}
                         </div>
                       </td>
-                      <td className="py-2.5 px-2 max-w-[120px] truncate" style={{ color: 'var(--text-secondary)' }}>{h.name}</td>
+                      <td className="py-2.5 px-2 max-w-[120px] truncate"><Link href={`/stocks/${h.symbol}`} className="hover:underline" style={{ color: 'var(--text-secondary)' }}>{h.name}</Link></td>
                       <td className="py-2.5 px-2 font-number" style={{ color: 'var(--text-secondary)' }}>{h.quantity.toLocaleString()}</td>
                       <td className="py-2.5 px-2 font-number" style={{ color: 'var(--text-secondary)' }}>{formatPrice(h.average_price)}</td>
                       <td className="py-2.5 px-2 font-number font-semibold" style={{ color: 'var(--text-primary)' }}>{fmtPKR(cost)}</td>
@@ -657,6 +676,20 @@ export default function PortfolioPage() {
                       </td>
                       <td className={`py-2.5 px-2 font-number font-semibold ${todayUp ? 'text-green-600' : 'text-red-500'}`}>
                         {h.ltp > 0 && h.prevClose > 0 ? `${todayUp?'+':''}${fmtPKR(todayPnl)}` : '—'}
+                      </td>
+                      <td className="py-2.5 px-2 font-number text-xs">
+                        {h.ltp > 0 && h.prevClose > 0 && kse100Chg !== null ? (() => {
+                          const stockChgPct = ((h.ltp - h.prevClose) / h.prevClose) * 100
+                          const diff = stockChgPct - kse100Chg
+                          const better = diff >= 0
+                          return (
+                            <span className="flex items-center gap-0.5 font-semibold"
+                                  style={{ color: better ? '#16a34a' : '#dc2626' }}>
+                              {better ? <TrendingUp size={10}/> : <TrendingDown size={10}/>}
+                              {better?'+':''}{diff.toFixed(2)}%
+                            </span>
+                          )
+                        })() : <span style={{ color: 'var(--text-muted)' }}>—</span>}
                       </td>
                       <td className={`py-2.5 px-2 font-number ${clr}`}>
                         {h.ltp > 0
@@ -718,9 +751,29 @@ export default function PortfolioPage() {
               {/* Realized P&L summary */}
               <div className="flex items-center justify-between mb-4 pb-3"
                    style={{ borderBottom: '1px solid var(--bg-border)' }}>
-                <p className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-                  {transactions.length} trade{transactions.length !== 1 ? 's' : ''} recorded
-                </p>
+                <div className="flex items-center gap-3">
+                  <p className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+                    {transactions.length} trade{transactions.length !== 1 ? 's' : ''} recorded
+                  </p>
+                  <button
+                    onClick={() => {
+                      const headers = ['Symbol','Qty Sold','Buy Price','Sell Price','Commission (Rs)','Realized P&L','Return %','Sold On']
+                      const rows = transactions.map(t => {
+                        const realized = (t.quantity * t.sell_price - t.commission) - (t.quantity * t.buy_price)
+                        const retPct = t.quantity * t.buy_price > 0 ? (realized / (t.quantity * t.buy_price) * 100).toFixed(2) : '0'
+                        return [t.symbol, t.quantity, t.buy_price.toFixed(2), t.sell_price.toFixed(2), t.commission.toFixed(2), realized.toFixed(2), retPct, fmtDate(t.sold_at)]
+                      })
+                      const csv = [headers, ...rows].map(r => r.map(v => `"${v}"`).join(',')).join('\n')
+                      const blob = new Blob([csv], { type: 'text/csv' })
+                      const url = URL.createObjectURL(blob)
+                      const a = document.createElement('a'); a.href = url; a.download = 'portfolio_history.csv'; a.click()
+                      URL.revokeObjectURL(url)
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all hover:opacity-80"
+                    style={{ backgroundColor: 'var(--bg-hover)', border: '1px solid var(--bg-border)', color: 'var(--text-secondary)' }}>
+                    <Download size={11} /> Export CSV
+                  </button>
+                </div>
                 <div className="text-right">
                   <p className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Total Realized P&L</p>
                   <p className="text-base font-bold font-number" style={{ color: realizedPnl >= 0 ? '#16a34a' : '#dc2626' }}>

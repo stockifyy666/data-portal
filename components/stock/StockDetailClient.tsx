@@ -58,6 +58,7 @@ const TABS = [
   { id: 'shareholders',  label: 'Shareholders',     Icon: Users      },
   { id: 'news',          label: 'News',             Icon: Newspaper  },
   { id: 'announcements', label: 'Announcements',    Icon: Bell       },
+  { id: 'report',        label: 'Company Report',   Icon: FileText   },
 ] as const
 
 type TabId = typeof TABS[number]['id']
@@ -473,60 +474,60 @@ function MetricModal({
 
 /* ── Fundamentals section definitions ─────────────────────────────── */
 const FUND_SECTIONS: { heading: string; match: (lbl: string) => boolean }[] = [
-  // ── 1. Equity Ratios ────────────────────────────────────────────────
-  {
-    heading: 'Equity Ratios',
-    match: l => /book value(?! per share)|book value growth|exp.*book value|price to book value|exp.*price to book|return on equity|exp.*return on equity|retention ratio|exp.*retention ratio|equity to assets|return on assets|return on cap|roce|roa\b|roe\b/i.test(l),
-  },
-  // ── 2. Dividends ────────────────────────────────────────────────────
-  {
-    heading: 'Dividends',
-    match: l => /dividend|payout ratio|exp.*payout|dividend yield|exp.*yield|dividend cover|exp.*dividend/i.test(l),
-  },
-  // ── 3. Cash ─────────────────────────────────────────────────────────
-  {
-    heading: 'Cash',
-    match: l => /cash flow per share|cash per share|free cash|operating cash|fcf/i.test(l),
-  },
-  // ── 4. Earnings ─────────────────────────────────────────────────────
+  // ── 1. Earnings ─────────────────────────────────────────────────────
   {
     heading: 'Earnings',
-    match: l => /\beps\b|earnings per share|latest eps|eps last quarter|last annual eps|price.?to.?earn|price earning|p\/e|exp.*earn|exp.*p\/e|earning growth|peg ratio/i.test(l),
+    match: l => /\beps\b|earnings per share|latest eps|eps last quarter|last annual eps|price.?to.?earn|price earning|p\/e|exp.*earn|exp.*p\/e|earning growth|peg ratio|\bpeg\b/i.test(l),
   },
-  // ── 5. Important Ratios ─────────────────────────────────────────────
+  // ── 2. Important Ratios ─────────────────────────────────────────────
   {
     heading: 'Important Ratios',
-    match: l => /book value per share|debt.?to.?equity|debt.equity|xprice|price date|market price|price to book|p\/b/i.test(l),
+    match: l => /market price per share|book value per share|price.?book ratio|price to book|price to sales|sales per share|capital employed|number of shares|xprice|price date|p\/b/i.test(l),
   },
-  // ── 6. Advances & Deposits ──────────────────────────────────────────
-  {
-    heading: 'Advances & Deposits',
-    match: l => /equity to advances|advance.?deposit|cash to deposit/i.test(l),
-  },
-  // ── 7. Profitability ────────────────────────────────────────────────
+  // ── 3. Profitability ────────────────────────────────────────────────
   {
     heading: 'Profitability',
-    match: l => /profit.*margin|net profit|gross (profit|spread)|operating.*margin|ebitda.*margin|markup per share|mark.?up per share/i.test(l),
+    match: l => /gross profit margin|operating profit margin|profit before tax margin|net profit margin|other operating income|profit.*margin|gross (profit|spread)|operating.*margin|ebitda.*margin|markup per share|mark.?up per share/i.test(l),
   },
-  // ── 8. Valuation ────────────────────────────────────────────────────
+  // ── 4. Dividends ────────────────────────────────────────────────────
   {
-    heading: 'Valuation',
-    match: l => /market cap|enterprise value|\bev\b|ev\//i.test(l),
+    heading: 'Dividends',
+    match: l => /dividend per share|dividend yield|dividend cover|payout ratio|exp.*payout|exp.*dividend|dividend/i.test(l),
   },
-  // ── 9. Liquidity ────────────────────────────────────────────────────
+  // ── 5. Equity Ratios ────────────────────────────────────────────────
+  {
+    heading: 'Equity Ratios',
+    match: l => /return on capital employed|return on equity|return on assets|retention ratio|equity to assets|equity multiplier|book value(?! per share)|book value growth|roce|roa\b|roe\b/i.test(l),
+  },
+  // ── 6. Debt ─────────────────────────────────────────────────────────
+  {
+    heading: 'Debt',
+    match: l => /debt.?to.?equity|long.?term debt.?to.?equity|short.?term debt.?to.?equity|long.?term debt.?to.?assets|short.?term debt.?to.?assets|debt to equity|debt\/equity|\bde ratio\b|leverage|gearing|total debt|long.?term debt|asset coverage/i.test(l),
+  },
+  // ── 7. Cash ─────────────────────────────────────────────────────────
+  {
+    heading: 'Cash',
+    match: l => /cash per share|cash flow per share|free cash|operating cash|fcf/i.test(l),
+  },
+  // ── 8. Liquidity ────────────────────────────────────────────────────
   {
     heading: 'Liquidity',
-    match: l => /current ratio|quick ratio|working capital|acid.?test/i.test(l),
+    match: l => /current ratio|quick ratio|acid.?test|solvency ratio/i.test(l),
   },
-  // ── 10. Solvency ────────────────────────────────────────────────────
-  {
-    heading: 'Solvency',
-    match: l => /interest coverage|leverage|gearing|total debt|long.?term debt|asset coverage/i.test(l),
-  },
-  // ── 11. Financial Health ────────────────────────────────────────────
+  // ── 9. Financial Health ─────────────────────────────────────────────
   {
     heading: 'Financial Health',
-    match: l => /revenue growth|sales growth|ebitda(?!.*margin)|gross profit(?!.*margin)|total assets|net assets|total equity/i.test(l),
+    match: l => /net assets per share|liabilities to assets|long.?term debt to equity|interest cov|revenue growth|sales growth|total assets|net assets|total equity/i.test(l),
+  },
+  // ── 10. Efficiency ──────────────────────────────────────────────────
+  {
+    heading: 'Efficiency',
+    match: l => /total assets turnover|fixed asset turnover|inventory turnover|inventory days|receivable days|payables days|asset turnover|working capital/i.test(l),
+  },
+  // ── 11. Market Stats ────────────────────────────────────────────────
+  {
+    heading: 'Market Stats',
+    match: l => /previous close|ldcp|52.?w(eek)?.?(high|low)|50.?d(ay)?|200.?d(ay)?|moving average|index weight|market cap|enterprise value|\bev\b|ev\//i.test(l),
   },
 ]
 
@@ -567,6 +568,7 @@ function FundamentalsView({ data, overview, symbol }: { data: StatementData; ove
       <div className="space-y-4">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {groups.map(group => (
+
             <div key={group.heading}
               className="rounded-2xl overflow-hidden"
               style={{ border: '1px solid var(--bg-border)', backgroundColor: 'var(--bg-card)' }}>
@@ -581,7 +583,7 @@ function FundamentalsView({ data, overview, symbol }: { data: StatementData; ove
               </div>
 
               {/* Small metric cards — clickable */}
-              <div className="p-3 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
+              <div className="p-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {group.rows.map(row => {
                   const ttm        = row.values[ttmIdx]
                   const prev       = row.values[1] ?? null
@@ -597,22 +599,22 @@ function FundamentalsView({ data, overview, symbol }: { data: StatementData; ove
                       style={{ backgroundColor: 'var(--bg-hover)', cursor: 'pointer', width: '100%' }}>
 
                       {/* Label + sparkline */}
-                      <div className="flex items-start justify-between gap-2">
-                        <span className="text-[11px] leading-tight" style={{ color: 'var(--text-secondary)' }}>
+                      <div className="flex items-start justify-between gap-1">
+                        <span className="text-[10px] font-medium leading-snug break-words min-w-0 flex-1" style={{ color: 'var(--text-secondary)' }}>
                           {row.label}
                         </span>
-                        <TrendBar values={row.values} />
+                        <div className="shrink-0 ml-1"><TrendBar values={row.values} /></div>
                       </div>
 
                       {/* Current value + trend */}
                       <div className="flex items-end justify-between gap-1">
-                        <span className="text-lg font-bold font-number leading-none"
+                        <span className="text-sm font-bold font-number leading-none truncate"
                           style={{ color: (ttm ?? 0) < 0 ? '#dc2626' : 'var(--text-primary)' }}>
                           {formatted}
                         </span>
                         {trend && trend !== 'flat' && (
-                          <span className="text-[10px] font-semibold leading-none mb-0.5" style={{ color: trendColor }}>
-                            {trend === 'up' ? '▲' : '▼'} vs prior
+                          <span className="text-[9px] font-semibold leading-none shrink-0" style={{ color: trendColor }}>
+                            {trend === 'up' ? '▲' : '▼'}
                           </span>
                         )}
                       </div>
@@ -622,9 +624,8 @@ function FundamentalsView({ data, overview, symbol }: { data: StatementData; ove
               </div>
             </div>
           ))}
-        </div>
 
-        {/* ── Market Stats (PSX) — from live overview data ── */}
+          {/* ── Market Stats (PSX) — from live overview data ── */}
         {overview && (() => {
           const fmt  = (v: number | undefined | null, prefix = '') =>
             v && Number(v) ? `${prefix}${Number(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'
@@ -646,26 +647,29 @@ function FundamentalsView({ data, overview, symbol }: { data: StatementData; ove
           return (
             <div className="rounded-2xl overflow-hidden"
               style={{ border: '1px solid var(--bg-border)', backgroundColor: 'var(--bg-card)' }}>
-              <div className="px-4 py-2.5" style={{ borderBottom: '1px solid var(--bg-border)', backgroundColor: 'var(--bg-hover)' }}>
+              <div className="px-4 py-2.5 flex items-center justify-between"
+                style={{ borderBottom: '1px solid var(--bg-border)', backgroundColor: 'var(--bg-hover)' }}>
                 <h3 className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
                   Market Stats (PSX)
                 </h3>
               </div>
-              <div className="p-3 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
+              <div className="p-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {stats.map(s => (
                   <div key={s.label} className="rounded-xl p-3 flex flex-col gap-2"
                     style={{ backgroundColor: 'var(--bg-hover)' }}>
-                    <span className="text-[11px] leading-tight" style={{ color: 'var(--text-secondary)' }}>{s.label}</span>
-                    <div className="flex items-end justify-between gap-1">
-                      <span className="text-lg font-bold font-number leading-none"
-                        style={{ color: 'var(--text-primary)' }}>{s.value}</span>
-                    </div>
+                    <span className="text-[10px] font-medium leading-snug break-words min-w-0" style={{ color: 'var(--text-secondary)' }}>
+                      {s.label}
+                    </span>
+                    <span className="text-sm font-bold font-number leading-none truncate" style={{ color: 'var(--text-primary)' }}>
+                      {s.value}
+                    </span>
                   </div>
                 ))}
               </div>
             </div>
           )
         })()}
+        </div>
       </div>
     </>
   )
@@ -1161,6 +1165,7 @@ export default function StockDetailClient({
   const [stmtInt,    setStmtInt]    = useState<'annual' | 'quarterly'>('annual')
   const [stmtLoad,   setStmtLoad]   = useState(false)
   const [stmtPdfUrl, setStmtPdfUrl] = useState<string | null>(null)
+  const [stmtPdfs,   setStmtPdfs]   = useState<{ title: string; url: string; type: string }[]>([])
 
   const [fundData,     setFundData]     = useState<StatementData | null>(null)
   const [fundLoad,     setFundLoad]     = useState(false)
@@ -1373,11 +1378,24 @@ export default function StockDetailClient({
         .then(r => r.json())
         .then(j => {
           if (!Array.isArray(j.announcements)) return
-          const fin = j.announcements.find((a: Announcement) =>
-            a.pdf_id &&
-            /financial|result|statement|account|annual|quarter/i.test(a.announcementType + ' ' + a.title)
-          )
-          if (fin?.pdf_id) setStmtPdfUrl(fin.pdf_id)
+          const isFinancialPdf = (a: Announcement) => {
+            if (!a.pdf_id) return false
+            const text = (a.announcementType + ' ' + a.title).toLowerCase()
+            // must contain a financial keyword
+            if (!/financial result|quarterly result|annual result|half.?year|q[1-4] result|financial statement|transmission of account|year ended|period ended/i.test(text)) return false
+            // exclude notices, AGM, resolutions, dividends
+            if (/general meeting|agm|resolution|dividend|bonus|right share|notice of/i.test(text)) return false
+            return true
+          }
+          const fins = (j.announcements as Announcement[]).filter(isFinancialPdf)
+          if (fins.length) {
+            setStmtPdfUrl(fins[0].pdf_id)
+            setStmtPdfs(fins.map(a => ({
+              title: a.title || a.announcementType || 'Financial Statement',
+              url:   a.pdf_id!,
+              type:  a.announcementType,
+            })))
+          }
         })
         .catch(() => {})
     } else if (tab === 'fundamentals') {
@@ -1468,7 +1486,7 @@ export default function StockDetailClient({
                     <div>
                       <div className="flex items-center gap-1">
                         <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{q.symbol}</p>
-                        {isKMI(q.indexKeys) && <KMIBadge />}
+                        {isKMI(q.indexKeys, q.symbol) && <KMIBadge />}
                       </div>
                       <p className="text-[11px] truncate max-w-[220px]" style={{ color: 'var(--text-muted)' }}>{q.name}</p>
                     </div>
@@ -1548,6 +1566,183 @@ export default function StockDetailClient({
                 <Stat label="52W Low"   value={formatPrice(Number(overview.low52))} />
               </div>
             </div>
+            {/* ── Score Cards ───────────────────────────────────────── */}
+            {(() => {
+              if (!snapFunds || !overview) return null
+
+              // Pull fundamentals from snapFunds
+              function pickF(pattern: RegExp): number | null {
+                return snapFunds!.fields.find(f => !f.is_heading && pattern.test(f.label.trim()))?.values[0] ?? null
+              }
+              const eps      = pickF(/earnings per share|eps/i) ?? Number(overview.eps) ?? 0
+              const bvps     = pickF(/book value per share|bvps/i) ?? 0
+              const roe      = pickF(/return on equity|roe/i) ?? 0
+              const npm      = pickF(/net profit margin/i) ?? 0
+              const dps      = pickF(/dividend per share|dps/i) ?? 0
+              const pe       = pickF(/price.*earning|p\/e/i) ?? 0
+              const price    = Number(overview.price) || 0
+              const high52   = Number(overview.high52) || price
+              const low52    = Number(overview.low52) || price
+
+              // ── Intrinsic Score (0–100) ──
+              // Benjamin Graham formula: IV = √(22.5 × EPS × BVPS), normalised
+              const grahamIV   = eps > 0 && bvps > 0 ? Math.sqrt(22.5 * eps * bvps) : 0
+              const ivRatio    = grahamIV > 0 && price > 0 ? grahamIV / price : 0
+              const intrinsicScore = grahamIV > 0
+                ? Math.min(100, Math.round(Math.min(ivRatio, 2) * 50))  // 100 when IV ≥ 2× price
+                : null
+
+              // ── Margin of Safety (%) ──
+              const mos = grahamIV > 0 && price > 0
+                ? Math.round(((grahamIV - price) / grahamIV) * 100)
+                : null
+
+              // ── Stockifyy Score (0–100) — multi-factor ──
+              let ss = 0, ssMax = 0
+              // Valuation (25pts): P/E < 15 ideal
+              if (pe > 0) {
+                ssMax += 25
+                ss += pe <= 10 ? 25 : pe <= 15 ? 20 : pe <= 20 ? 12 : pe <= 30 ? 6 : 0
+              }
+              // Profitability (25pts): net margin
+              if (npm !== 0) {
+                ssMax += 25
+                const npmPct = Math.abs(npm) > 1 ? npm : npm * 100
+                ss += npmPct >= 20 ? 25 : npmPct >= 12 ? 18 : npmPct >= 6 ? 12 : npmPct >= 0 ? 5 : 0
+              }
+              // ROE (20pts)
+              if (roe !== 0) {
+                ssMax += 20
+                const roePct = Math.abs(roe) > 1 ? roe : roe * 100
+                ss += roePct >= 20 ? 20 : roePct >= 12 ? 14 : roePct >= 6 ? 8 : roePct >= 0 ? 3 : 0
+              }
+              // Dividend (10pts)
+              ssMax += 10
+              ss += dps > 0 ? (dps / Math.max(price, 1) >= 0.05 ? 10 : dps / Math.max(price, 1) >= 0.02 ? 6 : 3) : 0
+              // 52W position (20pts): price near 52W low = value opportunity
+              if (high52 > low52) {
+                ssMax += 20
+                const pos = (price - low52) / (high52 - low52)
+                ss += pos <= 0.25 ? 20 : pos <= 0.45 ? 15 : pos <= 0.65 ? 10 : pos <= 0.85 ? 5 : 2
+              }
+              const stockifyyScore = ssMax > 0 ? Math.round((ss / ssMax) * 100) : null
+
+              function ScoreRing({ score, label, sub, color }: {
+                score: number | null; label: string; sub: string; color: string
+              }) {
+                const s = score ?? 0
+                const circumference = 2 * Math.PI * 26
+                const dash = (s / 100) * circumference
+                const grade = s >= 75 ? 'Excellent' : s >= 55 ? 'Good' : s >= 35 ? 'Fair' : 'Weak'
+                const gradeColor = s >= 75 ? '#16a34a' : s >= 55 ? '#FEA500' : s >= 35 ? '#f97316' : '#dc2626'
+                return (
+                  <div className="rounded-2xl p-4 flex flex-col items-center gap-2 text-center"
+                    style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--bg-border)' }}>
+                    <div className="relative w-16 h-16">
+                      <svg width="64" height="64" viewBox="0 0 64 64">
+                        <circle cx="32" cy="32" r="26" fill="none" stroke="var(--bg-hover)" strokeWidth="6" />
+                        {score !== null && (
+                          <circle cx="32" cy="32" r="26" fill="none" stroke={color} strokeWidth="6"
+                            strokeDasharray={`${dash} ${circumference}`}
+                            strokeLinecap="round"
+                            transform="rotate(-90 32 32)" />
+                        )}
+                      </svg>
+                      <span className="absolute inset-0 flex items-center justify-center text-base font-black"
+                        style={{ color: score !== null ? color : 'var(--text-muted)' }}>
+                        {score !== null ? score : '—'}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>{label}</p>
+                      <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{sub}</p>
+                      {score !== null && (
+                        <span className="inline-block mt-1 px-2 py-0.5 rounded-full text-[9px] font-bold"
+                          style={{ backgroundColor: gradeColor + '20', color: gradeColor }}>
+                          {grade}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )
+              }
+
+              const mosDisplay = mos !== null
+                ? `${mos >= 0 ? '+' : ''}${mos}%`
+                : '—'
+              const mosSub = mos !== null
+                ? mos >= 20 ? 'Undervalued' : mos >= 0 ? 'Near Fair Value' : 'Overvalued'
+                : 'Insufficient data'
+              const mosColor = mos !== null ? (mos >= 20 ? '#16a34a' : mos >= 0 ? '#FEA500' : '#dc2626') : '#94a3b8'
+
+              // Sector-aware Graham warning
+              const sectorCode = String(overview?.sector ?? '')
+              const isFinancial = ['0807','0812','0813','0815','0819','0836'].includes(sectorCode)
+              const isBank      = sectorCode === '0807'
+              const grahamWarning = isBank
+                ? 'Note: Graham IV is less reliable for banks — high BVPS inflates the score. Use Stockifyy Score instead.'
+                : isFinancial
+                ? 'Note: Graham IV may overstate intrinsic value for financial/insurance companies due to high book values.'
+                : eps <= 0
+                ? 'Note: Graham IV requires positive EPS. Intrinsic Score is not available for loss-making companies.'
+                : null
+
+              return (
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
+                      Stockifyy Analysis
+                    </span>
+                    <div className="flex-1 h-px" style={{ backgroundColor: 'var(--bg-border)' }} />
+                    <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-muted)' }}>
+                      Based on fundamentals
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <ScoreRing
+                      score={isFinancial ? null : intrinsicScore}
+                      label="Intrinsic Score"
+                      sub={isFinancial ? 'N/A for financials' : 'Graham IV vs Price'}
+                      color="#3b82f6"
+                    />
+                    <div className="rounded-2xl p-4 flex flex-col items-center gap-2 text-center"
+                      style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--bg-border)' }}>
+                      <div className="w-16 h-16 flex items-center justify-center rounded-full text-xl font-black"
+                        style={{ backgroundColor: (isFinancial ? '#94a3b8' : mosColor) + '20', color: isFinancial ? '#94a3b8' : mosColor }}>
+                        {isFinancial ? 'N/A' : mosDisplay}
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>Margin of Safety</p>
+                        <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                          {isFinancial ? 'N/A for financials' : 'IV vs Current Price'}
+                        </p>
+                        {!isFinancial && mos !== null && (
+                          <span className="inline-block mt-1 px-2 py-0.5 rounded-full text-[9px] font-bold"
+                            style={{ backgroundColor: mosColor + '20', color: mosColor }}>
+                            {mosSub}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <ScoreRing score={stockifyyScore} label="Stockifyy Score" sub="Multi-factor rating" color="#FEA500" />
+                  </div>
+
+                  {/* Sector warning */}
+                  {grahamWarning && (
+                    <div className="mt-3 flex items-start gap-2 rounded-xl px-3 py-2.5 text-[11px]"
+                      style={{ backgroundColor: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.25)', color: 'var(--text-secondary)' }}>
+                      <span className="shrink-0 mt-0.5">⚠️</span>
+                      {grahamWarning}
+                    </div>
+                  )}
+
+                  <p className="text-[10px] mt-2 text-center" style={{ color: 'var(--text-muted)' }}>
+                    Scores are algorithmic estimates based on annual PSX fundamental data. Not investment advice.
+                  </p>
+                </div>
+              )
+            })()}
+
             {/* ── Company Snapshot ──────────────────────────────────── */}
             <div className="card">
               <SectionHeading>Company Snapshot</SectionHeading>
@@ -1673,6 +1868,114 @@ export default function StockDetailClient({
                 : <p className="text-sm py-4 text-center mt-3" style={{ color: 'var(--text-muted)' }}>Chart data not available.</p>
               }
             </div>
+
+            {/* ── Pros & Cons ──────────────────────────────────────── */}
+            {snapFunds && overview && (() => {
+              function pickF(pattern: RegExp): number | null {
+                return snapFunds!.fields.find(f => !f.is_heading && pattern.test(f.label.trim()))?.values[0] ?? null
+              }
+              const eps    = pickF(/earnings per share|eps/i) ?? Number(overview.eps) ?? 0
+              const bvps   = pickF(/book value per share|bvps/i) ?? 0
+              const roe    = pickF(/return on equity|roe/i) ?? 0
+              const npm    = pickF(/net profit margin/i) ?? 0
+              const dps    = pickF(/dividend per share|dps/i) ?? 0
+              const pe     = pickF(/price.*earning|p\/e/i) ?? 0
+              const price  = Number(overview.price) || 0
+              const high52 = Number(overview.high52) || price
+              const low52  = Number(overview.low52) || price
+              const npmPct = npm !== 0 ? (Math.abs(npm) > 1 ? npm : npm * 100) : 0
+              const roePct = roe !== 0 ? (Math.abs(roe) > 1 ? roe : roe * 100) : 0
+              const divYld = dps > 0 && price > 0 ? (dps / price) * 100 : 0
+              const pos52  = high52 > low52 ? (price - low52) / (high52 - low52) : 0.5
+              const sectorCodePC = String(overview?.sector ?? '')
+              const isFinancialPC = ['0807','0812','0813','0815','0819','0836'].includes(sectorCodePC)
+
+              const pros: string[] = []
+              const cons: string[] = []
+
+              // Valuation
+              if (pe > 0 && pe <= 12)   pros.push(`Low P/E of ${pe.toFixed(1)}× — attractively valued vs earnings`)
+              else if (pe > 0 && pe <= 18) pros.push(`Reasonable P/E of ${pe.toFixed(1)}× — fairly valued`)
+              if (pe > 25)              cons.push(`High P/E of ${pe.toFixed(1)}× — stock may be expensive relative to earnings`)
+
+              // Profitability — banks have naturally lower net margins, skip for financials
+              if (!isFinancialPC) {
+                if (npmPct >= 15)           pros.push(`Strong net profit margin of ${npmPct.toFixed(1)}% — efficient business`)
+                if (npmPct > 0 && npmPct < 5) cons.push(`Thin net profit margin of ${npmPct.toFixed(1)}% — limited earnings buffer`)
+                if (npmPct < 0)             cons.push(`Negative net profit margin — company is currently unprofitable`)
+              }
+
+              // ROE — higher threshold for banks
+              const roeThreshold = isFinancialPC ? 12 : 15
+              if (roePct >= roeThreshold)       pros.push(`High ROE of ${roePct.toFixed(1)}% — strong return for shareholders`)
+              if (roePct > 0 && roePct < (isFinancialPC ? 8 : 8)) cons.push(`Low ROE of ${roePct.toFixed(1)}% — weak returns on shareholder equity`)
+              if (roePct < 0)                   cons.push(`Negative ROE — equity is being eroded`)
+
+              // EPS
+              if (eps > 0)              pros.push(`Positive EPS of Rs ${eps.toFixed(2)} — company is profitable`)
+              if (eps < 0)              cons.push(`Negative EPS of Rs ${eps.toFixed(2)} — company reporting a loss`)
+
+              // BVPS — skip P/B comparison for banks (high BVPS is normal)
+              if (!isFinancialPC) {
+                if (bvps > 0 && price > 0 && price < bvps) pros.push(`Trading below book value (P/B < 1) — potential deep value opportunity`)
+                if (bvps > 0 && price > 0 && price > bvps * 3) cons.push(`Trading at ${(price/bvps).toFixed(1)}× book value — significant premium to assets`)
+              }
+
+              // Dividend
+              if (divYld >= 5)              pros.push(`High dividend yield of ${divYld.toFixed(1)}% — strong income for investors`)
+              else if (divYld >= 2)         pros.push(`Decent dividend yield of ${divYld.toFixed(1)}%`)
+              if (dps === 0)                cons.push(`No dividend paid — company does not distribute cash to shareholders`)
+
+              // 52W position
+              if (pos52 <= 0.2)             pros.push(`Price near 52-week low — potential value entry point`)
+              if (pos52 >= 0.9)             cons.push(`Price near 52-week high — limited near-term upside unless fundamentals improve`)
+
+              // Financial sector note
+              if (isFinancialPC) {
+                pros.push(`Financial sector companies are evaluated on ROE and P/E; book value metrics are excluded as high BVPS is normal for banks/insurers`)
+              }
+
+              if (pros.length === 0 && cons.length === 0) return null
+
+              return (
+                <div className="card">
+                  <SectionHeading>Pros &amp; Cons</SectionHeading>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
+                    {/* Pros */}
+                    <div className="rounded-xl p-4 space-y-2" style={{ backgroundColor: 'rgba(22,163,74,0.06)', border: '1px solid rgba(22,163,74,0.2)' }}>
+                      <p className="text-[10px] font-bold uppercase tracking-wider mb-3" style={{ color: '#16a34a' }}>
+                        ✓ Strengths
+                      </p>
+                      {pros.length > 0 ? pros.map((p, i) => (
+                        <div key={i} className="flex gap-2 items-start">
+                          <span className="mt-0.5 shrink-0 text-xs" style={{ color: '#16a34a' }}>+</span>
+                          <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{p}</p>
+                        </div>
+                      )) : (
+                        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>No notable strengths identified.</p>
+                      )}
+                    </div>
+                    {/* Cons */}
+                    <div className="rounded-xl p-4 space-y-2" style={{ backgroundColor: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.2)' }}>
+                      <p className="text-[10px] font-bold uppercase tracking-wider mb-3" style={{ color: '#dc2626' }}>
+                        ✗ Concerns
+                      </p>
+                      {cons.length > 0 ? cons.map((c, i) => (
+                        <div key={i} className="flex gap-2 items-start">
+                          <span className="mt-0.5 shrink-0 text-xs" style={{ color: '#dc2626' }}>−</span>
+                          <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{c}</p>
+                        </div>
+                      )) : (
+                        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>No major concerns identified.</p>
+                      )}
+                    </div>
+                  </div>
+                  <p className="text-[10px] mt-3 text-center" style={{ color: 'var(--text-muted)' }}>
+                    Auto-generated from PSX fundamental data. Not financial advice.
+                  </p>
+                </div>
+              )
+            })()}
 
             {/* ── About / Brands ───────────────────────────────────── */}
             <div className="card space-y-4">
@@ -2650,15 +2953,32 @@ export default function StockDetailClient({
             </div>
           </div>
 
-          {/* PDF link for current statement release */}
-          {stmtPdfUrl && (
-            <a href={stmtPdfUrl} target="_blank" rel="noopener noreferrer"
-               className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors hover:opacity-80"
-               style={{ borderColor: 'var(--bg-border)', color: 'var(--text-secondary)' }}>
-              <ExternalLink size={12} />
-              View Statement PDF
-            </a>
-          )}
+          {/* Financial PDF reports — filtered by annual / quarterly toggle */}
+          {stmtPdfs.length > 0 && (() => {
+            const isAnnual = (t: string) => /annual|year ended|full.?year|transmission/i.test(t)
+            const isQuarterly = (t: string) => /q[1-4]|quarter|half.?year|period ended/i.test(t)
+            const filtered = stmtPdfs.filter(p =>
+              stmtInt === 'annual' ? isAnnual(p.title) || (!isQuarterly(p.title))
+                                   : isQuarterly(p.title)
+            )
+            const list = filtered.length ? filtered : stmtPdfs
+            return (
+            <div className="flex flex-col gap-1.5">
+              {list.map((pdf, idx) => (
+                <div key={idx} className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg"
+                     style={{ backgroundColor: 'var(--bg-hover)', border: '1px solid var(--bg-border)' }}>
+                  <span className="text-xs font-medium truncate" style={{ color: 'var(--text-primary)' }}>{pdf.title}</span>
+                  <a href={pdf.url} target="_blank" rel="noopener noreferrer"
+                     className="inline-flex items-center gap-1 text-[11px] font-semibold shrink-0 px-2.5 py-1 rounded-md transition-colors hover:opacity-80"
+                     style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--bg-border)', color: 'var(--text-secondary)' }}>
+                    <ExternalLink size={11} />
+                    View PDF
+                  </a>
+                </div>
+              ))}
+            </div>
+            )
+          })()}
 
           {stmtLoad ? <LoadingRows /> : stmtData
             ? <StatementTable data={stmtData} maxCols={stmtInt === 'quarterly' ? 8 : 6} />
@@ -2791,6 +3111,173 @@ export default function StockDetailClient({
           )}
         </div>
       )}
+
+      {/* ══ COMPANY REPORT ══════════════════════════════════════════ */}
+      {tab === 'report' && (() => {
+        function pickR(pattern: RegExp): number | null {
+          return snapFunds?.fields.find(f => !f.is_heading && pattern.test(f.label.trim()))?.values[0] ?? null
+        }
+        const eps    = pickR(/earnings per share|eps/i)    ?? Number(overview?.eps) ?? 0
+        const bvps   = pickR(/book value per share|bvps/i) ?? 0
+        const roe    = pickR(/return on equity|roe/i)      ?? 0
+        const npm    = pickR(/net profit margin/i)         ?? 0
+        const dps    = pickR(/dividend per share|dps/i)    ?? 0
+        const pe     = pickR(/price.*earning|p\/e/i)       ?? 0
+        const price  = Number(overview?.price)   || 0
+        const high52 = Number(overview?.high52)  || 0
+        const low52  = Number(overview?.low52)   || 0
+        const vol    = Number(overview?.volume)  || 0
+        const mc     = Number((overview as any)?.mc) || 0
+        const npmPct = npm !== 0 ? (Math.abs(npm) > 1 ? npm : npm * 100) : 0
+        const roePct = roe !== 0 ? (Math.abs(roe) > 1 ? roe : roe * 100) : 0
+        const divYld = dps > 0 && price > 0 ? (dps / price) * 100 : 0
+        const pb     = bvps > 0 && price > 0 ? price / bvps : 0
+        const sectorCodeR = String(overview?.sector ?? '')
+        const isFinancialR = ['0807','0812','0813','0815','0819','0836'].includes(sectorCodeR)
+        const grahamIV = eps > 0 && bvps > 0 ? Math.sqrt(22.5 * eps * bvps) : 0
+        const mos = grahamIV > 0 && price > 0 ? Math.round(((grahamIV - price) / grahamIV) * 100) : null
+
+        function Row({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+          return (
+            <div className="flex items-center justify-between py-2"
+              style={{ borderBottom: '1px solid var(--bg-border)' }}>
+              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{label}</span>
+              <span className="text-xs font-semibold tabular-nums"
+                style={{ color: highlight ? '#FEA500' : 'var(--text-primary)' }}>{value}</span>
+            </div>
+          )
+        }
+
+        function Section({ title, children }: { title: string; children: React.ReactNode }) {
+          return (
+            <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--bg-border)' }}>
+              <div className="px-4 py-2.5" style={{ backgroundColor: 'var(--bg-hover)' }}>
+                <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>{title}</p>
+              </div>
+              <div className="px-4 pb-1">{children}</div>
+            </div>
+          )
+        }
+
+        const handlePrint = () => window.print()
+
+        return (
+          <div className="space-y-5">
+            {/* Header bar */}
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div>
+                <h2 className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>
+                  {symbol} — Company Report
+                </h2>
+                <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                  Generated {new Date().toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })} · Data sourced from PSX
+                </p>
+              </div>
+              <button
+                onClick={handlePrint}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition-colors"
+                style={{ background: 'linear-gradient(135deg,#FEA500,#986300)', color: 'white' }}>
+                <FileText size={13} />
+                Print / Save PDF
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Market Data */}
+              <Section title="Market Data">
+                <Row label="Current Price"   value={price ? `Rs ${price.toFixed(2)}` : '—'} highlight />
+                <Row label="Change Today"    value={overview ? `${Number(overview.changePct) >= 0 ? '+' : ''}${(Number(overview.changePct)).toFixed(2)}%` : '—'} />
+                <Row label="52-Week High"    value={high52 ? `Rs ${high52.toFixed(2)}` : '—'} />
+                <Row label="52-Week Low"     value={low52  ? `Rs ${low52.toFixed(2)}`  : '—'} />
+                <Row label="Volume"          value={vol ? vol.toLocaleString() : '—'} />
+                <Row label="Market Cap"      value={mc ? (mc >= 1e9 ? `Rs ${(mc/1e9).toFixed(2)}B` : `Rs ${(mc/1e6).toFixed(0)}M`) : '—'} />
+                <Row label="Open"            value={overview?.open  ? `Rs ${Number(overview.open).toFixed(2)}`  : '—'} />
+                <Row label="Prev Close"      value={overview?.lastClose ? `Rs ${Number(overview.lastClose).toFixed(2)}` : '—'} />
+              </Section>
+
+              {/* Valuation */}
+              <Section title="Valuation">
+                <Row label="P/E Ratio"         value={pe   > 0 ? `${pe.toFixed(1)}×`   : '—'} />
+                <Row label="EPS"               value={eps  ? `Rs ${eps.toFixed(2)}`    : '—'} />
+                <Row label="Book Value / Share" value={bvps ? `Rs ${bvps.toFixed(2)}`  : '—'} />
+                <Row label="P/B Ratio"          value={pb   > 0 ? `${pb.toFixed(2)}×`  : '—'} />
+                <Row label="Graham Intr. Value" value={!isFinancialR && grahamIV > 0 ? `Rs ${grahamIV.toFixed(2)}` : 'N/A'} />
+                <Row label="Margin of Safety"   value={!isFinancialR && mos !== null ? `${mos >= 0 ? '+' : ''}${mos}%` : 'N/A'} highlight={!isFinancialR && mos !== null && mos >= 20} />
+              </Section>
+
+              {/* Profitability */}
+              <Section title="Profitability">
+                <Row label="Net Profit Margin" value={npmPct ? `${npmPct.toFixed(1)}%` : '—'} />
+                <Row label="Return on Equity"  value={roePct ? `${roePct.toFixed(1)}%` : '—'} />
+                <Row label="Dividend / Share"  value={dps  ? `Rs ${dps.toFixed(2)}`   : '—'} />
+                <Row label="Dividend Yield"    value={divYld > 0 ? `${divYld.toFixed(2)}%` : '—'} />
+              </Section>
+
+              {/* Scores */}
+              <Section title="Stockifyy Scores">
+                {(() => {
+                  let ss = 0, ssMax = 0
+                  if (pe > 0) { ssMax += 25; ss += pe <= 10 ? 25 : pe <= 15 ? 20 : pe <= 20 ? 12 : pe <= 30 ? 6 : 0 }
+                  if (npmPct) { ssMax += 25; ss += npmPct >= 20 ? 25 : npmPct >= 12 ? 18 : npmPct >= 6 ? 12 : npmPct >= 0 ? 5 : 0 }
+                  if (roePct) { ssMax += 20; ss += roePct >= 20 ? 20 : roePct >= 12 ? 14 : roePct >= 6 ? 8 : roePct >= 0 ? 3 : 0 }
+                  ssMax += 10; ss += dps > 0 ? (dps / Math.max(price, 1) >= 0.05 ? 10 : 6) : 0
+                  const pos52 = high52 > low52 ? (price - low52) / (high52 - low52) : 0.5
+                  ssMax += 20; ss += pos52 <= 0.25 ? 20 : pos52 <= 0.45 ? 15 : pos52 <= 0.65 ? 10 : pos52 <= 0.85 ? 5 : 2
+                  const score = ssMax > 0 ? Math.round((ss / ssMax) * 100) : null
+                  const grade = score !== null ? (score >= 75 ? 'Excellent' : score >= 55 ? 'Good' : score >= 35 ? 'Fair' : 'Weak') : '—'
+                  const iScore = !isFinancialR && grahamIV > 0 ? Math.min(100, Math.round(Math.min(grahamIV / Math.max(price, 1), 2) * 50)) : null
+                  return (
+                    <>
+                      <Row label="Intrinsic Score (0–100)"  value={iScore !== null ? `${iScore} / 100` : 'N/A'} />
+                      <Row label="Margin of Safety"          value={!isFinancialR && mos !== null ? `${mos >= 0 ? '+' : ''}${mos}%` : 'N/A'} />
+                      <Row label="Stockifyy Score (0–100)"  value={score !== null ? `${score} / 100` : '—'} highlight />
+                      <Row label="Overall Grade"             value={grade} />
+                    </>
+                  )
+                })()}
+              </Section>
+            </div>
+
+            {/* Company profile */}
+            {profile?.profile?.data?.description && (
+              <Section title="Business Description">
+                <p className="text-xs leading-relaxed py-3" style={{ color: 'var(--text-secondary)' }}>
+                  {profile.profile.data.description}
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pb-3">
+                  {profile.profile.data.sector_name && <Row label="Sector"   value={profile.profile.data.sector_name} />}
+                  {profile.profile.data.auditors     && <Row label="Auditors" value={profile.profile.data.auditors} />}
+                  {profile.profile.data.offices?.[0] && <Row label="Office"   value={profile.profile.data.offices[0]} />}
+                </div>
+              </Section>
+            )}
+
+            {/* Recent announcements */}
+            {anns.length > 0 && (
+              <Section title="Recent Corporate Announcements">
+                <div className="py-1">
+                  {anns.slice(0, 5).map((ann, i) => (
+                    <div key={i} className="flex items-start gap-3 py-2.5"
+                      style={{ borderBottom: i < 4 ? '1px solid var(--bg-border)' : 'none' }}>
+                      <span className="text-[10px] shrink-0 w-14 pt-0.5" style={{ color: 'var(--text-muted)' }}>
+                        {new Date(ann.date).toLocaleDateString('en-PK', { day: '2-digit', month: 'short' })}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium truncate" style={{ color: 'var(--text-primary)' }}>{ann.title}</p>
+                        <span className="text-[9px]" style={{ color: 'var(--text-muted)' }}>{ann.announcementType}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Section>
+            )}
+
+            <p className="text-[10px] text-center pb-2" style={{ color: 'var(--text-muted)' }}>
+              This report is auto-generated from PSX public data. Scores are algorithmic estimates. Not financial advice.
+            </p>
+          </div>
+        )
+      })()}
     </div>
   )
 }

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import Link                              from 'next/link'
+import { X, TrendingUp, TrendingDown, ArrowUpDown } from 'lucide-react'
 import { cachedFetch }                   from '@/lib/utils/clientCache'
 import type { StockQuote }               from '@/types/market'
 
@@ -78,11 +79,143 @@ const INDICES = [
   { value: 'ALLSHR',    label: 'All Share'     },
 ]
 
+function SectorModal({ sector, onClose }: { sector: SectorGroup; onClose: () => void }) {
+  const [sortBy, setSortBy] = useState<'change' | 'volume' | 'price'>('change')
+  const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc')
+
+  const sorted = useMemo(() => {
+    return [...sector.stocks].sort((a, b) => {
+      const v = sortBy === 'change' ? a.changePct - b.changePct
+               : sortBy === 'volume' ? a.volume - b.volume
+               : a.price - b.price
+      return sortDir === 'desc' ? -v : v
+    })
+  }, [sector.stocks, sortBy, sortDir])
+
+  function toggleSort(col: typeof sortBy) {
+    if (sortBy === col) setSortDir(d => d === 'desc' ? 'asc' : 'desc')
+    else { setSortBy(col); setSortDir('desc') }
+  }
+
+  const advancers = sector.stocks.filter(s => s.changePct > 0).length
+  const decliners = sector.stocks.filter(s => s.changePct < 0).length
+  const unchanged = sector.stocks.length - advancers - decliners
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+         style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}
+         onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col"
+           style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--bg-border)' }}>
+
+        {/* Header */}
+        <div className="flex items-start justify-between px-5 py-4 shrink-0"
+             style={{ borderBottom: '1px solid var(--bg-border)' }}>
+          <div>
+            <h2 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{sector.name}</h2>
+            <div className="flex items-center gap-3 mt-1.5">
+              <span className={`text-xs font-bold px-2 py-0.5 rounded-full
+                ${sector.avgChangePct >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
+                Avg {sector.avgChangePct >= 0 ? '+' : ''}{sector.avgChangePct.toFixed(2)}%
+              </span>
+              <span className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>
+                {sector.stocks.length} stocks
+              </span>
+              <span className="text-[11px] text-green-600">▲ {advancers}</span>
+              <span className="text-[11px] text-red-500">▼ {decliners}</span>
+              {unchanged > 0 && <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>― {unchanged}</span>}
+            </div>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:opacity-70 shrink-0"
+                  style={{ backgroundColor: 'var(--bg-hover)' }}>
+            <X size={15} style={{ color: 'var(--text-secondary)' }} />
+          </button>
+        </div>
+
+        {/* Table */}
+        <div className="overflow-y-auto flex-1">
+          <table className="w-full text-xs">
+            <thead className="sticky top-0" style={{ backgroundColor: 'var(--bg-card)' }}>
+              <tr style={{ borderBottom: '1px solid var(--bg-border)' }}>
+                <th className="text-left py-2.5 px-4 text-[10px] font-semibold uppercase tracking-wider"
+                    style={{ color: 'var(--text-muted)' }}>Symbol</th>
+                <th className="text-left py-2.5 px-4 text-[10px] font-semibold uppercase tracking-wider"
+                    style={{ color: 'var(--text-muted)' }}>Company</th>
+                <th className="text-right py-2.5 px-4 text-[10px] font-semibold uppercase tracking-wider cursor-pointer select-none"
+                    style={{ color: sortBy === 'price' ? '#FEA500' : 'var(--text-muted)' }}
+                    onClick={() => toggleSort('price')}>
+                  <span className="flex items-center justify-end gap-1">Price <ArrowUpDown size={9}/></span>
+                </th>
+                <th className="text-right py-2.5 px-4 text-[10px] font-semibold uppercase tracking-wider cursor-pointer select-none"
+                    style={{ color: sortBy === 'change' ? '#FEA500' : 'var(--text-muted)' }}
+                    onClick={() => toggleSort('change')}>
+                  <span className="flex items-center justify-end gap-1">Change % <ArrowUpDown size={9}/></span>
+                </th>
+                <th className="text-right py-2.5 px-4 text-[10px] font-semibold uppercase tracking-wider cursor-pointer select-none"
+                    style={{ color: sortBy === 'volume' ? '#FEA500' : 'var(--text-muted)' }}
+                    onClick={() => toggleSort('volume')}>
+                  <span className="flex items-center justify-end gap-1">Volume <ArrowUpDown size={9}/></span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.map(s => {
+                const up = s.changePct >= 0
+                return (
+                  <tr key={s.symbol}
+                      style={{ borderBottom: '1px solid var(--bg-border)' }}
+                      onMouseEnter={e => (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--bg-hover)'}
+                      onMouseLeave={e => (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'}>
+                    <td className="py-2.5 px-4">
+                      <Link href={`/stocks/${s.symbol}`} onClick={onClose}
+                            className="font-bold hover:underline" style={{ color: '#FEA500' }}>
+                        {s.symbol}
+                      </Link>
+                    </td>
+                    <td className="py-2.5 px-4 max-w-[180px] truncate"
+                        style={{ color: 'var(--text-secondary)' }}>{s.name}</td>
+                    <td className="py-2.5 px-4 text-right font-number font-semibold"
+                        style={{ color: 'var(--text-primary)' }}>
+                      {s.price.toFixed(2)}
+                    </td>
+                    <td className="py-2.5 px-4 text-right">
+                      <span className="inline-flex items-center justify-end gap-1 font-number font-bold"
+                            style={{ color: up ? '#16a34a' : '#dc2626' }}>
+                        {up ? <TrendingUp size={11}/> : <TrendingDown size={11}/>}
+                        {up ? '+' : ''}{s.changePct.toFixed(2)}%
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-4 text-right font-number"
+                        style={{ color: 'var(--text-secondary)' }}>
+                      {s.volume >= 1_000_000
+                        ? (s.volume / 1_000_000).toFixed(1) + 'M'
+                        : s.volume >= 1_000
+                          ? (s.volume / 1_000).toFixed(0) + 'K'
+                          : s.volume.toLocaleString()}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function SectorHeatmap() {
-  const [quotes,  setQuotes]  = useState<StockQuote[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error,   setError]   = useState('')
-  const [index,   setIndex]   = useState('KSE100')
+  const [quotes,         setQuotes]         = useState<StockQuote[]>([])
+  const [loading,        setLoading]        = useState(true)
+  const [error,          setError]          = useState('')
+  const [index,          setIndex]          = useState('KSE100')
+  const [activeSector,   setActiveSector]   = useState<SectorGroup | null>(null)
 
   useEffect(() => {
     cachedFetch<{ quotes: StockQuote[] }>('/api/market/quotes', 5 * 60_000)
@@ -165,7 +298,10 @@ export default function SectorHeatmap() {
           const small = topStocks.slice(2)
 
           return (
-            <div key={sector.code} className="card p-2 flex flex-col gap-1.5 min-h-[130px]">
+            <div key={sector.code}
+                 onClick={() => setActiveSector(sector)}
+                 className="card p-2 flex flex-col gap-1.5 min-h-[130px] cursor-pointer transition-all hover:opacity-80"
+                 style={{ outline: 'none' }}>
               {/* Sector header */}
               <div className="flex items-center justify-between gap-1">
                 <div className="min-w-0">
@@ -202,8 +338,12 @@ export default function SectorHeatmap() {
       </div>
 
       <p className="text-[10px] pt-1" style={{ color: 'var(--text-muted)' }}>
-        Click any stock to open detail · Refreshes every 5 min
+        Click a sector card to see all stocks · Click any symbol to open detail
       </p>
+
+      {activeSector && (
+        <SectorModal sector={activeSector} onClose={() => setActiveSector(null)} />
+      )}
     </div>
   )
 }

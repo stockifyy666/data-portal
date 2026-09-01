@@ -1,5 +1,14 @@
 import Link from 'next/link'
 
+const PSX_CALCS = [
+  {
+    slug:  'position-size',
+    label: 'PSX Position Size Calculator',
+    desc:  'Risk-based position sizing — shares to buy, capital at risk, R:R ratio & break-even price',
+    icon:  '🎯',
+  },
+]
+
 const INVESTMENT_CALCS = [
   {
     slug:  'roi',
@@ -99,6 +108,20 @@ export default function ToolsPage() {
           Calculators to plan investments, taxes, and financial decisions
         </p>
       </div>
+
+      {/* PSX Trading Tools */}
+      <section>
+        <div className="flex items-center gap-3 mb-4">
+          <div className="px-3 py-1.5 rounded-lg text-xs font-bold text-white"
+            style={{ background: 'linear-gradient(135deg,#FEA500,#986300)' }}>
+            PSX Trading Tools
+          </div>
+          <div className="flex-1 h-px" style={{ backgroundColor: 'var(--bg-border)' }} />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {PSX_CALCS.map(c => <CalcCard key={c.slug} {...c} />)}
+        </div>
+      </section>
 
       {/* Investment Calculators */}
       <section>

@@ -640,8 +640,167 @@ function ZakatCalc() {
   )
 }
 
+/* ── PSX Position Size ───────────────────────────────────────────── */
+function PositionSizeCalc() {
+  const [accountSize,   setAccountSize]   = useState('1000000')
+  const [riskPct,       setRiskPct]       = useState('2')
+  const [entryPrice,    setEntryPrice]    = useState('100')
+  const [stopLoss,      setStopLoss]      = useState('95')
+  const [target,        setTarget]        = useState('110')
+  const [commissionPct, setCommissionPct] = useState('0.15')
+  const [lots,          setLots]          = useState('500')   // PSX lot size = 500 shares
+
+  const res = useMemo(() => {
+    const acc  = p(accountSize)
+    const risk = p(riskPct) / 100
+    const ep   = p(entryPrice)
+    const sl   = p(stopLoss)
+    const tp   = p(target)
+    const com  = p(commissionPct) / 100
+    const lot  = Math.max(pi(lots), 1)
+
+    if (acc <= 0 || ep <= 0 || sl <= 0 || sl >= ep) return null
+
+    const riskAmount     = acc * risk
+    const stopPerShare   = ep - sl
+    const rawShares      = riskAmount / stopPerShare
+    const roundedShares  = Math.floor(rawShares / lot) * lot  // round down to nearest lot
+    const investment     = roundedShares * ep
+    const commission     = investment * com
+    const totalCost      = investment + commission
+
+    const gainPerShare   = tp > ep ? tp - ep : 0
+    const potentialProfit = gainPerShare > 0 ? roundedShares * gainPerShare - (roundedShares * tp * com) : 0
+    const rrRatio        = gainPerShare > 0 && stopPerShare > 0 ? gainPerShare / stopPerShare : 0
+
+    const actualRisk     = roundedShares * stopPerShare + commission
+    const breakEven      = ep + commission / Math.max(roundedShares, 1)
+
+    const pctOfAccount   = (investment / acc) * 100
+
+    return {
+      riskAmount, roundedShares, rawShares, investment, commission,
+      totalCost, potentialProfit, rrRatio, actualRisk, breakEven,
+      pctOfAccount, stopPerShare, gainPerShare,
+    }
+  }, [accountSize, riskPct, entryPrice, stopLoss, target, commissionPct, lots])
+
+  const valid = p(stopLoss) < p(entryPrice) && p(entryPrice) > 0 && p(stopLoss) > 0
+
+  return (
+    <div className="space-y-6">
+      {/* Info banner */}
+      <div className="rounded-xl px-4 py-3 text-[11px]"
+        style={{ backgroundColor: 'rgba(254,165,0,0.08)', border: '1px solid rgba(254,165,0,0.25)', color: 'var(--text-secondary)' }}>
+        Risk-based position sizing for PSX. Enter your account size, how much you&apos;re willing to risk (% of account), entry price, and stop loss. The calculator determines how many shares to buy so that if the stop loss is hit, you lose exactly your risk amount.
+      </div>
+
+      {/* Inputs */}
+      <div>
+        <p className="text-[10px] font-bold uppercase tracking-wider mb-3" style={{ color: 'var(--text-muted)' }}>Account &amp; Risk Parameters</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <Field label="Account / Capital (Rs)" value={accountSize}   onChange={setAccountSize}   prefix="Rs" />
+          <Field label="Risk Per Trade"          value={riskPct}       onChange={setRiskPct}       suffix="%" step="0.1" />
+          <Field label="Lot Size (Shares)"       value={lots}          onChange={setLots}          step="100" />
+        </div>
+      </div>
+
+      <div>
+        <p className="text-[10px] font-bold uppercase tracking-wider mb-3" style={{ color: 'var(--text-muted)' }}>Trade Details</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <Field label="Entry Price (Rs)"        value={entryPrice}    onChange={setEntryPrice}    prefix="Rs" step="0.01" />
+          <Field label="Stop Loss Price (Rs)"    value={stopLoss}      onChange={setStopLoss}      prefix="Rs" step="0.01" />
+          <Field label="Target Price (Rs)"       value={target}        onChange={setTarget}        prefix="Rs" step="0.01" />
+        </div>
+        {!valid && p(entryPrice) > 0 && p(stopLoss) > 0 && (
+          <p className="text-xs mt-2 text-red-500">Stop loss must be below entry price for a long trade.</p>
+        )}
+      </div>
+
+      <div>
+        <p className="text-[10px] font-bold uppercase tracking-wider mb-3" style={{ color: 'var(--text-muted)' }}>Costs</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Field label="Commission / Brokerage" value={commissionPct} onChange={setCommissionPct} suffix="%" step="0.01" />
+          <div className="rounded-lg px-3 py-2.5 text-[11px] self-end"
+            style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-muted)', border: '1px solid var(--bg-border)' }}>
+            Commission is applied on both buy and sell sides. Default 0.15% is a typical PSX brokerage rate.
+          </div>
+        </div>
+      </div>
+
+      {res && (
+        <>
+          {/* Key results */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <ResultCard label="Shares to Buy"   value={fmt(res.roundedShares)} accent
+              sub={`${Math.round(res.roundedShares / pi(lots))} lot${Math.round(res.roundedShares / pi(lots)) !== 1 ? 's' : ''}`} />
+            <ResultCard label="Capital at Risk"  value={fmtRs(res.riskAmount)}
+              sub={`${p(riskPct)}% of account`} />
+            <ResultCard label="Total Investment" value={fmtRs(res.totalCost)}
+              sub={`${res.pctOfAccount.toFixed(1)}% of capital`} />
+            <ResultCard label="Risk : Reward"    value={res.rrRatio > 0 ? `1 : ${res.rrRatio.toFixed(2)}` : '—'}
+              sub={res.rrRatio >= 2 ? 'Favourable' : res.rrRatio > 0 ? 'Below 1:2' : 'Set a target'} />
+          </div>
+
+          {/* Trade summary table */}
+          <TableView
+            headers={['Metric', 'Value']}
+            rows={[
+              ['Entry Price',          fmtRs(p(entryPrice))],
+              ['Stop Loss Price',      fmtRs(p(stopLoss))],
+              ['Stop Loss (per share)',fmtRs(res.stopPerShare)],
+              ['Target Price',         p(target) > p(entryPrice) ? fmtRs(p(target)) : '—'],
+              ['Target Gain (share)',  res.gainPerShare > 0 ? fmtRs(res.gainPerShare) : '—'],
+              ['Shares to Buy',        fmt(res.roundedShares)],
+              ['Investment Amount',    fmtRs(res.investment)],
+              ['Commission (buy)',     fmtRs(res.commission)],
+              ['Total Cost',          fmtRs(res.totalCost)],
+              ['Break-even Price',     fmtRs(res.breakEven)],
+              ['Max Risk (incl. com)', fmtRs(res.actualRisk)],
+              ['Potential Profit',     res.potentialProfit > 0 ? fmtRs(res.potentialProfit) : '—'],
+            ]}
+          />
+
+          {/* Visual bar: entry / stop / target */}
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wider mb-3" style={{ color: 'var(--text-muted)' }}>Price Levels</p>
+            <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--bg-border)' }}>
+              {(() => {
+                const ep = p(entryPrice), sl = p(stopLoss), tp = p(target)
+                const lo = Math.min(sl, ep, tp > ep ? tp : ep) * 0.995
+                const hi = Math.max(sl, ep, tp > ep ? tp : ep) * 1.005
+                const rng = hi - lo
+                const pct = (v: number) => ((v - lo) / rng * 100).toFixed(1) + '%'
+                const levels = [
+                  { label: 'Stop Loss', price: sl, color: '#ef4444' },
+                  { label: 'Entry',     price: ep, color: '#FEA500' },
+                  ...(tp > ep ? [{ label: 'Target', price: tp, color: '#16a34a' }] : []),
+                ]
+                return (
+                  <div className="px-4 py-5 space-y-3">
+                    {levels.map(l => (
+                      <div key={l.label} className="flex items-center gap-3">
+                        <span className="text-[10px] font-bold w-16 shrink-0" style={{ color: l.color }}>{l.label}</span>
+                        <div className="flex-1 h-2 rounded-full relative" style={{ backgroundColor: 'var(--bg-hover)' }}>
+                          <div className="absolute top-0 left-0 h-2 rounded-full" style={{ width: pct(l.price), backgroundColor: l.color, opacity: 0.8 }} />
+                        </div>
+                        <span className="text-xs font-bold font-number w-16 text-right" style={{ color: 'var(--text-primary)' }}>Rs {l.price}</span>
+                      </div>
+                    ))}
+                  </div>
+                )
+              })()}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 /* ── Meta config ─────────────────────────────────────────────────── */
 const CALC_META: Record<string, { title: string; icon: string; desc: string; component: React.ComponentType }> = {
+  'position-size': { title: 'PSX Position Size Calculator', icon: '🎯', desc: 'Risk-based position sizing for PSX traders', component: PositionSizeCalc },
   'roi':           { title: 'ROI Calculator',           icon: '📈', desc: 'Return on Investment',             component: ROICalc },
   'cagr':          { title: 'CAGR Calculator',          icon: '📊', desc: 'Compound Annual Growth Rate',      component: CAGRCalc },
   'sip':           { title: 'SIP Calculator',           icon: '💰', desc: 'Systematic Investment Plan',       component: SIPCalc },

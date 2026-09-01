@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import Link from 'next/link'
@@ -151,11 +151,11 @@ export default function WatchlistPage() {
             <Link href={`/stocks/${item.symbol}`} className="font-bold hover:underline" style={{ color: '#FEA500' }}>
               {item.symbol}
             </Link>
-            {isKMI(item.indexKeys) && <KMIBadge />}
+            {isKMI(item.indexKeys, item.symbol) && <KMIBadge />}
           </div>
         </td>
-        <td className="py-2.5 px-2 max-w-[180px] truncate" style={{ color: 'var(--text-secondary)' }}>
-          {item.name}
+        <td className="py-2.5 px-2 max-w-[180px] truncate">
+          <Link href={`/stocks/${item.symbol}`} className="hover:underline" style={{ color: 'var(--text-secondary)' }}>{item.name}</Link>
         </td>
         <td className="py-2.5 px-2 font-number" style={{ color: 'var(--text-muted)' }}>
           {item.added_price > 0 ? formatPrice(item.added_price) : '—'}

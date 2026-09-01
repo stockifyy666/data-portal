@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect, useMemo } from 'react'
 import Link                             from 'next/link'
@@ -162,11 +162,11 @@ export default function QuoteTable() {
                         >
                           {q.symbol}
                         </Link>
-                        {isKMI(q.indexKeys) && <KMIBadge />}
+                        {isKMI(q.indexKeys, q.symbol) && <KMIBadge />}
                       </div>
                     </td>
-                    <td className="py-2 px-2 max-w-[140px] truncate" style={{ color: 'var(--text-secondary)' }}>
-                      {q.name}
+                    <td className="py-2 px-2 max-w-[140px] truncate">
+                      <Link href={`/stocks/${q.symbol}`} className="hover:underline" style={{ color: 'var(--text-secondary)' }}>{q.name}</Link>
                     </td>
                     <td className="py-2 px-2 font-number font-semibold" style={{ color: 'var(--text-primary)' }}>
                       {formatPrice(q.price)}
