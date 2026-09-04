@@ -327,7 +327,8 @@ export default function SectorPerformance({ indexFilter }: { indexFilter?: strin
           </div>
           <div className="space-y-2">
             {topLosers.map((s, idx) => (
-              <div key={s.code} className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
+              <div key={s.code} onClick={() => setActiveSector({ name: s.name, avg: s.avg, stocks: s.stocks })}
+                   className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-opacity hover:opacity-80"
                    style={{ backgroundColor: bgColor(s.avg), border: `1px solid ${heatColor(s.avg)}30` }}>
                 <span className="text-[10px] font-bold w-4 shrink-0" style={{ color: 'var(--text-muted)' }}>
                   #{idx + 1}
