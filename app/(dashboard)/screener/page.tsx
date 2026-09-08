@@ -195,6 +195,7 @@ export default function ScreenerPage() {
                 <Link
                   key={q.symbol}
                   href={`/stocks/${q.symbol}`}
+                  prefetch={false}
                   className="flex items-center justify-between px-4 py-3 hover:opacity-80 transition-opacity"
                   style={{ borderBottom: '1px solid var(--bg-border)' }}
                   onMouseDown={e => e.preventDefault()}
@@ -211,7 +212,7 @@ export default function ScreenerPage() {
                         <span className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{q.symbol}</span>
                         {isKMI(q.indexKeys, q.symbol) && <KMIBadge />}
                       </div>
-                      <Link href={`/stocks/${q.symbol}`} className="text-[11px] truncate max-w-[260px] hover:underline block" style={{ color: 'var(--text-muted)' }}>{q.name}</Link>
+                      <Link href={`/stocks/${q.symbol}`} prefetch={false} className="text-[11px] truncate max-w-[260px] hover:underline block" style={{ color: 'var(--text-muted)' }}>{q.name}</Link>
                     </div>
                   </div>
                   <div className="text-right shrink-0 ml-4">
@@ -355,13 +356,14 @@ export default function ScreenerPage() {
                       onMouseLeave={e => (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'}>
                     <td className="py-2.5 px-2">
                       <Link href={`/stocks/${q.symbol}`}
+                            prefetch={false}
                             className="font-bold hover:underline"
                             style={{ color: '#FEA500' }}>
                         {q.symbol}
                       </Link>
                     </td>
                     <td className="py-2.5 px-2 max-w-[120px] truncate">
-                      <Link href={`/stocks/${q.symbol}`} className="hover:underline" style={{ color: 'var(--text-secondary)' }}>{q.name}</Link>
+                      <Link href={`/stocks/${q.symbol}`} prefetch={false} className="hover:underline" style={{ color: 'var(--text-secondary)' }}>{q.name}</Link>
                     </td>
                     <td className="py-2.5 px-2 font-number font-semibold"
                         style={{ color: 'var(--text-primary)' }}>{formatPrice(q.price)}</td>

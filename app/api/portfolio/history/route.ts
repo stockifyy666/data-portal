@@ -17,7 +17,7 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from('portfolio_transactions')
     .select('*')
     .eq('user_id', user.id)

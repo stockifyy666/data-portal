@@ -44,11 +44,11 @@ export async function POST(request: Request) {
 
   const { symbol, targetPrice, direction } = parsed.data
 
-  const { error } = await supabase.from('price_alerts').insert({
+  const { error } = await (supabase as any).from('price_alerts').insert({
     user_id:      session.user.id,
     symbol,
     target_price: targetPrice,
-    direction,
+    condition:    direction,
     is_active:    true,
   })
 

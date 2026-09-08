@@ -41,9 +41,6 @@ export const TTL_SECONDS = {
   ANNOUNCEMENTS:    60 * 60,   // 3600 seconds = 1 hour
   INTRADAY_CHART:   60 * 60,   // 3600 seconds = 1 hour
 
-  // Mutual funds NAV — updates once per day by 10 PM PKT
-  MUTUAL_FUNDS:     60 * 60,   // 3600 seconds = 1 hour
-
   // Fundamentals — only change when company files quarterly/annual results
   FINANCIALS:       24 * 60 * 60,  // 86400 seconds = 24 hours
   RATIOS:           24 * 60 * 60,
@@ -141,9 +138,7 @@ export const CACHE_KEYS = {
   financials:     (symbol: string) => `stock:financials:${symbol.toUpperCase()}`,
   ratios:         (symbol: string) => `stock:ratios:${symbol.toUpperCase()}`,
   announcements:  (symbol: string) => `stock:announcements:${symbol.toUpperCase()}`,
-  mutualFunds:         () => 'mutual-funds:all',
-  fundProfile:    (id: string)     => `mutual-fund:profile:${id}`,
-  forex:               () => 'forex:all',
+forex:               () => 'forex:all',
   sectors:             () => 'market:sectors',
   holidays:            () => 'market:holidays',
 } as const

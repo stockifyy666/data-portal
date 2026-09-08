@@ -21,9 +21,9 @@ export const metadata: Metadata = {
     template: '%s | Stockifyy',
   },
   description:
-    'Real-time Pakistan Stock Exchange (PSX) data, charts, mutual funds, ' +
+    'Real-time Pakistan Stock Exchange (PSX) data, charts, ' +
     'and financial analytics powered by Capital Stake.',
-  keywords: ['PSX', 'Pakistan Stock Exchange', 'KSE-100', 'mutual funds', 'stocks'],
+  keywords: ['PSX', 'Pakistan Stock Exchange', 'KSE-100', 'stocks', 'heatmap'],
   authors: [{ name: 'Stockifyy' }],
   robots: { index: false, follow: false },
 }

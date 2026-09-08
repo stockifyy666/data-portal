@@ -6,7 +6,7 @@ import {
   LayoutDashboard, TrendingUp, BookMarked,
   Briefcase, SlidersHorizontal, Bell, Settings, LogOut, User,
   Grid2x2, Sun, Moon, X, Calculator, BookOpen, BarChart2, PanelTopOpen,
-  Newspaper,
+  Newspaper, Globe, ArrowUpDown,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useTheme }     from '@/components/providers/ThemeProvider'
@@ -15,11 +15,13 @@ import Image from 'next/image'
 
 const NAV_ITEMS = [
   { icon: LayoutDashboard,   label: 'Dashboard',       href: '/dashboard'  },
+  { icon: Globe,             label: 'Macro Dashboard',  href: '/macro'      },
   { icon: TrendingUp,        label: 'Stocks',           href: '/stocks'     },
   { icon: BookMarked,        label: 'Watchlist',        href: '/watchlist'  },
   { icon: Briefcase,         label: 'Portfolio',        href: '/portfolio'  },
   { icon: Grid2x2,           label: 'Heatmap',          href: '/heatmap'    },
   { icon: SlidersHorizontal, label: 'Screener',         href: '/screener'   },
+  { icon: ArrowUpDown,       label: 'FIPI / LIPI',      href: '/fipi'       },
   { icon: Bell,              label: 'Alerts',           href: '/alerts'     },
   { icon: Calculator,        label: 'Tools',            href: '/tools'      },
   { icon: BookOpen,          label: 'Reports',          href: '/reports'    },

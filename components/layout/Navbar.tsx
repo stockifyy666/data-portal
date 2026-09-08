@@ -2,7 +2,7 @@
 
 import Link            from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { BarChart3, LayoutDashboard, TrendingUp, PieChart, BookMarked,
+import { BarChart3, LayoutDashboard, TrendingUp, BookMarked,
          Briefcase, SlidersHorizontal, Bell, Settings, LogOut, User,
          Grid2x2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
@@ -10,7 +10,6 @@ import { createClient } from '@/lib/supabase/client'
 const NAV_ITEMS = [
   { icon: LayoutDashboard,   label: 'Dashboard',    href: '/dashboard' },
   { icon: TrendingUp,        label: 'Stocks',        href: '/stocks' },
-  { icon: PieChart,          label: 'Mutual Funds',  href: '/mutual-funds' },
   { icon: BookMarked,        label: 'Watchlist',     href: '/watchlist' },
   { icon: Briefcase,         label: 'Portfolio',     href: '/portfolio' },
   { icon: Grid2x2,           label: 'Heatmap',       href: '/heatmap' },

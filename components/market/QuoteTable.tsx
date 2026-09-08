@@ -157,6 +157,7 @@ export default function QuoteTable() {
                       <div className="flex items-center gap-1">
                         <Link
                           href={`/stocks/${q.symbol}`}
+                          prefetch={false}
                           className="font-semibold hover:underline transition-colors"
                           style={{ color: '#FEA500' }}
                         >
@@ -166,7 +167,7 @@ export default function QuoteTable() {
                       </div>
                     </td>
                     <td className="py-2 px-2 max-w-[140px] truncate">
-                      <Link href={`/stocks/${q.symbol}`} className="hover:underline" style={{ color: 'var(--text-secondary)' }}>{q.name}</Link>
+                      <Link href={`/stocks/${q.symbol}`} prefetch={false} className="hover:underline" style={{ color: 'var(--text-secondary)' }}>{q.name}</Link>
                     </td>
                     <td className="py-2 px-2 font-number font-semibold" style={{ color: 'var(--text-primary)' }}>
                       {formatPrice(q.price)}

@@ -1,16 +1,32 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Newspaper, ExternalLink, RefreshCw, Search, Clock } from 'lucide-react'
-import Link from 'next/link'
+import { Newspaper, ExternalLink, RefreshCw, Search, Clock, TrendingUp, Globe } from 'lucide-react'
 
 type NewsItem = {
-  title: string
-  date: string
+  title:       string
+  date:        string
   description: string
-  link: string
-  image: string
-  source: string
+  link:        string
+  image:       string
+  source:      string
+}
+
+// Keywords that classify a news item as "market / business"
+const MARKET_KEYWORDS = [
+  'psx', 'kse', 'stock', 'share', 'equity', 'market', 'trading', 'index',
+  'rupee', 'dollar', 'sbp', 'inflation', 'gdp', 'profit', 'revenue', 'earnings',
+  'dividend', 'ipo', 'listed', 'company', 'corporate', 'sector', 'fiscal',
+  'budget', 'export', 'import', 'trade', 'economy', 'economic', 'finance',
+  'bank', 'secp', 'textile', 'cement', 'oil', 'gas', 'fertilizer', 'fund',
+  'investment', 'investor', 'quarter', 'annual', 'interest rate', 'monetary',
+  'tsx', 'nasdaq', 'crypto', 'bitcoin', 'imf', 'world bank', 'sensex', 'nifty',
+  'forex', 'currency', 'petroleum', 'energy', 'power', 'generation', 'agm',
+]
+
+function isMarketNews(item: NewsItem): boolean {
+  const text = (item.title + ' ' + item.description + ' ' + item.source).toLowerCase()
+  return MARKET_KEYWORDS.some(kw => text.includes(kw))
 }
 
 function timeAgo(dateStr: string): string {
@@ -42,7 +58,6 @@ function SkeletonCard() {
 
 function NewsCard({ item }: { item: NewsItem }) {
   const hasImage = Boolean(item.image)
-
   return (
     <a
       href={item.link || '#'}
@@ -57,7 +72,6 @@ function NewsCard({ item }: { item: NewsItem }) {
       onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,.12)')}
       onMouseLeave={e => (e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,.06)')}
     >
-      {/* Image */}
       {hasImage ? (
         <div className="relative h-36 overflow-hidden">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -67,7 +81,6 @@ function NewsCard({ item }: { item: NewsItem }) {
             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
             onError={e => { (e.currentTarget.parentElement as HTMLElement).style.display = 'none' }}
           />
-          {/* source badge */}
           <span
             className="absolute top-2 left-2 text-[9px] font-semibold px-2 py-0.5 rounded-full"
             style={{ backgroundColor: 'rgba(0,0,0,.55)', color: '#fff', backdropFilter: 'blur(4px)' }}
@@ -76,28 +89,23 @@ function NewsCard({ item }: { item: NewsItem }) {
           </span>
         </div>
       ) : (
-        <div className="h-10 flex items-center px-4"
-          style={{ backgroundColor: 'var(--bg-hover)' }}>
+        <div className="h-10 flex items-center px-4" style={{ backgroundColor: 'var(--bg-hover)' }}>
           <span className="text-[9px] font-semibold uppercase tracking-wide"
             style={{ color: 'var(--text-muted)' }}>{item.source}</span>
         </div>
       )}
 
-      {/* Body */}
       <div className="flex-1 flex flex-col p-4 gap-2">
         <p className="text-[13px] font-semibold leading-snug line-clamp-3"
           style={{ color: 'var(--text-primary)' }}>
           {item.title}
         </p>
-
         {item.description && (
           <p className="text-[11px] leading-relaxed line-clamp-2"
             style={{ color: 'var(--text-muted)' }}>
             {item.description}
           </p>
         )}
-
-        {/* Footer */}
         <div className="flex items-center justify-between mt-auto pt-2"
           style={{ borderTop: '1px solid var(--bg-border)' }}>
           <div className="flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
@@ -106,8 +114,7 @@ function NewsCard({ item }: { item: NewsItem }) {
           </div>
           <div className="flex items-center gap-1 text-[10px] font-medium opacity-0 group-hover:opacity-100 transition-opacity"
             style={{ color: '#FEA500' }}>
-            Read more
-            <ExternalLink size={9} />
+            Read more <ExternalLink size={9} />
           </div>
         </div>
       </div>
@@ -115,25 +122,57 @@ function NewsCard({ item }: { item: NewsItem }) {
   )
 }
 
-export default function NewsPage() {
-  const [news,    setNews]    = useState<NewsItem[]>([])
-  const [loading, setLoading] = useState(true)
-  const [query,   setQuery]   = useState('')
-  const [filter,  setFilter]  = useState<'all' | 'today' | 'week'>('all')
+type TabId = 'market' | 'general'
 
-  const load = useCallback(() => {
+export default function NewsPage() {
+  const [marketNews,  setMarketNews]  = useState<NewsItem[]>([])
+  const [generalNews, setGeneralNews] = useState<NewsItem[]>([])
+  const [tab,         setTab]         = useState<TabId>('market')
+  const [loading,     setLoading]     = useState(true)
+  const [genLoading,  setGenLoading]  = useState(false)
+  const [query,       setQuery]       = useState('')
+  const [filter,      setFilter]      = useState<'all' | 'today' | 'week'>('all')
+
+  const loadMarket = useCallback(() => {
     setLoading(true)
     fetch('/api/market/news')
       .then(r => r.json())
-      .then(j => { if (Array.isArray(j.data)) setNews(j.data) })
+      .then(j => {
+        if (Array.isArray(j.data)) {
+          // All PSX API news is market news, but filter out anything clearly non-market
+          setMarketNews(j.data.filter(isMarketNews))
+        }
+      })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
 
-  useEffect(() => { load() }, [load])
+  const loadGeneral = useCallback(() => {
+    setGenLoading(true)
+    fetch('/api/market/news-general')
+      .then(r => r.json())
+      .then(j => { if (Array.isArray(j.data)) setGeneralNews(j.data) })
+      .catch(() => {})
+      .finally(() => setGenLoading(false))
+  }, [])
+
+  useEffect(() => { loadMarket() }, [loadMarket])
+
+  // Lazy-load general news when tab is first opened
+  useEffect(() => {
+    if (tab === 'general' && generalNews.length === 0 && !genLoading) loadGeneral()
+  }, [tab, generalNews.length, genLoading, loadGeneral])
+
+  function refresh() {
+    if (tab === 'market') loadMarket()
+    else loadGeneral()
+  }
 
   const now = Date.now()
-  const filtered = news.filter(item => {
+  const source = tab === 'market' ? marketNews : generalNews
+  const isLoading = tab === 'market' ? loading : genLoading
+
+  const filtered = source.filter(item => {
     const q = query.trim().toLowerCase()
     const matchQ = !q || item.title.toLowerCase().includes(q) || item.source.toLowerCase().includes(q)
     if (!matchQ) return false
@@ -148,10 +187,25 @@ export default function NewsPage() {
     return true
   })
 
+  const tabs: { id: TabId; label: string; icon: React.ReactNode; desc: string }[] = [
+    {
+      id: 'market',
+      label: 'Market News',
+      icon: <TrendingUp size={14} />,
+      desc: 'Business, stocks & economy',
+    },
+    {
+      id: 'general',
+      label: 'Other News',
+      icon: <Globe size={14} />,
+      desc: 'Pakistan, politics & society',
+    },
+  ]
+
   return (
     <div className="flex flex-col min-h-screen">
       {/* Page header */}
-      <div className="px-6 py-5 border-b" style={{ borderColor: 'var(--bg-border)' }}>
+      <div className=" py-5 border-b" style={{ borderColor: 'var(--bg-border)' }}>
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center"
@@ -159,27 +213,52 @@ export default function NewsPage() {
               <Newspaper size={16} className="text-white" />
             </div>
             <div>
-              <h1 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>Market News</h1>
+              <h1 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>News</h1>
               <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                Latest news from Pakistan Stock Exchange
+                {tab === 'market' ? 'Business, markets & economy' : 'Pakistan, politics & society'}
               </p>
             </div>
           </div>
 
           <button
-            onClick={load}
-            disabled={loading}
+            onClick={refresh}
+            disabled={isLoading}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-colors"
             style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-secondary)' }}
           >
-            <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
+            <RefreshCw size={12} className={isLoading ? 'animate-spin' : ''} />
             Refresh
           </button>
         </div>
 
-        {/* Search + filter bar */}
-        <div className="flex flex-wrap items-center gap-3 mt-4">
-          {/* Search */}
+        {/* Tab switcher */}
+        <div className="flex items-center gap-2 mt-4">
+          {tabs.map(t => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all"
+              style={tab === t.id ? {
+                background: 'linear-gradient(135deg,#FEA500,#986300)',
+                color: 'white',
+                boxShadow: '0 2px 8px rgba(254,165,0,0.35)',
+              } : {
+                backgroundColor: 'var(--bg-hover)',
+                color: 'var(--text-secondary)',
+                border: '1px solid var(--bg-border)',
+              }}
+            >
+              {t.icon}
+              {t.label}
+              {tab !== t.id && (
+                <span className="text-[10px] font-normal opacity-60 hidden sm:inline">— {t.desc}</span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* Search + time filter */}
+        <div className="flex flex-wrap items-center gap-3 mt-3">
           <div className="relative flex-1 min-w-[180px] max-w-xs">
             <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2"
               style={{ color: 'var(--text-muted)' }} />
@@ -197,7 +276,6 @@ export default function NewsPage() {
             />
           </div>
 
-          {/* Time filter */}
           {(['all', 'today', 'week'] as const).map(f => (
             <button
               key={f}
@@ -215,7 +293,7 @@ export default function NewsPage() {
             </button>
           ))}
 
-          {!loading && (
+          {!isLoading && (
             <span className="text-[11px] ml-auto" style={{ color: 'var(--text-muted)' }}>
               {filtered.length} article{filtered.length !== 1 ? 's' : ''}
             </span>
@@ -223,9 +301,9 @@ export default function NewsPage() {
         </div>
       </div>
 
-      {/* Grid */}
+      {/* News grid */}
       <div className="flex-1 p-6">
-        {loading ? (
+        {isLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {Array.from({ length: 12 }).map((_, i) => <SkeletonCard key={i} />)}
           </div>

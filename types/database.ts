@@ -127,8 +127,23 @@ export type Database = {
           api_rate_limit: number
           is_active:      boolean
         }
-        Insert: Partial<Database['public']['Tables']['plans']['Row']>
-        Update: Partial<Database['public']['Tables']['plans']['Row']>
+        Insert: {
+          id?:             string
+          name:            string
+          price_monthly:   number
+          price_yearly:    number
+          features?:       Record<string, number>
+          api_rate_limit?: number
+          is_active?:      boolean
+        }
+        Update: {
+          name?:           string
+          price_monthly?:  number
+          price_yearly?:   number
+          features?:       Record<string, number>
+          api_rate_limit?: number
+          is_active?:      boolean
+        }
       }
 
       user_subscriptions: {
@@ -179,6 +194,7 @@ export type Database = {
           id:           string
           watchlist_id: string
           symbol:       string
+          added_price:  number | null
           sort_order:   number
           added_at:     string
         }
@@ -186,10 +202,12 @@ export type Database = {
           id?:          string
           watchlist_id: string
           symbol:       string
+          added_price?: number | null
           sort_order?:  number
         }
         Update: {
-          sort_order?: number
+          sort_order?:  number
+          added_price?: number | null
         }
       }
 
@@ -241,11 +259,14 @@ export type Database = {
       portfolio_transactions: {
         Row: {
           id:               string
+          user_id:          string
           portfolio_id:     string
           symbol:           string
           type:             'BUY' | 'SELL'
           quantity:         number
           price:            number
+          buy_price:        number | null
+          commission:       number | null
           total_value:      number
           transaction_date: string
           notes:            string | null
@@ -253,17 +274,22 @@ export type Database = {
         }
         Insert: {
           id?:              string
+          user_id:          string
           portfolio_id:     string
           symbol:           string
           type:             'BUY' | 'SELL'
           quantity:         number
           price:            number
+          buy_price?:       number | null
+          commission?:      number | null
           total_value:      number
           transaction_date: string
           notes?:           string | null
         }
         Update: {
-          notes?: string | null
+          notes?:      string | null
+          buy_price?:  number | null
+          commission?: number | null
         }
       }
 

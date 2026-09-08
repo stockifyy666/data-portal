@@ -173,22 +173,6 @@ export type FinancialRow = {
   values: Record<string, number | null>  // { "2023": 1234567, "2022": 9876543 }
 }
 
-// =============================================================================
-// Mutual Fund — NAV and profile data
-// =============================================================================
-export type MutualFund = {
-  id:           string
-  name:         string
-  amc:          string    // Asset Management Company
-  category:     string    // Equity, Money Market, Income, etc.
-  nav:          number    // Net Asset Value per unit
-  navDate:      string
-  returns1Y:    number | null
-  returns3Y:    number | null
-  returns5Y:    number | null
-  risk:         string | null
-  minInvestment: number | null
-}
 
 // =============================================================================
 // Announcement — corporate disclosure from PUCARS feed

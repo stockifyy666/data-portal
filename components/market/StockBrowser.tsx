@@ -223,6 +223,7 @@ export default function StockBrowser() {
                   const up = q.changePct >= 0
                   return (
                     <Link key={q.symbol} href={`/stocks/${q.symbol}`}
+                      prefetch={false}
                       className="flex items-center justify-between px-4 py-2.5 hover:opacity-80 transition-opacity"
                       style={{ borderBottom: '1px solid var(--bg-border)' }}
                       onMouseDown={e => e.preventDefault()}>
@@ -329,6 +330,7 @@ export default function StockBrowser() {
                     <td className="py-2 px-2">
                       <div className="flex items-center gap-1">
                         <Link href={`/stocks/${q.symbol}`}
+                              prefetch={false}
                               className="font-bold hover:underline"
                               style={{ color: '#FEA500' }}>
                           {q.symbol}
@@ -337,7 +339,7 @@ export default function StockBrowser() {
                       </div>
                     </td>
                     <td className="py-2 px-2 max-w-[160px] truncate">
-                      <Link href={`/stocks/${q.symbol}`} className="hover:underline" style={{ color: 'var(--text-secondary)' }}>{q.name}</Link>
+                      <Link href={`/stocks/${q.symbol}`} prefetch={false} className="hover:underline" style={{ color: 'var(--text-secondary)' }}>{q.name}</Link>
                     </td>
                     <td className="py-2 px-2 font-number font-semibold"
                         style={{ color: 'var(--text-primary)' }}>

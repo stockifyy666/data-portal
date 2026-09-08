@@ -26,16 +26,17 @@ type Timeframe = typeof VALID_TIMEFRAMES[number]
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { symbol: string } }
+  { params }: { params: Promise<{ symbol: string }> }
 ) {
   try {
-    const symbol = params.symbol.toUpperCase()
+    const { symbol: rawSymbol } = await params
+    const symbol = rawSymbol.toUpperCase()
 
     // Read timeframe from query string — default to EOD if not provided
     const tf = (request.nextUrl.searchParams.get('tf') ?? 'eod') as Timeframe
 
     // Validate both symbol and timeframe
-    if (!/^[A-Z]{2,6}$/.test(symbol)) {
+    if (!/^[A-Z0-9]{2,10}$/.test(symbol)) {
       return NextResponse.json({ error: `Invalid symbol: ${symbol}` }, { status: 400 })
     }
 
@@ -90,7 +91,7 @@ export async function GET(
 
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
-    console.error(`[API /market/${params.symbol}/chart]`, message)
+    console.error(`[API /market/chart]`, message)
     return NextResponse.json(
       { error: 'Failed to fetch chart data', details: message },
       { status: 500 }

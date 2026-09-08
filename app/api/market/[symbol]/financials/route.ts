@@ -27,10 +27,11 @@ type FinancialType = typeof VALID_TYPES[number]
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { symbol: string } }
+  { params }: { params: Promise<{ symbol: string }> }
 ) {
   try {
-    const symbol = params.symbol.toUpperCase()
+    const { symbol: rawSymbol } = await params
+    const symbol = rawSymbol.toUpperCase()
     const type = (request.nextUrl.searchParams.get('type') ?? 'ratios') as FinancialType
 
     if (!/^[A-Z]{2,6}$/.test(symbol)) {
@@ -76,7 +77,7 @@ export async function GET(
 
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
-    console.error(`[API /market/${params.symbol}/financials]`, message)
+    console.error(`[API /market/financials]`, message)
     return NextResponse.json(
       { error: 'Failed to fetch financials', details: message },
       { status: 500 }

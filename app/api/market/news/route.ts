@@ -15,10 +15,11 @@ export async function GET() {
       }
     )
 
-    const list: any[] = Array.isArray(data)
-      ? data
-      : Array.isArray(data?.data)
-      ? data.data
+    const raw = data as any
+    const list: any[] = Array.isArray(raw)
+      ? raw
+      : Array.isArray(raw?.data)
+      ? raw.data
       : []
 
     const news = list.slice(0, 30).map((item: any) => ({

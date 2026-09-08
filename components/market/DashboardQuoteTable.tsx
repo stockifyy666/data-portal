@@ -176,6 +176,7 @@ export default function DashboardQuoteTable() {
                     <td className="py-2 px-2">
                       <div className="flex items-center gap-1">
                         <Link href={`/stocks/${q.symbol}`}
+                              prefetch={false}
                               className="font-bold hover:underline"
                               style={{ color: '#FEA500' }}>
                           {q.symbol}

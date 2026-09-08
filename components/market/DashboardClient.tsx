@@ -326,13 +326,13 @@ export default function DashboardClient() {
                       onMouseLeave={e => (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'}>
                     <td className="py-2 px-2">
                       <div className="flex items-center gap-1">
-                        <Link href={`/stocks/${q.symbol}`} className="font-bold hover:underline" style={{ color: '#FEA500' }}>
+                        <Link href={`/stocks/${q.symbol}`} prefetch={false} className="font-bold hover:underline" style={{ color: '#FEA500' }}>
                           {q.symbol}
                         </Link>
                         {isKMI(q.indexKeys, q.symbol) && <KMIBadge />}
                       </div>
                     </td>
-                    <td className="py-2 px-2 max-w-[140px] truncate"><Link href={`/stocks/${q.symbol}`} className="hover:underline" style={{ color: 'var(--text-secondary)' }}>{q.name}</Link></td>
+                    <td className="py-2 px-2 max-w-[140px] truncate"><Link href={`/stocks/${q.symbol}`} prefetch={false} className="hover:underline" style={{ color: 'var(--text-secondary)' }}>{q.name}</Link></td>
                     <td className="py-2 px-2 font-number font-semibold" style={{ color: 'var(--text-primary)' }}>{formatPrice(q.price)}</td>
                     <td className={`py-2 px-2 font-number ${color}`}>{formatChange(q.change)}</td>
                     <td className={`py-2 px-2 font-number font-semibold ${color}`}>{formatPercent(q.changePct / 100)}</td>

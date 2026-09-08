@@ -46,14 +46,14 @@ export async function POST(request: NextRequest) {
     let targetWatchlistId = watchlistId
 
     if (!targetWatchlistId) {
-      const { data: existing } = await supabase
+      const { data: existing } = await (supabase as any)
         .from('watchlists').select('id')
         .eq('user_id', user.id).eq('is_default', true).single()
 
       if (existing) {
         targetWatchlistId = existing.id
       } else {
-        const { data: created, error: createError } = await supabase
+        const { data: created, error: createError } = await (supabase as any)
           .from('watchlists')
           .insert({ user_id: user.id, name: 'My Watchlist', is_default: true })
           .select('id').single()
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const { error: insertError } = await supabase
+    const { error: insertError } = await (supabase as any)
       .from('watchlist_items').insert({
         watchlist_id: targetWatchlistId,
         symbol,

@@ -7,7 +7,8 @@ const VALID_CALCS = [
   'salary-tax','depreciation','exchange-rate','zakat',
 ]
 
-export default function CalcPage({ params }: { params: { calc: string } }) {
-  if (!VALID_CALCS.includes(params.calc)) notFound()
-  return <CalculatorClient calc={params.calc} />
+export default async function CalcPage({ params }: { params: Promise<{ calc: string }> }) {
+  const { calc } = await params
+  if (!VALID_CALCS.includes(calc)) notFound()
+  return <CalculatorClient calc={calc} />
 }
