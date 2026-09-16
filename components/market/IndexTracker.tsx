@@ -67,7 +67,7 @@ export default function IndexTracker() {
 
             <p className="text-lg font-bold font-number leading-tight"
                style={{ color: 'var(--text-primary)' }}>
-              {index.current > 0 ? formatPrice(index.current, 0) : '—'}
+              {index.current > 0 ? formatPrice(index.current, 2) : '—'}
             </p>
 
             <p className={`text-xs font-number font-semibold mt-1 ${isUp ? 'text-green-600' : 'text-red-500'}`}>

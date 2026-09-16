@@ -13,7 +13,7 @@ function parseEquities(eq: Record<string, any>): StockQuote[] {
     high:      s.h    ?? 0,
     low:       s.l    ?? 0,
     change:    s.ch   ?? 0,
-    changePct: +((s.pch ?? 0) * 100).toFixed(2),
+    changePct: (s.pch ?? 0) * 100,
     volume:    s.v    ?? 0,
     high52:    s.h52  ?? 0,
     low52:     s.l52  ?? 0,

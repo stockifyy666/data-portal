@@ -6,7 +6,7 @@ import {
   LayoutDashboard, TrendingUp, BookMarked,
   Briefcase, SlidersHorizontal, Bell, Settings, LogOut, User,
   Grid2x2, Sun, Moon, X, Calculator, BookOpen, BarChart2, PanelTopOpen,
-  Newspaper, Globe, ArrowUpDown,
+  Newspaper, Globe, ArrowUpDown, Activity,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useTheme }     from '@/components/providers/ThemeProvider'
@@ -19,6 +19,7 @@ const NAV_ITEMS = [
   { icon: TrendingUp,        label: 'Stocks',           href: '/stocks'     },
   { icon: BookMarked,        label: 'Watchlist',        href: '/watchlist'  },
   { icon: Briefcase,         label: 'Portfolio',        href: '/portfolio'  },
+  { icon: Activity,          label: 'Indices',           href: '/indices'    },
   { icon: Grid2x2,           label: 'Heatmap',          href: '/heatmap'    },
   { icon: SlidersHorizontal, label: 'Screener',         href: '/screener'   },
   { icon: ArrowUpDown,       label: 'FIPI / LIPI',      href: '/fipi'       },

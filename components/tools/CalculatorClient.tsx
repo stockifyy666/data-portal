@@ -737,7 +737,7 @@ function PositionSizeCalc() {
             <ResultCard label="Capital at Risk"  value={fmtRs(res.riskAmount)}
               sub={`${p(riskPct)}% of account`} />
             <ResultCard label="Total Investment" value={fmtRs(res.totalCost)}
-              sub={`${res.pctOfAccount.toFixed(1)}% of capital`} />
+              sub={`${res.pctOfAccount.toFixed(2)}% of capital`} />
             <ResultCard label="Risk : Reward"    value={res.rrRatio > 0 ? `1 : ${res.rrRatio.toFixed(2)}` : '—'}
               sub={res.rrRatio >= 2 ? 'Favourable' : res.rrRatio > 0 ? 'Below 1:2' : 'Set a target'} />
           </div>

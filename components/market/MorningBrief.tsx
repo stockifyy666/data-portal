@@ -201,7 +201,7 @@ export default function MorningBrief({ userName }: { userName?: string }) {
                 <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
                   KSE-100 &nbsp;·&nbsp;
                   <span className={kse100.change >= 0 ? 'text-green-500' : 'text-red-500'}>
-                    {kse100.change >= 0 ? '+' : ''}{kse100.change.toLocaleString(undefined, { maximumFractionDigits: 0 })} pts
+                    {kse100.change >= 0 ? '+' : ''}{kse100.change.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} pts
                   </span>
                 </p>
               </div>

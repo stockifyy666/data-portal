@@ -435,106 +435,555 @@ function buildSectors(holdings: EnrichedHolding[]) {
   return Object.values(map).filter(s => s.value > 0).sort((a,b) => b.value - a.value)
 }
 
-// ─── Histogram: P&L per holding ───────────────────────────────────────────────
+// ─── Premium P&L Histogram ────────────────────────────────────────────────────
 
-function HoldingsBarChart({ holdings }: { holdings: EnrichedHolding[] }) {
+function HoldingsPnlChart({ holdings }: { holdings: EnrichedHolding[] }) {
   const ref = useRef<HTMLCanvasElement>(null)
+  const barsRef = useRef<{ x: number; w: number; h: EnrichedHolding; pnl: number; pct: number; mktVal: number }[]>([])
+  const [tip, setTip] = useState<{ x: number; y: number; h: EnrichedHolding; pnl: number; pct: number; mktVal: number } | null>(null)
+
+  const data = holdings.map(h => {
+    const mktVal = h.ltp > 0 ? h.quantity * h.ltp : h.quantity * h.average_price
+    const cost   = h.quantity * h.average_price
+    const pnl    = mktVal - cost
+    const pct    = cost > 0 ? (pnl / cost) * 100 : 0
+    return { h, pnl, pct, mktVal }
+  }).sort((a, b) => b.pnl - a.pnl)
 
   useEffect(() => {
     const canvas = ref.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
+    if (!canvas || !data.length) return
+    const ctx = canvas.getContext('2d')!
     const dpr = window.devicePixelRatio || 1
     const W = canvas.offsetWidth, H = canvas.offsetHeight
-    canvas.width = W*dpr; canvas.height = H*dpr; ctx.scale(dpr, dpr)
-    ctx.clearRect(0,0,W,H)
+    canvas.width = W * dpr; canvas.height = H * dpr; ctx.scale(dpr, dpr)
+    ctx.clearRect(0, 0, W, H)
 
-    const css       = getComputedStyle(document.documentElement)
-    const textMut   = css.getPropertyValue('--text-muted').trim()   || '#7a839e'
-    const borderCol = css.getPropertyValue('--bg-border').trim()    || '#1e2232'
+    const css     = getComputedStyle(document.documentElement)
+    const textMut = css.getPropertyValue('--text-muted').trim()  || '#7a839e'
+    const border  = css.getPropertyValue('--bg-border').trim()   || '#1e2232'
+    const textPri = css.getPropertyValue('--text-primary').trim() || '#e2e8f0'
 
-    const data = holdings.slice(0,14).map(h => {
-      const val  = h.ltp > 0 ? h.quantity*h.ltp : h.quantity*h.average_price
-      const pnl  = val - h.quantity*h.average_price
-      const tPnl = h.ltp>0 && h.prevClose>0 ? h.quantity*(h.ltp - h.prevClose) : 0
-      return { label: h.symbol, pnl, tPnl }
-    })
+    const PAD = { top: 24, right: 20, bottom: 72, left: 72 }
+    const cW   = W - PAD.left - PAD.right
+    const cH   = H - PAD.top  - PAD.bottom
 
-    const PAD = { top:16, right:12, bottom:44, left:58 }
-    const cW = W - PAD.left - PAD.right
-    const cH = H - PAD.top  - PAD.bottom
+    const maxPnl  = Math.max(...data.map(d => d.pnl), 1)
+    const minPnl  = Math.min(...data.map(d => d.pnl), -1)
+    const range   = maxPnl - minPnl || 1
+    const toY     = (v: number) => PAD.top + cH - ((v - minPnl) / range) * cH
+    const z0      = toY(0)
 
-    const allV  = data.flatMap(d=>[d.pnl,d.tPnl])
-    const maxV  = Math.max(...allV, 1)
-    const minV  = Math.min(...allV, -1)
-    const range = maxV - minV || 1
-    const toY   = (v:number) => PAD.top + cH - ((v-minV)/range)*cH
-    const z0    = toY(0)
-
-    // Grid
-    for (let i=0;i<=5;i++) {
-      const v = minV + (range/5)*i
+    // Grid lines
+    const steps = 5
+    for (let i = 0; i <= steps; i++) {
+      const v = minPnl + (range / steps) * i
       const y = toY(v)
-      ctx.strokeStyle = borderCol; ctx.lineWidth = 0.5; ctx.setLineDash([3,3])
-      ctx.beginPath(); ctx.moveTo(PAD.left,y); ctx.lineTo(W-PAD.right,y); ctx.stroke()
+      ctx.strokeStyle = border; ctx.lineWidth = 0.5; ctx.setLineDash([3, 4])
+      ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(W - PAD.right, y); ctx.stroke()
       ctx.setLineDash([])
-      const lbl = Math.abs(v)>=1000 ? (v/1000).toFixed(0)+'K' : v.toFixed(0)
-      ctx.fillStyle=textMut; ctx.font='9px system-ui'; ctx.textAlign='right'
-      ctx.fillText(lbl, PAD.left-5, y+3)
+      const lbl = Math.abs(v) >= 1_000_000 ? `${(v / 1_000_000).toFixed(1)}M`
+                : Math.abs(v) >= 1_000 ? `${(v / 1_000).toFixed(0)}K` : v.toFixed(0)
+      ctx.fillStyle = textMut; ctx.font = '9px system-ui'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle'
+      ctx.fillText(lbl, PAD.left - 6, y)
     }
+
     // Zero line
-    ctx.strokeStyle='rgba(254,165,0,0.5)'; ctx.lineWidth=1; ctx.setLineDash([4,3])
-    ctx.beginPath(); ctx.moveTo(PAD.left,z0); ctx.lineTo(W-PAD.right,z0); ctx.stroke()
+    ctx.strokeStyle = 'rgba(254,165,0,0.4)'; ctx.lineWidth = 1; ctx.setLineDash([5, 4])
+    ctx.beginPath(); ctx.moveTo(PAD.left, z0); ctx.lineTo(W - PAD.right, z0); ctx.stroke()
     ctx.setLineDash([])
 
     const gW   = cW / data.length
-    const bW   = Math.min(gW*0.38, 20)
-    const pts: [number,number][] = []
+    const bW   = Math.max(Math.min(gW * 0.62, 36), 8)
+    barsRef.current = []
 
-    data.forEach((d,i) => {
-      const cx = PAD.left + i*gW + gW/2
-      // Total P&L bar
-      const top1 = Math.min(toY(d.pnl), z0)
-      const h1   = Math.abs(toY(d.pnl) - z0)
-      ctx.fillStyle = d.pnl>=0 ? 'rgba(34,197,94,0.8)' : 'rgba(220,38,38,0.8)'
-      ctx.fillRect(cx - bW - 2, top1, bW, Math.max(h1,1))
-      // Today bar
-      if (d.tPnl !== 0) {
-        const top2 = Math.min(toY(d.tPnl), z0)
-        const h2   = Math.abs(toY(d.tPnl) - z0)
-        ctx.fillStyle = d.tPnl>=0 ? 'rgba(34,197,94,0.35)' : 'rgba(220,38,38,0.35)'
-        ctx.fillRect(cx + 2, top2, bW, Math.max(h2,1))
+    data.forEach((d, i) => {
+      const cx  = PAD.left + i * gW + gW / 2
+      const bx  = cx - bW / 2
+      const top = Math.min(toY(d.pnl), z0)
+      const bh  = Math.max(Math.abs(toY(d.pnl) - z0), 1)
+      const up  = d.pnl >= 0
+
+      // Shadow glow
+      ctx.save()
+      ctx.shadowColor = up ? 'rgba(34,197,94,0.35)' : 'rgba(239,68,68,0.35)'
+      ctx.shadowBlur  = 8
+
+      // Gradient bar
+      const grad = ctx.createLinearGradient(0, top, 0, top + bh)
+      if (up) {
+        grad.addColorStop(0, '#4ade80')
+        grad.addColorStop(1, '#15803d')
+      } else {
+        grad.addColorStop(0, '#f87171')
+        grad.addColorStop(1, '#991b1b')
       }
-      pts.push([cx, toY(d.pnl)])
-      // X label
-      ctx.fillStyle=textMut; ctx.font='9px system-ui'; ctx.textAlign='center'
-      ctx.fillText(d.label.slice(0,6), cx, H-PAD.bottom+13)
+      ctx.fillStyle = grad
+      const r = Math.min(4, bW / 2)
+      ctx.beginPath()
+      if (up) {
+        ctx.moveTo(bx + r, top); ctx.lineTo(bx + bW - r, top)
+        ctx.quadraticCurveTo(bx + bW, top, bx + bW, top + r)
+        ctx.lineTo(bx + bW, top + bh); ctx.lineTo(bx, top + bh)
+        ctx.lineTo(bx, top + r); ctx.quadraticCurveTo(bx, top, bx + r, top)
+      } else {
+        ctx.moveTo(bx, top); ctx.lineTo(bx + bW, top)
+        ctx.lineTo(bx + bW, top + bh - r); ctx.quadraticCurveTo(bx + bW, top + bh, bx + bW - r, top + bh)
+        ctx.lineTo(bx + r, top + bh); ctx.quadraticCurveTo(bx, top + bh, bx, top + bh - r)
+        ctx.lineTo(bx, top)
+      }
+      ctx.closePath(); ctx.fill()
+      ctx.restore()
+
+      // Thin white highlight strip at top of bar
+      ctx.fillStyle = 'rgba(255,255,255,0.15)'
+      ctx.fillRect(bx + 1, up ? top : top, bW - 2, 2)
+
+      // % label — always above/below the zero line, never in the axis label zone
+      const fontSize = Math.min(9, gW / 3.5)
+      const pctStr   = `${d.pct >= 0 ? '+' : ''}${d.pct.toFixed(2)}%`
+      ctx.fillStyle = up ? '#4ade80' : '#f87171'
+      ctx.font = `600 ${fontSize}px system-ui`
+      ctx.textAlign = 'center'
+      if (up) {
+        // above bar top
+        ctx.textBaseline = 'bottom'
+        ctx.fillText(pctStr, cx, top - 3)
+      } else {
+        // just above zero line so it never touches the x-axis labels
+        ctx.textBaseline = 'bottom'
+        ctx.fillText(pctStr, cx, z0 - 4)
+      }
+
+      // X-axis label (symbol)
+      ctx.fillStyle = textMut; ctx.font = '9px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'top'
+      const label = d.h.symbol.length > 5 ? d.h.symbol.slice(0, 5) : d.h.symbol
+      ctx.fillText(label, cx, H - PAD.bottom + 10)
+
+      // Mkt val under label
+      if (gW > 28) {
+        const mv = d.mktVal >= 1_000_000 ? `${(d.mktVal / 1_000_000).toFixed(1)}M`
+                 : d.mktVal >= 1_000 ? `${(d.mktVal / 1_000).toFixed(0)}K` : d.mktVal.toFixed(0)
+        ctx.fillStyle = 'rgba(122,131,158,0.65)'; ctx.font = '8px system-ui'
+        ctx.fillText(mv, cx, H - PAD.bottom + 23)
+      }
+
+      barsRef.current.push({ x: bx - 4, w: bW + 8, h: d.h, pnl: d.pnl, pct: d.pct, mktVal: d.mktVal })
     })
 
-    // Trend line
-    if (pts.length > 1) {
-      ctx.strokeStyle='#FEA500'; ctx.lineWidth=1.5; ctx.lineJoin='round'
-      ctx.beginPath(); pts.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y)); ctx.stroke()
-      pts.forEach(([x,y])=>{ ctx.fillStyle='#FEA500'; ctx.beginPath(); ctx.arc(x,y,2.5,0,Math.PI*2); ctx.fill() })
-    }
+    // Y-axis label
+    ctx.save(); ctx.translate(12, PAD.top + cH / 2); ctx.rotate(-Math.PI / 2)
+    ctx.fillStyle = textMut; ctx.font = '9px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+    ctx.fillText('Unrealised P&L (PKR)', 0, 0); ctx.restore()
+
     // Legend
-    const legY = H - 6
-    const items = [
-      {color:'rgba(34,197,94,0.8)',  label:'Total P&L'},
-      {color:'rgba(34,197,94,0.35)',label:"Today's P&L"},
-      {color:'#FEA500',              label:'Trend line'},
+    const legItems = [
+      { color: '#4ade80', label: 'Profit' },
+      { color: '#f87171', label: 'Loss' },
     ]
     let lx = PAD.left
-    items.forEach(({color,label}) => {
-      ctx.fillStyle=color; ctx.fillRect(lx,legY-7,10,7)
-      ctx.fillStyle=textMut; ctx.font='9px system-ui'; ctx.textAlign='left'
-      ctx.fillText(label, lx+13, legY)
+    const ly = H - 10
+    legItems.forEach(({ color, label }) => {
+      ctx.fillStyle = color; ctx.fillRect(lx, ly - 6, 10, 7)
+      ctx.fillStyle = textMut; ctx.font = '9px system-ui'; ctx.textAlign = 'left'; ctx.textBaseline = 'bottom'
+      ctx.fillText(label, lx + 13, ly)
       lx += ctx.measureText(label).width + 26
     })
-  }, [holdings])
+  }, [data])
 
-  return <canvas ref={ref} style={{ width:'100%', height:220, display:'block' }} />
+  function onMove(e: React.MouseEvent<HTMLCanvasElement>) {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const px   = (e.clientX - rect.left) * (e.currentTarget.offsetWidth / rect.width)
+    const bar  = barsRef.current.find(b => px >= b.x && px < b.x + b.w)
+    if (!bar) { setTip(null); e.currentTarget.style.cursor = 'default'; return }
+    e.currentTarget.style.cursor = 'pointer'
+    setTip({ ...bar, x: e.clientX - rect.left + 14, y: e.clientY - rect.top - 8 })
+  }
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <canvas ref={ref} onMouseMove={onMove} onMouseLeave={() => setTip(null)}
+        style={{ width: '100%', height: 260, display: 'block' }} />
+      {tip && (
+        <div style={{
+          position: 'absolute', left: tip.x, top: tip.y, pointerEvents: 'none', zIndex: 20,
+          background: 'var(--bg-card)', border: '1px solid var(--bg-border)',
+          borderRadius: 10, padding: '10px 14px', fontSize: 11, lineHeight: 1.85,
+          boxShadow: '0 8px 28px rgba(0,0,0,0.25)', minWidth: 190,
+        }}>
+          <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-primary)', marginBottom: 6 }}>
+            {tip.h.symbol}
+            <span style={{ fontWeight: 400, fontSize: 10, color: 'var(--text-muted)', marginLeft: 6 }}>{tip.h.name}</span>
+          </div>
+          {[
+            ['Unrealised P&L', `${tip.pnl >= 0 ? '+' : ''}${fmtPKR(tip.pnl)}`, tip.pnl >= 0 ? '#4ade80' : '#f87171'],
+            ['Return',         `${tip.pct >= 0 ? '+' : ''}${tip.pct.toFixed(2)}%`, tip.pct >= 0 ? '#4ade80' : '#f87171'],
+            ['Market Value',   fmtPKR(tip.mktVal), 'var(--text-primary)'],
+            ['Qty',            tip.h.quantity.toLocaleString(), 'var(--text-secondary)'],
+            ['Avg Price',      `Rs ${tip.h.average_price.toFixed(2)}`, 'var(--text-secondary)'],
+            ['LTP',            tip.h.ltp > 0 ? `Rs ${tip.h.ltp.toFixed(2)}` : '—', 'var(--text-secondary)'],
+          ].map(([lbl, val, color]) => (
+            <div key={lbl} style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
+              <span style={{ color: 'var(--text-muted)', fontSize: 10 }}>{lbl}</span>
+              <span style={{ fontWeight: 600, color, fontVariantNumeric: 'tabular-nums' }}>{val}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Sector Donut Pie Chart ───────────────────────────────────────────────────
+
+// Full PSX sector universe — all sectors listed on Pakistan Stock Exchange
+const PSX_ALL_SECTORS = [
+  'Commercial Banks', 'Oil & Gas Exploration Companies', 'Cement',
+  'Fertilizer', 'Power Generation & Distribution', 'Oil & Gas Marketing Companies',
+  'Technology & Communication', 'Automobile Assembler', 'Pharmaceutical',
+  'Steel - Alloy', 'Textile Composite', 'Chemical', 'Refinery',
+  'Food & Personal Care Products', 'Engineering', 'Paper & Board',
+  'Insurance', 'Glass & Ceramics', 'Cable & Electrical Goods',
+  'Sugar & Allied Industries', 'Transport', 'Tobacco', 'Automobile Parts & Accessories',
+  'Synthetic & Rayon', 'Leasing Companies', 'Modarabas', 'Real Estate Investment Trust',
+  'Woollen', 'Jute', 'Vanaspati & Allied Industries', 'Miscellaneous',
+]
+
+const SECTOR_PALETTE = [
+  '#FEA500','#3b82f6','#a855f7','#06b6d4','#f59e0b',
+  '#10b981','#ef4444','#8b5cf6','#ec4899','#14b8a6',
+  '#f97316','#6366f1','#84cc16','#0ea5e9','#d946ef',
+  '#e11d48','#0891b2','#7c3aed','#059669','#dc2626',
+  '#2563eb','#9333ea','#16a34a','#ca8a04','#0284c7',
+  '#7e22ce','#15803d','#b45309','#0e7490','#be123c',
+  '#1d4ed8',
+]
+
+function PSXSectorWheel({ holdings }: { holdings: EnrichedHolding[] }) {
+  const canvasRef  = useRef<HTMLCanvasElement>(null)
+  const slicesRef  = useRef<{ a0:number; a1:number; r0:number; r1:number; name:string }[]>([])
+  const [selected, setSelected] = useState<string | null>(null)
+  const [hovered,  setHovered]  = useState<string | null>(null)
+
+  const portfolioSectors = useMemo(() => buildSectors(holdings), [holdings])
+  const portfolioMap = useMemo(() => {
+    const m = new Map<string, typeof portfolioSectors[0]>()
+    portfolioSectors.forEach(s => m.set(s.name, s))
+    // also try fuzzy match: "Technology" → "Technology & Communication"
+    portfolioSectors.forEach(s => {
+      PSX_ALL_SECTORS.forEach(psx => {
+        if (!m.has(psx) && (psx.toLowerCase().includes(s.name.toLowerCase()) || s.name.toLowerCase().includes(psx.toLowerCase().split(' ')[0]))) {
+          m.set(psx, s)
+        }
+      })
+    })
+    return m
+  }, [portfolioSectors])
+
+  const total = portfolioSectors.reduce((s, d) => s + d.value, 0)
+
+  // Merge: PSX sectors + any portfolio sectors not in the PSX list
+  const allSectors = useMemo(() => {
+    const extra = portfolioSectors.filter(s => !PSX_ALL_SECTORS.some(p => portfolioMap.get(p) === s))
+    return [...PSX_ALL_SECTORS, ...extra.map(e => e.name)]
+  }, [portfolioSectors, portfolioMap])
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')!
+    const dpr = window.devicePixelRatio || 1
+    const W = canvas.offsetWidth, H = canvas.offsetHeight
+    canvas.width = W * dpr; canvas.height = H * dpr; ctx.scale(dpr, dpr)
+    ctx.clearRect(0, 0, W, H)
+
+    const css     = getComputedStyle(document.documentElement)
+    const textPri = css.getPropertyValue('--text-primary').trim()  || '#e2e8f0'
+    const textMut = css.getPropertyValue('--text-muted').trim()    || '#7a839e'
+    const bgCard  = css.getPropertyValue('--bg-card').trim()       || '#111827'
+
+    // Pie sits in the centre — label zone adds padding on all sides
+    const LABEL_PAD = 110
+    const cx = W / 2, cy = H / 2
+    const Rout  = Math.min(W, H) / 2 - LABEL_PAD
+    const Rhole = Rout * 0.44
+
+    // 3-level alternating end-radii so adjacent labels don't collide
+    const LEVELS = [Rout + 32, Rout + 55, Rout + 78]
+
+    slicesRef.current = []
+    const sw = (Math.PI * 2) / allSectors.length
+
+    allSectors.forEach((name, idx) => {
+      const a     = -Math.PI / 2 + idx * sw
+      const midA  = a + sw / 2
+      const sec   = portfolioMap.get(name)
+      const hasHolding = !!sec
+      const isAct = selected === name
+      const isHov = hovered  === name
+      const color = SECTOR_PALETTE[idx % SECTOR_PALETTE.length]
+
+      const push = (isAct || isHov) ? 8 : 0
+      const cx2  = cx + Math.cos(midA) * push
+      const cy2  = cy + Math.sin(midA) * push
+
+      // Draw slice
+      ctx.save()
+      if (hasHolding) {
+        ctx.shadowColor = isAct ? color + '99' : color + '44'
+        ctx.shadowBlur  = isAct ? 16 : 4
+      }
+      ctx.beginPath()
+      ctx.moveTo(cx2, cy2)
+      ctx.arc(cx2, cy2, Rout, a, a + sw)
+      ctx.arc(cx2, cy2, Rhole, a + sw, a, true)
+      ctx.closePath()
+      if (hasHolding) {
+        const rg = ctx.createRadialGradient(cx2, cy2, Rhole * 0.5, cx2, cy2, Rout)
+        rg.addColorStop(0, color + 'cc')
+        rg.addColorStop(1, color + (isAct ? 'ff' : 'dd'))
+        ctx.fillStyle = rg
+      } else {
+        ctx.fillStyle = isHov ? 'rgba(100,116,139,0.35)' : 'rgba(71,85,105,0.18)'
+      }
+      ctx.fill()
+      ctx.restore()
+
+      // Border
+      ctx.strokeStyle = bgCard + 'cc'; ctx.lineWidth = 1.5
+      ctx.beginPath()
+      ctx.moveTo(cx2, cy2)
+      ctx.arc(cx2, cy2, Rout, a, a + sw)
+      ctx.arc(cx2, cy2, Rhole, a + sw, a, true)
+      ctx.closePath(); ctx.stroke()
+
+      // Leader line + label
+      const lineStart = Rout + 4
+      const lineEnd   = LEVELS[idx % 3]
+      const sx  = cx + Math.cos(midA) * lineStart
+      const sy  = cy + Math.sin(midA) * lineStart
+      const ex  = cx + Math.cos(midA) * lineEnd
+      const ey  = cy + Math.sin(midA) * lineEnd
+      const onRight = ex >= cx
+
+      // Elbow: radial segment → short horizontal tick
+      const TICK = 10
+      const tx  = ex + (onRight ? TICK : -TICK)
+      const ty  = ey
+
+      const lineColor = hasHolding ? color : 'rgba(100,116,139,0.35)'
+      ctx.strokeStyle = lineColor; ctx.lineWidth = hasHolding ? 1.2 : 0.7
+      ctx.setLineDash(hasHolding ? [] : [2, 2])
+      ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.lineTo(tx, ty); ctx.stroke()
+      ctx.setLineDash([])
+
+      // Label at end of tick
+      const labelX = tx + (onRight ? 3 : -3)
+      const short  = name.length > 20 ? name.slice(0, 19) + '…' : name
+      const fsize  = hasHolding ? 8 : 7
+      ctx.font = `${hasHolding ? '700' : '400'} ${fsize}px system-ui`
+      ctx.fillStyle   = hasHolding ? (isAct || isHov ? color : 'var(--text-primary, #e2e8f0)') : 'rgba(100,116,139,0.6)'
+      ctx.textAlign   = onRight ? 'left' : 'right'
+      ctx.textBaseline = 'middle'
+      ctx.fillText(short, labelX, ty)
+
+      slicesRef.current.push({ a0: a, a1: a + sw, r0: Rhole, r1: Rout, name })
+    })
+
+    // Center hole
+    ctx.beginPath(); ctx.arc(cx, cy, Rhole - 1, 0, Math.PI * 2)
+    ctx.fillStyle = bgCard; ctx.fill()
+
+    // Center text
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+    if (selected) {
+      const sec = portfolioMap.get(selected)
+      const short = selected.length > 13 ? selected.slice(0, 12) + '…' : selected
+      ctx.fillStyle = textMut; ctx.font = '600 8px system-ui'
+      ctx.fillText(short, cx, cy - 14)
+      if (sec) {
+        ctx.fillStyle = textPri; ctx.font = 'bold 13px system-ui'
+        const mv = sec.value >= 1_000_000 ? `${(sec.value / 1_000_000).toFixed(1)}M`
+                 : sec.value >= 1_000 ? `${(sec.value / 1_000).toFixed(0)}K` : sec.value.toFixed(0)
+        ctx.fillText(mv, cx, cy)
+        ctx.fillStyle = sec.pnl >= 0 ? '#4ade80' : '#f87171'
+        ctx.font = '600 8px system-ui'
+        ctx.fillText(`${sec.pnl >= 0 ? '+' : ''}${fmtPKR(sec.pnl)}`, cx, cy + 14)
+      } else {
+        ctx.fillStyle = textMut; ctx.font = '9px system-ui'
+        ctx.fillText('No holdings', cx, cy + 4)
+      }
+    } else {
+      ctx.fillStyle = textMut; ctx.font = '600 9px system-ui'; ctx.fillText('PSX Sectors', cx, cy - 14)
+      ctx.fillStyle = textPri; ctx.font = 'bold 13px system-ui'
+      const tv = total >= 1_000_000 ? `${(total / 1_000_000).toFixed(1)}M`
+               : total >= 1_000 ? `${(total / 1_000).toFixed(0)}K` : total.toFixed(0)
+      ctx.fillText(tv, cx, cy)
+      ctx.fillStyle = textMut; ctx.font = '8px system-ui'
+      ctx.fillText(`${portfolioSectors.length} / ${allSectors.length} sectors`, cx, cy + 14)
+    }
+  }, [allSectors, portfolioMap, selected, hovered, total, portfolioSectors.length])
+
+  function hitTest(e: React.MouseEvent<HTMLCanvasElement>) {
+    const canvas = canvasRef.current!
+    const rect   = canvas.getBoundingClientRect()
+    const px = (e.clientX - rect.left) * (canvas.offsetWidth  / rect.width)
+    const py = (e.clientY - rect.top)  * (canvas.offsetHeight / rect.height)
+    const cx = canvas.offsetWidth / 2, cy = canvas.offsetHeight / 2
+    const dx = px - cx, dy = py - cy
+    const dist = Math.sqrt(dx * dx + dy * dy)
+    let ang = Math.atan2(dy, dx)
+    if (ang < -Math.PI / 2) ang += Math.PI * 2
+    return slicesRef.current.find(s => dist >= s.r0 && dist <= s.r1 + 6 && ang >= s.a0 && ang < s.a1) ?? null
+  }
+
+  function onMove(e: React.MouseEvent<HTMLCanvasElement>) {
+    const sl = hitTest(e)
+    e.currentTarget.style.cursor = sl ? 'pointer' : 'default'
+    setHovered(sl ? sl.name : null)
+  }
+
+  function onClick(e: React.MouseEvent<HTMLCanvasElement>) {
+    const sl = hitTest(e)
+    setSelected(prev => sl ? (prev === sl.name ? null : sl.name) : null)
+  }
+
+  const selectedSec = selected ? portfolioMap.get(selected) : null
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '520px 1fr', gap: 24, alignItems: 'start' }}>
+      {/* Wheel */}
+      <canvas ref={canvasRef} onMouseMove={onMove} onMouseLeave={() => setHovered(null)} onClick={onClick}
+        style={{ width: '100%', height: 480, display: 'block', cursor: 'default' }} />
+
+      {/* Right panel */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 4 }}>
+        {/* Header */}
+        {!selected ? (
+          <>
+            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+              Your Holdings by Sector
+            </p>
+            <p style={{ fontSize: 10, color: 'var(--text-muted)', margin: '0 0 8px' }}>
+              {portfolioSectors.length} of {allSectors.length} PSX sectors · click a slice to explore
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              {portfolioSectors.map((sec, idx) => {
+                const color = SECTOR_PALETTE[allSectors.indexOf(sec.name) % SECTOR_PALETTE.length] || SECTOR_PALETTE[idx]
+                const share = total > 0 ? ((sec.value / total) * 100).toFixed(2) : '0.00'
+                const up    = sec.pnl >= 0
+                return (
+                  <button key={sec.name} onClick={() => setSelected(prev => prev === sec.name ? null : sec.name)}
+                    style={{
+                      display: 'grid', gridTemplateColumns: '10px 1fr auto',
+                      alignItems: 'center', gap: 8, padding: '7px 8px',
+                      borderRadius: 6, border: '1px solid transparent',
+                      background: 'var(--bg-hover)', cursor: 'pointer', width: '100%',
+                    }}>
+                    <div style={{ width: 10, height: 10, borderRadius: 3, background: color }} />
+                    <div style={{ minWidth: 0, textAlign: 'left' }}>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sec.name}</div>
+                      <div style={{ fontSize: 9, color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{share}% · {sec.holdings.length} stock{sec.holdings.length !== 1 ? 's' : ''}</div>
+                    </div>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: up ? '#4ade80' : '#f87171', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                      {up ? '+' : ''}{fmtPKR(sec.pnl)}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          </>
+        ) : (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <button onClick={() => setSelected(null)} style={{
+                fontSize: 10, color: 'var(--text-muted)', background: 'var(--bg-hover)',
+                border: '1px solid var(--bg-border)', borderRadius: 5, padding: '3px 10px', cursor: 'pointer',
+              }}>← Back</button>
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>{selected}</span>
+            </div>
+
+            {selectedSec ? (
+              <>
+                {/* Sector summary strip */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 8 }}>
+                  {[
+                    ['Market Value', fmtPKR(selectedSec.value)],
+                    ['Unrealised P&L', `${selectedSec.pnl >= 0 ? '+' : ''}${fmtPKR(selectedSec.pnl)}`],
+                    ['Portfolio Share', `${total > 0 ? ((selectedSec.value / total) * 100).toFixed(2) : '0.00'}%`],
+                  ].map(([lbl, val]) => (
+                    <div key={lbl} style={{ background: 'var(--bg-hover)', borderRadius: 8, padding: '8px 10px' }}>
+                      <div style={{ fontSize: 9, color: 'var(--text-muted)', marginBottom: 2 }}>{lbl}</div>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: lbl === 'Unrealised P&L' ? (selectedSec.pnl >= 0 ? '#4ade80' : '#f87171') : 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{val}</div>
+                    </div>
+                  ))}
+                </div>
+                {/* Holdings in this sector */}
+                <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 6px' }}>
+                  Holdings in this sector
+                </p>
+                {selectedSec.holdings.map(h => {
+                  const cost  = h.quantity * h.average_price
+                  const mktV  = h.ltp > 0 ? h.quantity * h.ltp : cost
+                  const pnl   = mktV - cost
+                  const pct   = cost > 0 ? (pnl / cost) * 100 : 0
+                  const up    = pnl >= 0
+                  const dayPnl = h.ltp > 0 && h.prevClose > 0 ? h.quantity * (h.ltp - h.prevClose) : null
+                  return (
+                    <div key={h.id} style={{
+                      border: '1px solid var(--bg-border)', borderRadius: 10, padding: '10px 12px',
+                      marginBottom: 6, background: 'var(--bg-hover)',
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
+                        <div>
+                          <a href={`/stocks/${h.symbol}`} style={{ fontSize: 13, fontWeight: 700, color: '#FEA500', textDecoration: 'none' }}>{h.symbol}</a>
+                          <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 1 }}>{h.name}</div>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: up ? '#4ade80' : '#f87171', fontVariantNumeric: 'tabular-nums' }}>
+                            {up ? '+' : ''}{pct.toFixed(2)}%
+                          </div>
+                          <div style={{ fontSize: 10, color: up ? '#4ade80' : '#f87171', fontVariantNumeric: 'tabular-nums' }}>
+                            {up ? '+' : ''}{fmtPKR(pnl)}
+                          </div>
+                        </div>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 6 }}>
+                        {[
+                          ['Mkt Val', fmtPKR(mktV)],
+                          ['LTP', h.ltp > 0 ? `${h.ltp.toFixed(2)}` : '—'],
+                          ['Avg', `${h.average_price.toFixed(2)}`],
+                          ['Qty', h.quantity.toLocaleString()],
+                        ].map(([lbl, val]) => (
+                          <div key={lbl}>
+                            <div style={{ fontSize: 8, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{lbl}</div>
+                            <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>{val}</div>
+                          </div>
+                        ))}
+                      </div>
+                      {dayPnl !== null && (
+                        <div style={{ marginTop: 6, paddingTop: 6, borderTop: '1px solid var(--bg-border)', fontSize: 9, color: 'var(--text-muted)' }}>
+                          Today: <span style={{ fontWeight: 700, color: dayPnl >= 0 ? '#4ade80' : '#f87171', fontVariantNumeric: 'tabular-nums' }}>
+                            {dayPnl >= 0 ? '+' : ''}{fmtPKR(dayPnl)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </>
+            ) : (
+              <div style={{ textAlign: 'center', padding: '32px 16px', color: 'var(--text-muted)' }}>
+                <div style={{ fontSize: 32, marginBottom: 8 }}>📭</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>No holdings in this sector</div>
+                <div style={{ fontSize: 11 }}>You don&apos;t have any stocks from the <strong>{selected}</strong> sector in your portfolio.</div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  )
 }
 
 // ─── Sunburst: sector outer + companies inner ──────────────────────────────────
@@ -721,7 +1170,7 @@ function HoldingsSunburst({ holdings }: { holdings: EnrichedHolding[] }) {
       const sec = sectors.find(s=>s.name===h.sectorName)!
       setTip({ x, y, lines:[
         sec.name,
-        `Market Value: ${fmtPKR(sec.value)} (${((sec.value/total)*100).toFixed(1)}%)`,
+        `Market Value: ${fmtPKR(sec.value)} (${((sec.value/total)*100).toFixed(2)}%)`,
         `Total P&L: ${sec.pnl>=0?'+':''}${fmtPKR(sec.pnl)}`,
         `${sec.holdings.length} holding${sec.holdings.length!==1?'s':''}`,
         'Click to drill into companies →',
@@ -1213,20 +1662,26 @@ export default function PortfolioPage() {
 
       {/* ── Holdings Charts ── */}
       {activeTab === 'holdings' && holdings.length > 0 && !loading && (
-        <div style={{ display:'flex', flexDirection:'column', gap:16, marginTop:16 }}>
-          <div className="card" style={{ padding:16 }}>
-            <p style={{ fontSize:12,fontWeight:700,color:'var(--text-primary)',marginBottom:10,letterSpacing:'0.04em' }}>
-              P&amp;L per Holding
-              <span style={{ fontWeight:400,color:'var(--text-muted)',marginLeft:8,fontSize:10 }}>Solid = total, faded = today · trend line in amber</span>
-            </p>
-            <HoldingsBarChart holdings={holdings} />
-          </div>
-          <div className="card" style={{ padding:16 }}>
-            <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12 }}>
-              <p style={{ fontSize:12,fontWeight:700,color:'var(--text-primary)',letterSpacing:'0.04em' }}>Portfolio Allocation by Sector</p>
-              <span style={{ fontSize:10,color:'var(--text-muted)' }}>Click a sector to drill in · click again to collapse</span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 16 }}>
+          {/* P&L Histogram */}
+          <div className="card" style={{ padding: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+              <div>
+                <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '0.05em', textTransform: 'uppercase', margin: 0 }}>Unrealised P&amp;L per Holding</p>
+                <p style={{ fontSize: 10, color: 'var(--text-muted)', margin: '3px 0 0' }}>Sorted best to worst · hover for details</p>
+              </div>
             </div>
-            <HoldingsSunburst holdings={holdings} />
+            <HoldingsPnlChart holdings={holdings} />
+          </div>
+          {/* Sector Donut Pie */}
+          <div className="card" style={{ padding: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <div>
+                <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '0.05em', textTransform: 'uppercase', margin: 0 }}>Sector Allocation</p>
+                <p style={{ fontSize: 10, color: 'var(--text-muted)', margin: '3px 0 0' }}>All PSX sectors shown · colored = you have holdings · click any slice to explore</p>
+              </div>
+            </div>
+            <PSXSectorWheel holdings={holdings} />
           </div>
         </div>
       )}

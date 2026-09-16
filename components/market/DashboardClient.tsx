@@ -189,7 +189,7 @@ export default function DashboardClient() {
               ) : data ? (
                 <>
                   <p className="text-lg font-bold font-number leading-tight" style={{ color: 'var(--text-primary)' }}>
-                    {formatPrice(data.current, 0)}
+                    {formatPrice(data.current, 2)}
                   </p>
                   <p className={`text-xs font-number font-semibold mt-0.5 ${isUp ? 'text-green-600' : 'text-red-500'}`}>
                     {formatChange(data.change)}
@@ -220,7 +220,7 @@ export default function DashboardClient() {
             return (
               <div className="text-right">
                 <p className="text-base font-bold font-number" style={{ color: 'var(--text-primary)' }}>
-                  {formatPrice(d.current, 0)}
+                  {formatPrice(d.current, 2)}
                 </p>
                 <p className={`text-xs font-number font-semibold ${up ? 'text-green-600' : 'text-red-500'}`}>
                   {formatChange(d.change)} ({formatPercent(d.changePct / 100)})

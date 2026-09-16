@@ -230,7 +230,7 @@ function fmtFundVal(label: string, val: number | null): string {
   // Percentage-based metrics (decimal → multiply by 100)
   const isPct = lbl.includes('margin') || lbl.includes('yield') ||
     lbl.includes('return on') || lbl.includes('retention') || lbl.includes('payout')
-  if (isPct) return `${(val * 100).toFixed(1)}%`
+  if (isPct) return `${(val * 100).toFixed(2)}%`
   // Large numbers (shares, per-share values, etc.)
   if (Math.abs(val) >= 1_000_000) return `${(val / 1_000_000).toFixed(2)}M`
   if (Math.abs(val) >= 1_000)     return `${(val / 1_000).toFixed(1)}K`
@@ -735,7 +735,7 @@ function ShareholdersView({ data }: { data: StatementData }) {
               {latestTotal > 0 && (
                 <span className="text-[10px] font-semibold px-2 py-1 rounded-lg"
                   style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-secondary)' }}>
-                  Total: {(latestTotal * 100).toFixed(1)}%
+                  Total: {(latestTotal * 100).toFixed(2)}%
                 </span>
               )}
             </div>
@@ -1055,12 +1055,12 @@ function IndexVsStockChart({ stockCandles, indexCandles, symbol }: {
           ${sVal != null ? `<div style="display:flex;align-items:center;gap:5px;margin-bottom:3px">
             <span style="width:8px;height:8px;border-radius:50%;background:#4A8FF4;flex-shrink:0"></span>
             <span style="color:${textColor}">${symbol}:</span>
-            <span style="font-weight:700;color:${boldColor}">${sVal.value.toFixed(1)}%</span>
+            <span style="font-weight:700;color:${boldColor}">${sVal.value.toFixed(2)}%</span>
           </div>` : ''}
           ${iVal != null ? `<div style="display:flex;align-items:center;gap:5px">
             <span style="width:8px;height:8px;border-radius:50%;background:#F5A623;flex-shrink:0"></span>
             <span style="color:${textColor}">KSE-100:</span>
-            <span style="font-weight:700;color:${boldColor}">${iVal.value.toFixed(1)}%</span>
+            <span style="font-weight:700;color:${boldColor}">${iVal.value.toFixed(2)}%</span>
           </div>` : ''}
         `
 
@@ -1095,7 +1095,7 @@ function IndexVsStockChart({ stockCandles, indexCandles, symbol }: {
   const _last = _dates[_dates.length - 1]
   const stockRet = _last ? +(_sMap.get(_last)! / _b0S - 1).toFixed(4) * 100 : 0
   const indexRet = _last ? +(_iMap.get(_last)! / _b0I - 1).toFixed(4) * 100 : 0
-  const fmt = (v: number) => `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`
+  const fmt = (v: number) => `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`
 
   return (
     <div className="mt-2 rounded-lg overflow-hidden" style={{ border: '1px solid var(--bg-border)' }}>
@@ -1764,7 +1764,7 @@ export default function StockDetailClient({
                       return `${(raw * 100).toFixed(2)}%`
                     case 'freeFloatPct':
                       // May be stored as 0–100 or 0–1; cap heuristic
-                      return `${raw > 1 ? raw.toFixed(1) : (raw * 100).toFixed(1)}%`
+                      return `${raw > 1 ? raw.toFixed(2) : (raw * 100).toFixed(2)}%`
                     // Ratio / per-share fields — display as-is
                     case 'eps':
                     case 'pe':
@@ -1900,15 +1900,15 @@ export default function StockDetailClient({
 
               // Profitability — banks have naturally lower net margins, skip for financials
               if (!isFinancialPC) {
-                if (npmPct >= 15)           pros.push(`Strong net profit margin of ${npmPct.toFixed(1)}% — efficient business`)
-                if (npmPct > 0 && npmPct < 5) cons.push(`Thin net profit margin of ${npmPct.toFixed(1)}% — limited earnings buffer`)
+                if (npmPct >= 15)           pros.push(`Strong net profit margin of ${npmPct.toFixed(2)}% — efficient business`)
+                if (npmPct > 0 && npmPct < 5) cons.push(`Thin net profit margin of ${npmPct.toFixed(2)}% — limited earnings buffer`)
                 if (npmPct < 0)             cons.push(`Negative net profit margin — company is currently unprofitable`)
               }
 
               // ROE — higher threshold for banks
               const roeThreshold = isFinancialPC ? 12 : 15
-              if (roePct >= roeThreshold)       pros.push(`High ROE of ${roePct.toFixed(1)}% — strong return for shareholders`)
-              if (roePct > 0 && roePct < (isFinancialPC ? 8 : 8)) cons.push(`Low ROE of ${roePct.toFixed(1)}% — weak returns on shareholder equity`)
+              if (roePct >= roeThreshold)       pros.push(`High ROE of ${roePct.toFixed(2)}% — strong return for shareholders`)
+              if (roePct > 0 && roePct < (isFinancialPC ? 8 : 8)) cons.push(`Low ROE of ${roePct.toFixed(2)}% — weak returns on shareholder equity`)
               if (roePct < 0)                   cons.push(`Negative ROE — equity is being eroded`)
 
               // EPS
@@ -1922,8 +1922,8 @@ export default function StockDetailClient({
               }
 
               // Dividend
-              if (divYld >= 5)              pros.push(`High dividend yield of ${divYld.toFixed(1)}% — strong income for investors`)
-              else if (divYld >= 2)         pros.push(`Decent dividend yield of ${divYld.toFixed(1)}%`)
+              if (divYld >= 5)              pros.push(`High dividend yield of ${divYld.toFixed(2)}% — strong income for investors`)
+              else if (divYld >= 2)         pros.push(`Decent dividend yield of ${divYld.toFixed(2)}%`)
               if (dps === 0)                cons.push(`No dividend paid — company does not distribute cash to shareholders`)
 
               // 52W position
@@ -2163,7 +2163,7 @@ export default function StockDetailClient({
                     const selfEps       = Number(overview?.eps ?? selfQ?.eps ?? 0)
                     const selfDps       = selfQ?.dps ?? 0
                     const selfPe        = selfEps > 0 ? (selfPrice / selfEps).toFixed(1) : '—'
-                    const selfDivY      = selfDps > 0 && selfPrice > 0 ? `${((selfDps/selfPrice)*100).toFixed(1)}%` : '—'
+                    const selfDivY      = selfDps > 0 && selfPrice > 0 ? `${((selfDps/selfPrice)*100).toFixed(2)}%` : '—'
                     const selfChgColor  = selfChangePct >= 0 ? '#16a34a' : '#dc2626'
                     function fmtMC(mc: number) {
                       if (!mc) return '—'
@@ -2198,7 +2198,7 @@ export default function StockDetailClient({
                       </tr>,
                       ...peers.map((peer, i) => {
                         const pe      = peer.eps > 0 ? (peer.price/peer.eps).toFixed(1) : '—'
-                        const divY    = peer.dps>0&&peer.price>0 ? `${((peer.dps/peer.price)*100).toFixed(1)}%` : '—'
+                        const divY    = peer.dps>0&&peer.price>0 ? `${((peer.dps/peer.price)*100).toFixed(2)}%` : '—'
                         const chgClr  = peer.changePct>=0?'#16a34a':'#dc2626'
                         return (
                           <tr key={peer.symbol} style={{ borderBottom:'1px solid var(--bg-border)', backgroundColor:i%2===0?'transparent':'var(--bg-hover)' }}>
@@ -2900,7 +2900,7 @@ export default function StockDetailClient({
                             { label:'EPS',       value: s.eps!==0 ? s.eps.toFixed(2) : '—' },
                             { label:'P/E',       value: s.pe>0 ? s.pe.toFixed(1) : '—' },
                             { label:'DPS',       value: s.dps>0 ? s.dps.toFixed(2) : '—' },
-                            { label:'Div Yield', value: s.divY>0 ? `${s.divY.toFixed(1)}%` : '—' },
+                            { label:'Div Yield', value: s.divY>0 ? `${s.divY.toFixed(2)}%` : '—' },
                             { label:'Mkt Cap',   value: fmtMC(s.mc) },
                             { label:'ROE',       value: '—' },
                             { label:'P/B',       value: '—' },
@@ -3207,8 +3207,8 @@ export default function StockDetailClient({
 
               {/* Profitability */}
               <Section title="Profitability">
-                <Row label="Net Profit Margin" value={npmPct ? `${npmPct.toFixed(1)}%` : '—'} />
-                <Row label="Return on Equity"  value={roePct ? `${roePct.toFixed(1)}%` : '—'} />
+                <Row label="Net Profit Margin" value={npmPct ? `${npmPct.toFixed(2)}%` : '—'} />
+                <Row label="Return on Equity"  value={roePct ? `${roePct.toFixed(2)}%` : '—'} />
                 <Row label="Dividend / Share"  value={dps  ? `Rs ${dps.toFixed(2)}`   : '—'} />
                 <Row label="Dividend Yield"    value={divYld > 0 ? `${divYld.toFixed(2)}%` : '—'} />
               </Section>

@@ -31,7 +31,7 @@ export async function GET() {
         label:     INDEX_LABELS[key] ?? key,
         current:   s.c    ?? 0,
         change:    s.ch   ?? 0,
-        changePct: +((s.pch ?? 0) * 100).toFixed(2),
+        changePct: (s.pch ?? 0) * 100,
         high:      s.h    ?? 0,
         low:       s.l    ?? 0,
         open:      s.o    ?? 0,
