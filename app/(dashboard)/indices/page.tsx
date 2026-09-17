@@ -113,7 +113,12 @@ function SectorWheel({
 
     const css = getComputedStyle(document.documentElement)
     const textMut = css.getPropertyValue('--text-muted').trim() || '#6b7280'
-    const bgCard  = css.getPropertyValue('--bg-card').trim()    || '#0f1929'
+    // Normalize bgCard to always be a 6-char hex so appending 2-char alpha is safe.
+    // CSS vars can return 3-char shorthand (#fff) which makes #fffdd (5 chars = invalid).
+    const rawBgCard = css.getPropertyValue('--bg-card').trim() || '#0f1929'
+    const bgCard = rawBgCard.startsWith('#') && rawBgCard.length === 4
+      ? '#' + rawBgCard[1] + rawBgCard[1] + rawBgCard[2] + rawBgCard[2] + rawBgCard[3] + rawBgCard[3]
+      : rawBgCard
 
     const cx = W / 2, cy = H / 2
     const Rout  = Math.min(W * 0.36, H / 2 - 30)
@@ -294,7 +299,8 @@ function SectorWheel({
     ctx.beginPath(); ctx.arc(cx, cy, Rhole - 1, 0, Math.PI * 2)
     const centerGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, Rhole)
     centerGrad.addColorStop(0, bgCard)
-    centerGrad.addColorStop(1, bgCard + 'dd')
+    // Only append hex alpha when bgCard is a 6-char hex; fall back to same color otherwise
+    centerGrad.addColorStop(1, /^#[0-9a-fA-F]{6}$/.test(bgCard) ? bgCard + 'dd' : bgCard)
     ctx.fillStyle = centerGrad; ctx.fill()
 
     // Center text is rendered as HTML overlay — no canvas text here
