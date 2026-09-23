@@ -136,6 +136,7 @@ function fmt(n: number, dec = 0) {
   return n.toLocaleString('en-PK', { minimumFractionDigits: dec, maximumFractionDigits: dec })
 }
 function fmtRs(n: number) { return `Rs ${fmt(n, 0)}` }
+function fmtPrice(n: number) { return `Rs ${n.toFixed(2)}` }
 function fmtPct(n: number) { return `${n.toFixed(2)}%` }
 function p(v: string) { return parseFloat(v) || 0 }
 function pi(v: string) { return parseInt(v) || 0 }
@@ -693,6 +694,7 @@ function PositionSizeCalc() {
       <div className="rounded-xl px-4 py-3 text-[11px]"
         style={{ backgroundColor: 'rgba(254,165,0,0.08)', border: '1px solid rgba(254,165,0,0.25)', color: 'var(--text-secondary)' }}>
         Risk-based position sizing for PSX. Enter your account size, how much you&apos;re willing to risk (% of account), entry price, and stop loss. The calculator determines how many shares to buy so that if the stop loss is hit, you lose exactly your risk amount.
+        {' '}<strong>Lot size</strong> = PSX minimum trading unit (default 500 shares). Results are always rounded down to the nearest full lot.
       </div>
 
       {/* Inputs */}
@@ -730,6 +732,18 @@ function PositionSizeCalc() {
 
       {res && (
         <>
+          {/* Warning: capital too small for even 1 lot */}
+          {res.roundedShares === 0 && (
+            <div className="rounded-xl px-4 py-3 text-sm"
+              style={{ backgroundColor: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444' }}>
+              <span className="font-bold">Cannot buy even 1 lot.</span>
+              <span className="font-normal" style={{ color: 'var(--text-secondary)' }}>
+                {' '}Your risk budget (Rs {res.riskAmount.toFixed(2)}) only covers {res.rawShares.toFixed(1)} shares, but the minimum lot on PSX is {pi(lots)} shares.
+                To buy 1 lot you need a risk budget of at least Rs {(pi(lots) * res.stopPerShare).toFixed(2)} — either increase account size, increase risk %, or widen your stop loss.
+              </span>
+            </div>
+          )}
+
           {/* Key results */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <ResultCard label="Shares to Buy"   value={fmt(res.roundedShares)} accent
@@ -746,17 +760,18 @@ function PositionSizeCalc() {
           <TableView
             headers={['Metric', 'Value']}
             rows={[
-              ['Entry Price',          fmtRs(p(entryPrice))],
-              ['Stop Loss Price',      fmtRs(p(stopLoss))],
-              ['Stop Loss (per share)',fmtRs(res.stopPerShare)],
-              ['Target Price',         p(target) > p(entryPrice) ? fmtRs(p(target)) : '—'],
-              ['Target Gain (share)',  res.gainPerShare > 0 ? fmtRs(res.gainPerShare) : '—'],
+              ['Entry Price',          fmtPrice(p(entryPrice))],
+              ['Stop Loss Price',      fmtPrice(p(stopLoss))],
+              ['Stop Loss (per share)',fmtPrice(res.stopPerShare)],
+              ['Target Price',         p(target) > p(entryPrice) ? fmtPrice(p(target)) : '—'],
+              ['Target Gain (per share)',  res.gainPerShare > 0 ? fmtPrice(res.gainPerShare) : '—'],
               ['Shares to Buy',        fmt(res.roundedShares)],
+              ['Raw Shares (unrounded)', res.rawShares.toFixed(2)],
               ['Investment Amount',    fmtRs(res.investment)],
-              ['Commission (buy)',     fmtRs(res.commission)],
+              ['Commission (buy)',     fmtPrice(res.commission)],
               ['Total Cost',          fmtRs(res.totalCost)],
-              ['Break-even Price',     fmtRs(res.breakEven)],
-              ['Max Risk (incl. com)', fmtRs(res.actualRisk)],
+              ['Break-even Price',     fmtPrice(res.breakEven)],
+              ['Max Risk (incl. com)', fmtPrice(res.actualRisk)],
               ['Potential Profit',     res.potentialProfit > 0 ? fmtRs(res.potentialProfit) : '—'],
             ]}
           />
@@ -784,7 +799,7 @@ function PositionSizeCalc() {
                         <div className="flex-1 h-2 rounded-full relative" style={{ backgroundColor: 'var(--bg-hover)' }}>
                           <div className="absolute top-0 left-0 h-2 rounded-full" style={{ width: pct(l.price), backgroundColor: l.color, opacity: 0.8 }} />
                         </div>
-                        <span className="text-xs font-bold font-number w-16 text-right" style={{ color: 'var(--text-primary)' }}>Rs {l.price}</span>
+                        <span className="text-xs font-bold font-number w-16 text-right" style={{ color: 'var(--text-primary)' }}>Rs {l.price.toFixed(2)}</span>
                       </div>
                     ))}
                   </div>
