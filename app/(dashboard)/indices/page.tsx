@@ -6,15 +6,15 @@ import { TrendingUp, TrendingDown, Activity, RefreshCw } from 'lucide-react'
 import { cachedFetch } from '@/lib/utils/clientCache'
 import type { StockQuote } from '@/types/market'
 
-// ─── Sector palette (31 colors) ──────────────────────────────────────────────
+// ─── Sector palette — Gold & Amber brand tones (31 colors) ──────────────────
 const SECTOR_PALETTE = [
-  '#FEA500','#3b82f6','#a855f7','#06b6d4','#f59e0b',
-  '#10b981','#ef4444','#8b5cf6','#ec4899','#14b8a6',
-  '#f97316','#6366f1','#84cc16','#0ea5e9','#d946ef',
-  '#e11d48','#0891b2','#7c3aed','#059669','#dc2626',
-  '#2563eb','#9333ea','#16a34a','#ca8a04','#0284c7',
-  '#7e22ce','#15803d','#b45309','#0e7490','#be123c',
-  '#1d4ed8',
+  '#FEA500','#F59E0B','#D97706','#B45309','#92400E',
+  '#FBBF24','#F97316','#EA580C','#C2410C','#7C2D12',
+  '#FCD34D','#FDE68A','#CA8A04','#A16207','#78350F',
+  '#FDBA74','#FB923C','#F87171','#EF4444','#DC2626',
+  '#FED7AA','#FDE047','#EAB308','#A3E635','#86EFAC',
+  '#6EE7B7','#5EEAD4','#67E8F9','#93C5FD','#C4B5FD',
+  '#E879F9',
 ]
 
 const PSX_ALL_SECTORS = [
