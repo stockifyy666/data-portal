@@ -869,9 +869,7 @@ export default function IndicesPage() {
                 },
                 {
                   label: 'Volume',
-                  value: kse.totalVol >= 1e9 ? `${(kse.totalVol / 1e9).toFixed(2)}B`
-                       : kse.totalVol >= 1e6 ? `${(kse.totalVol / 1e6).toFixed(1)}M`
-                       : `${(kse.totalVol / 1e3).toFixed(0)}K`,
+                  value: kse.totalVol.toLocaleString('en-PK'),
                   sub: 'shares',
                   color: '#60a5fa',
                   Icon: Activity,
@@ -932,7 +930,7 @@ export default function IndicesPage() {
                     {[
                       ['Stocks',     String(selData.stocks.length),                                                              'var(--text-primary)'],
                       ['Avg Change', `${selData.pctChange >= 0 ? '+' : ''}${selData.pctChange.toFixed(2)}%`,                    selData.pctChange >= 0 ? '#4ade80' : '#f87171'],
-                      ['Mkt Cap',    selData.marketCap >= 1e9 ? `Rs ${(selData.marketCap/1e9).toFixed(1)}B` : `Rs ${(selData.marketCap/1e6).toFixed(0)}M`, '#60a5fa'],
+                      ['Mkt Cap',    `Rs ${selData.marketCap.toLocaleString('en-PK')}`, '#60a5fa'],
                     ].map(([l, v, c]) => (
                       <div key={String(l)}>
                         <div style={{ fontSize: 9, color: 'var(--text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 2 }}>{l}</div>
