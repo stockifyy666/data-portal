@@ -27,14 +27,14 @@ import { redis } from './client'
 //   Static data (profiles, financials) barely counts — cached 24 hours.
 // =============================================================================
 export const TTL_SECONDS = {
-  // Live market data — refreshes every 15 minutes (keeps well under 20 req/hr limit)
-  LIVE_QUOTES:      15 * 60,   // 900 seconds = 15 minutes
-  INDICES:          15 * 60,   // 900 seconds = 15 minutes
-  GAINERS_LOSERS:   15 * 60,   // 900 seconds = 15 minutes
-  VOLUME_LEADERS:   15 * 60,   // 900 seconds = 15 minutes
+  // Live market data — refreshes every 5 minutes (general overview portal, not live trading)
+  LIVE_QUOTES:      5 * 60,    // 300 seconds = 5 minutes
+  INDICES:          5 * 60,    // 300 seconds = 5 minutes
+  GAINERS_LOSERS:   5 * 60,    // 300 seconds = 5 minutes
+  VOLUME_LEADERS:   5 * 60,    // 300 seconds = 5 minutes
 
-  // Market state — changes rarely, check every 10 minutes
-  MARKET_STATUS:    10 * 60,   // 600 seconds = 10 minutes
+  // Market state — changes rarely, check every 5 minutes
+  MARKET_STATUS:    5 * 60,    // 300 seconds = 5 minutes
 
   // Company data — updates 1-4 times per day at most
   COMPANY_OVERVIEW: 60 * 60,   // 3600 seconds = 1 hour
@@ -63,26 +63,26 @@ export const TTL_SECONDS = {
 // =============================================================================
 export async function cacheGet<T>(key: string): Promise<T | null> {
   try {
-    const cached = await redis.get<T>(key)
-    return cached
+    // Fetch as string then parse manually — avoids Upstash double-serialization
+    // on large objects where redis.get<T>() can return a string instead of T
+    const raw = await redis.get<string>(key)
+    if (raw === null || raw === undefined) return null
+    if (typeof raw === 'string') {
+      try { return JSON.parse(raw) as T } catch { return raw as unknown as T }
+    }
+    return raw as unknown as T
   } catch (error) {
-    // If Redis is down, we log the error but do NOT crash the app
-    // The API route will fall back to calling Capital Stake directly
     console.error(`[Redis] cacheGet failed for key "${key}":`, error)
     return null
   }
 }
 
-// =============================================================================
-// cacheSet — Write a value to Redis cache with an expiry time
-// ttl = number of seconds before this cache entry expires automatically
-// =============================================================================
 export async function cacheSet<T>(key: string, value: T, ttl: number): Promise<void> {
   try {
-    // 'ex' option sets expiry in seconds — Redis deletes it automatically
-    await redis.set(key, value, { ex: ttl })
+    // Serialize to string explicitly — prevents Upstash from double-encoding objects
+    const serialized = typeof value === 'string' ? value : JSON.stringify(value)
+    await redis.set(key, serialized, { ex: ttl })
   } catch (error) {
-    // If Redis is down, we log but do not crash — data still served fresh
     console.error(`[Redis] cacheSet failed for key "${key}":`, error)
   }
 }
@@ -98,25 +98,36 @@ export async function cacheSet<T>(key: string, value: T, ttl: number): Promise<v
 //   - If Redis has fresh data → return it (no Capital Stake call)
 //   - If Redis is empty/expired → call the fetcher function, cache the result
 // =============================================================================
+// In-flight deduplicator — if two requests arrive simultaneously for the same
+// key before the first one writes to Redis, they share one Capital Stake call
+// instead of both firing independently.
+const _inflight = new Map<string, Promise<unknown>>()
+
 export async function withCache<T>(
   key: string,
   ttl: number,
   fetcher: () => Promise<T>
 ): Promise<T> {
 
-  // Step 1: Check cache first
+  // Step 1: Check Redis cache first
   const cached = await cacheGet<T>(key)
-  if (cached !== null) {
-    return cached  // Return cached data — Capital Stake API NOT called
-  }
+  if (cached !== null) return cached
 
-  // Step 2: Cache miss — call Capital Stake API
-  const fresh = await fetcher()
+  // Step 2: If a fetch for this key is already running, wait for it
+  if (_inflight.has(key)) return _inflight.get(key) as Promise<T>
 
-  // Step 3: Store in Redis so the next request gets cached data
-  await cacheSet(key, fresh, ttl)
+  // Step 3: Cache miss — start one Capital Stake API call and register it
+  const promise = fetcher().then(async fresh => {
+    await cacheSet(key, fresh, ttl)
+    _inflight.delete(key)
+    return fresh
+  }).catch(err => {
+    _inflight.delete(key)
+    throw err
+  })
 
-  return fresh
+  _inflight.set(key, promise)
+  return promise
 }
 
 // =============================================================================

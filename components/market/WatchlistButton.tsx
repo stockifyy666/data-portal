@@ -1,8 +1,17 @@
 'use client'
 
+// =============================================================================
+// FILE: components/market/WatchlistButton.tsx
+// PURPOSE: Star button on stock cards and stock detail page.
+//          Toggles a stock in/out of the user's watchlist via /api/watchlist.
+//          Redirects to /login if user is not authenticated.
+//          Records the live price at the time of adding (via cachedFetch quotes).
+// =============================================================================
+
 import { useState, useEffect } from 'react'
 import { Star, LogIn }         from 'lucide-react'
 import { useRouter }           from 'next/navigation'
+import { cachedFetch }         from '@/lib/utils/clientCache'
 
 type Props = { symbol: string; currentPrice?: number }
 
@@ -32,10 +41,9 @@ export default function WatchlistButton({ symbol, currentPrice = 0 }: Props) {
       .catch(() => {})
       .finally(() => setLoading(false))
 
-    // If no price passed from server, fetch it from quotes
+    // If no price passed from server, fetch it from quotes (uses client cache)
     if (!currentPrice) {
-      fetch('/api/market/quotes')
-        .then(r => r.json())
+      cachedFetch<{ quotes: any[] }>('/api/market/quotes', 5 * 60_000)
         .then(json => {
           const q = (json.quotes ?? []).find((q: any) => q.symbol === symbol)
           if (q?.price) setLivePrice(q.price)

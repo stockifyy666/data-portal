@@ -1,6 +1,24 @@
 'use client'
 
+// =============================================================================
+// FILE: components/stock/StockDetailClient.tsx
+// PURPOSE: Stock detail page orchestrator for a single stock (e.g. /stocks/ENGRO).
+//          Manages all tab state and data fetching; delegates rendering to:
+//          - StockChartComponents  â†’ MiniChart, TradingViewWidget, IndexVsStockChart
+//          - StockFundamentalsView â†’ FundamentalsView (thematic metric cards + modal)
+//          - StockShareholdersView â†’ ShareholdersView (progress bar breakdown)
+//          - StockStatementTable   â†’ StatementTable (income/balance/cashflow)
+//
+//          All market data fetched via cachedFetch (browser in-memory cache, 5min TTL).
+//          Search bar at top uses /api/market/quotes to power stock search.
+// =============================================================================
+
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { MiniChart, TradingViewWidget, IndexVsStockChart } from './StockChartComponents'
+import { FundamentalsView } from './StockFundamentalsView'
+import { ShareholdersView } from './StockShareholdersView'
+import { StatementTable } from './StockStatementTable'
+import { cachedFetch } from '@/lib/utils/clientCache'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import {
@@ -12,7 +30,7 @@ import type { StockQuote } from '@/types/market'
 import { COMPANY_BRANDS } from '@/data/company-brands'
 import KMIBadge, { isKMI } from '@/components/ui/KMIBadge'
 
-/* ── Types ──────────────────────────────────────────────────────── */
+/* â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 type Overview = Record<string, number | string>
 
 type Candle = {
@@ -47,7 +65,7 @@ type Announcement = {
   pdf_id: string | null; name: string
 }
 
-/* ── Tabs ────────────────────────────────────────────────────────── */
+/* â”€â”€ Tabs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const TABS = [
   { id: 'overview',      label: 'Overview',        Icon: BarChart2  },
   { id: 'chart',         label: 'Chart',            Icon: TrendingUp },
@@ -63,7 +81,7 @@ const TABS = [
 
 type TabId = typeof TABS[number]['id']
 
-/* ── Helpers ─────────────────────────────────────────────────────── */
+/* â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div>
@@ -105,1030 +123,7 @@ function fmtNum(v: number | null | undefined, decimals = 2): string {
   return v.toFixed(decimals)
 }
 
-/* ── Interactive SVG chart with tooltip ─────────────────────────── */
-function MiniChart({ candles, mode }: { candles: Candle[]; mode: 'intraday' | 'weekly' }) {
-  const [hoverIdx, setHoverIdx] = useState<number | null>(null)
-  const svgRef = useRef<SVGSVGElement>(null)
-
-  if (!candles.length) return null
-
-  const prices = candles.map(c => c.close)
-  const min    = Math.min(...prices)
-  const max    = Math.max(...prices)
-  const range  = max - min || 1
-  const W = 600; const H = 200; const PAD = 10
-
-  const points = candles.map((c, i) => ({
-    x: candles.length > 1 ? (i / (candles.length - 1)) * W : W / 2,
-    y: H - PAD - ((c.close - min) / range) * (H - PAD * 2),
-    c,
-  }))
-
-  const ptStr  = points.map(p => `${p.x},${p.y}`).join(' ')
-  const areaD  = `M0,${H} L${ptStr.replace(/ /g, ' L')} L${W},${H} Z`
-  const isUp   = candles[candles.length - 1].close >= candles[0].close
-  const color  = isUp ? '#16a34a' : '#dc2626'
-  const fillOp = isUp ? '#16a34a18' : '#dc262618'
-
-  function onMouseMove(e: React.MouseEvent<SVGSVGElement>) {
-    const rect = svgRef.current?.getBoundingClientRect()
-    if (!rect) return
-    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
-    setHoverIdx(Math.round(ratio * (candles.length - 1)))
-  }
-
-  const hp  = hoverIdx !== null ? points[hoverIdx] : null
-  const hc  = hoverIdx !== null ? candles[hoverIdx] : null
-
-  function fmtLabel(c: Candle) {
-    if (mode === 'intraday') {
-      // date field for intraday is typically a unix timestamp or "HH:MM" string
-      const d = new Date(Number(c.date) * 1000)
-      return isNaN(d.getTime()) ? c.date : d.toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit' })
-    }
-    const d = new Date(c.date)
-    return isNaN(d.getTime()) ? c.date : d.toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: '2-digit' })
-  }
-
-  return (
-    <div className="relative select-none">
-      {/* Hover tooltip */}
-      {hp && hc && (
-        <div
-          className="absolute z-10 pointer-events-none text-[10px] px-2.5 py-1.5 rounded-lg shadow-lg"
-          style={{
-            left:            Math.min(hp.x / W * 100, 75) + '%',
-            top:             4,
-            backgroundColor: 'var(--bg-card)',
-            border:          '1px solid var(--bg-border)',
-            color:           'var(--text-primary)',
-            minWidth:        110,
-          }}
-        >
-          <p className="font-semibold mb-0.5" style={{ color: 'var(--text-muted)' }}>{fmtLabel(hc)}</p>
-          <div className="grid grid-cols-2 gap-x-2">
-            <span style={{ color: 'var(--text-muted)' }}>O</span>
-            <span className="font-number text-right">{hc.open.toFixed(2)}</span>
-            <span style={{ color: 'var(--text-muted)' }}>H</span>
-            <span className="font-number text-right text-green-600">{hc.high.toFixed(2)}</span>
-            <span style={{ color: 'var(--text-muted)' }}>L</span>
-            <span className="font-number text-right text-red-500">{hc.low.toFixed(2)}</span>
-            <span style={{ color: 'var(--text-muted)' }}>C</span>
-            <span className="font-number text-right font-bold" style={{ color }}>{hc.close.toFixed(2)}</span>
-          </div>
-        </div>
-      )}
-
-      <svg
-        ref={svgRef}
-        viewBox={`0 0 ${W} ${H}`}
-        className="w-full"
-        style={{ height: 220, cursor: 'crosshair' }}
-        onMouseMove={onMouseMove}
-        onMouseLeave={() => setHoverIdx(null)}
-      >
-        {/* Area fill */}
-        <path d={areaD} fill={fillOp} />
-        {/* Line */}
-        <polyline points={ptStr} fill="none" stroke={color} strokeWidth="2.5" strokeLinejoin="round" />
-
-        {/* Crosshair & dot */}
-        {hp && (
-          <>
-            <line x1={hp.x} y1={0} x2={hp.x} y2={H}
-                  stroke={color} strokeWidth="1" strokeDasharray="4 3" opacity="0.5" />
-            <line x1={0} y1={hp.y} x2={W} y2={hp.y}
-                  stroke={color} strokeWidth="1" strokeDasharray="4 3" opacity="0.3" />
-            <circle cx={hp.x} cy={hp.y} r={5} fill={color} stroke="white" strokeWidth="2" />
-          </>
-        )}
-
-        {/* Y-axis labels */}
-        {[0, 0.5, 1].map(r => {
-          const val = min + r * range
-          const y   = H - PAD - r * (H - PAD * 2)
-          return (
-            <text key={r} x={4} y={y} fontSize={10} fill="var(--text-muted)" dominantBaseline="middle">
-              {val.toFixed(2)}
-            </text>
-          )
-        })}
-      </svg>
-    </div>
-  )
-}
-
-/* ── Fundamentals grouped view ───────────────────────────────────── */
-type FundGroup = { heading: string; rows: Array<{ label: string; values: (number | null)[] }> }
-
-function fmtFundVal(label: string, val: number | null): string {
-  if (val == null) return '—'
-  const lbl = label.toLowerCase()
-  // Pure ratios shown as Nx (not percentage)
-  const isRatio = lbl.includes('cover') || lbl.includes('dividend cover')
-  if (isRatio) return `${val.toFixed(2)}x`
-  // Percentage-based metrics (decimal → multiply by 100)
-  const isPct = lbl.includes('margin') || lbl.includes('yield') ||
-    lbl.includes('return on') || lbl.includes('retention') || lbl.includes('payout')
-  if (isPct) return `${(val * 100).toFixed(2)}%`
-  // Large numbers (shares, per-share values, etc.)
-  if (Math.abs(val) >= 1_000_000) return `${(val / 1_000_000).toFixed(2)}M`
-  if (Math.abs(val) >= 1_000)     return `${(val / 1_000).toFixed(1)}K`
-  return val.toFixed(2)
-}
-
-function TrendBar({ values }: { values: (number | null)[] }) {
-  const nums = values.filter((v): v is number => v != null)
-  if (nums.length < 2) return null
-  const min = Math.min(...nums), max = Math.max(...nums)
-  const range = max - min || 1
-  return (
-    <svg width="64" height="20" viewBox="0 0 64 20" className="shrink-0">
-      {nums.slice(0, 6).reverse().map((v, i, arr) => {
-        const x1 = (i / (arr.length - 1)) * 60 + 2
-        const x2 = ((i + 1) / (arr.length - 1)) * 60 + 2
-        const y1 = 18 - ((v - min) / range) * 16
-        const y2 = 18 - ((arr[i + 1] - min) / range) * 16
-        if (i === arr.length - 1) return null
-        const rising = arr[i + 1] >= v
-        return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2}
-          stroke={rising ? '#16a34a' : '#dc2626'} strokeWidth="1.5" strokeLinecap="round" />
-      })}
-    </svg>
-  )
-}
-
-/* ── Metric detail modal ──────────────────────────────────────────── */
-type MetricRow = { label: string; values: (number | null)[] }
-type MetricPeriod = { period_end: string; year: string | number; quarter?: string | null }
-
-function MetricModal({
-  row, periods, symbol, onClose,
-}: {
-  row: MetricRow
-  periods: MetricPeriod[]
-  symbol: string
-  onClose: () => void
-}) {
-  const [qData,    setQData]    = useState<StatementData | null>(null)
-  const [qLoading, setQLoading] = useState(true)
-
-  useEffect(() => {
-    setQLoading(true)
-    fetch(`/api/stock/${symbol}/statement?type=other&interval=quarterly`)
-      .then(r => r.json())
-      .then(j => { if (j?.data) setQData(j.data) })
-      .catch(() => {})
-      .finally(() => setQLoading(false))
-  }, [symbol])
-
-  // Close on backdrop click
-  const onBackdrop = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (e.target === e.currentTarget) onClose()
-  }
-
-  // Close on Escape
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [onClose])
-
-  // Build paired data for a set of periods + values
-  function buildPaired(ps: MetricPeriod[], vals: (number | null)[]) {
-    return ps
-      .map((p, i) => ({ label: p.quarter ? `${p.year} ${p.quarter}` : String(p.year), value: vals[i] }))
-      .filter(d => d.value != null)
-      .reverse()
-  }
-
-  // Render a bar chart + table section
-  function renderSection(title: string, ps: MetricPeriod[], vals: (number | null)[]) {
-    const paired = buildPaired(ps, vals)
-    if (!paired.length) return (
-      <div>
-        <p className="text-[11px] font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--text-muted)' }}>{title}</p>
-        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>No data available</p>
-      </div>
-    )
-
-    const pvVals = paired.map(d => d.value as number)
-    const min    = Math.min(...pvVals)
-    const max    = Math.max(...pvVals)
-    const range  = max - min || 1
-    const barH   = 130
-    const barW   = Math.max(26, Math.min(52, Math.floor(460 / paired.length)))
-
-    return (
-      <div>
-        <p className="text-[11px] font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--text-muted)' }}>{title}</p>
-
-        {/* Bar chart */}
-        <div className="overflow-x-auto mb-4">
-          <div style={{ minWidth: paired.length * barW + 40, position: 'relative' }}>
-            {[0, 0.25, 0.5, 0.75, 1].map(t => {
-              const yVal = min + t * range
-              return (
-                <div key={t} style={{
-                  position: 'absolute', left: 0, right: 0,
-                  top: barH - t * barH,
-                  borderTop: '1px dashed var(--bg-border)',
-                  display: 'flex', alignItems: 'center',
-                }}>
-                  <span style={{ fontSize: 9, color: 'var(--text-muted)', marginLeft: 2, lineHeight: 1 }}>
-                    {fmtFundVal(row.label, yVal)}
-                  </span>
-                </div>
-              )
-            })}
-            <div style={{ display: 'flex', alignItems: 'flex-end', height: barH, gap: 3, paddingLeft: 36 }}>
-              {paired.map((d, i) => {
-                const v      = d.value!
-                const h      = Math.max(2, ((v - min) / range) * (barH - 4))
-                const isLast = i === paired.length - 1
-                const pos    = v >= 0
-                return (
-                  <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: '1 0 auto', minWidth: barW - 3 }}>
-                    <span style={{ fontSize: 9, color: 'var(--text-muted)', marginBottom: 2, whiteSpace: 'nowrap' }}>
-                      {fmtFundVal(row.label, v)}
-                    </span>
-                    <div style={{
-                      width: '70%', height: h,
-                      borderRadius: '4px 4px 0 0',
-                      backgroundColor: isLast ? (pos ? '#FEA500' : '#dc2626') : (pos ? '#16a34a' : '#ef4444'),
-                      opacity: isLast ? 1 : 0.6,
-                      transition: 'height 0.3s',
-                    }} />
-                  </div>
-                )
-              })}
-            </div>
-            <div style={{ display: 'flex', gap: 3, paddingLeft: 36, marginTop: 4 }}>
-              {paired.map((d, i) => (
-                <div key={i} style={{ flex: '1 0 auto', minWidth: barW - 3, textAlign: 'center' }}>
-                  <span style={{ fontSize: 9, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{d.label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr style={{ borderBottom: '1px solid var(--bg-border)' }}>
-                <th className="text-left py-2 pr-4 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Period</th>
-                <th className="text-right py-2 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Value</th>
-                <th className="text-right py-2 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Change</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[...paired].reverse().map((d, i, arr) => {
-                const prev   = arr[i + 1]?.value ?? null
-                const change = d.value != null && prev != null ? d.value - prev : null
-                const up     = change != null ? change >= 0 : null
-                return (
-                  <tr key={i} style={{ borderBottom: '1px solid var(--bg-border)' }}>
-                    <td className="py-2 pr-4 text-[12px] font-medium" style={{ color: 'var(--text-secondary)' }}>{d.label}</td>
-                    <td className="py-2 text-right text-[12px] font-bold font-number tabular-nums"
-                      style={{ color: (d.value ?? 0) < 0 ? '#dc2626' : 'var(--text-primary)' }}>
-                      {fmtFundVal(row.label, d.value ?? null)}
-                    </td>
-                    <td className="py-2 text-right text-[11px] font-semibold font-number tabular-nums"
-                      style={{ color: up == null ? 'var(--text-muted)' : up ? '#16a34a' : '#dc2626' }}>
-                      {change == null ? '—' : `${up ? '+' : ''}${fmtFundVal(row.label, change)}`}
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    )
-  }
-
-  // Find matching quarterly field by label
-  const qField = qData?.fields.find(f => !f.is_heading && f.label.trim().toLowerCase() === row.label.trim().toLowerCase())
-  const qPeriods = qData?.periods ?? []
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ backgroundColor: 'rgba(0,0,0,0.55)' }}
-      onClick={onBackdrop}
-    >
-      <div
-        className="rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col overflow-hidden"
-        style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--bg-border)', maxHeight: '90vh' }}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3.5"
-          style={{ borderBottom: '1px solid var(--bg-border)' }}>
-          <div>
-            <h2 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{row.label}</h2>
-            <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
-              Annual &amp; Quarterly history
-            </p>
-          </div>
-          <button onClick={onClose}
-            className="rounded-lg px-2 py-1 text-xs font-bold"
-            style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-secondary)' }}>
-            ✕
-          </button>
-        </div>
-
-        {/* Body */}
-        <div className="overflow-auto p-5 flex-1 space-y-6">
-          {/* Annual section */}
-          {renderSection('Annual — Year by Year', periods, row.values)}
-
-          {/* Divider */}
-          <div style={{ borderTop: '1px solid var(--bg-border)' }} />
-
-          {/* Quarterly section */}
-          {qLoading ? (
-            <div>
-              <p className="text-[11px] font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--text-muted)' }}>Quarterly</p>
-              <div className="flex gap-1">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="flex-1 h-20 rounded animate-pulse" style={{ backgroundColor: 'var(--bg-hover)' }} />
-                ))}
-              </div>
-            </div>
-          ) : qField
-            ? renderSection('Quarterly', qPeriods as MetricPeriod[], qField.values)
-            : (
-              <div>
-                <p className="text-[11px] font-bold uppercase tracking-widest mb-2" style={{ color: 'var(--text-muted)' }}>Quarterly</p>
-                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>No quarterly data available for this metric</p>
-              </div>
-            )
-          }
-        </div>
-      </div>
-    </div>
-  )
-}
-
-/* ── Fundamentals section definitions ─────────────────────────────── */
-const FUND_SECTIONS: { heading: string; match: (lbl: string) => boolean }[] = [
-  // ── 1. Earnings ─────────────────────────────────────────────────────
-  {
-    heading: 'Earnings',
-    match: l => /\beps\b|earnings per share|latest eps|eps last quarter|last annual eps|price.?to.?earn|price earning|p\/e|exp.*earn|exp.*p\/e|earning growth|peg ratio|\bpeg\b/i.test(l),
-  },
-  // ── 2. Important Ratios ─────────────────────────────────────────────
-  {
-    heading: 'Important Ratios',
-    match: l => /market price per share|book value per share|price.?book ratio|price to book|price to sales|sales per share|capital employed|number of shares|xprice|price date|p\/b/i.test(l),
-  },
-  // ── 3. Profitability ────────────────────────────────────────────────
-  {
-    heading: 'Profitability',
-    match: l => /gross profit margin|operating profit margin|profit before tax margin|net profit margin|other operating income|profit.*margin|gross (profit|spread)|operating.*margin|ebitda.*margin|markup per share|mark.?up per share/i.test(l),
-  },
-  // ── 4. Dividends ────────────────────────────────────────────────────
-  {
-    heading: 'Dividends',
-    match: l => /dividend per share|dividend yield|dividend cover|payout ratio|exp.*payout|exp.*dividend|dividend/i.test(l),
-  },
-  // ── 5. Equity Ratios ────────────────────────────────────────────────
-  {
-    heading: 'Equity Ratios',
-    match: l => /return on capital employed|return on equity|return on assets|retention ratio|equity to assets|equity multiplier|book value(?! per share)|book value growth|roce|roa\b|roe\b/i.test(l),
-  },
-  // ── 6. Debt ─────────────────────────────────────────────────────────
-  {
-    heading: 'Debt',
-    match: l => /debt.?to.?equity|long.?term debt.?to.?equity|short.?term debt.?to.?equity|long.?term debt.?to.?assets|short.?term debt.?to.?assets|debt to equity|debt\/equity|\bde ratio\b|leverage|gearing|total debt|long.?term debt|asset coverage/i.test(l),
-  },
-  // ── 7. Cash ─────────────────────────────────────────────────────────
-  {
-    heading: 'Cash',
-    match: l => /cash per share|cash flow per share|free cash|operating cash|fcf/i.test(l),
-  },
-  // ── 8. Liquidity ────────────────────────────────────────────────────
-  {
-    heading: 'Liquidity',
-    match: l => /current ratio|quick ratio|acid.?test|solvency ratio/i.test(l),
-  },
-  // ── 9. Financial Health ─────────────────────────────────────────────
-  {
-    heading: 'Financial Health',
-    match: l => /net assets per share|liabilities to assets|long.?term debt to equity|interest cov|revenue growth|sales growth|total assets|net assets|total equity/i.test(l),
-  },
-  // ── 10. Efficiency ──────────────────────────────────────────────────
-  {
-    heading: 'Efficiency',
-    match: l => /total assets turnover|fixed asset turnover|inventory turnover|inventory days|receivable days|payables days|asset turnover|working capital/i.test(l),
-  },
-  // ── 11. Market Stats ────────────────────────────────────────────────
-  {
-    heading: 'Market Stats',
-    match: l => /previous close|ldcp|52.?w(eek)?.?(high|low)|50.?d(ay)?|200.?d(ay)?|moving average|index weight|market cap|enterprise value|\bev\b|ev\//i.test(l),
-  },
-]
-
-function assignFundSection(label: string): string {
-  for (const sec of FUND_SECTIONS) {
-    if (sec.match(label)) return sec.heading
-  }
-  return 'Other'
-}
-
-function FundamentalsView({ data, overview, symbol }: { data: StatementData; overview: Overview | null; symbol: string }) {
-  const periods = data.periods.slice(0, 10)   // more periods available for modal
-  const ttmIdx  = 0
-
-  const [activeRow, setActiveRow] = useState<MetricRow | null>(null)
-
-  // Collect only data rows then bin into thematic sections
-  const allRows = data.fields.filter(f => !f.is_heading && f.label.trim())
-
-  const sectionOrder = [...FUND_SECTIONS.map(s => s.heading), 'Other']
-  const buckets: Record<string, FundGroup> = {}
-  for (const heading of sectionOrder) buckets[heading] = { heading, rows: [] }
-  for (const f of allRows) buckets[assignFundSection(f.label)].rows.push({ label: f.label, values: f.values })
-  const groups = sectionOrder.map(h => buckets[h]).filter(g => g.rows.length > 0)
-
-  return (
-    <>
-      {/* Modal */}
-      {activeRow && (
-        <MetricModal
-          row={activeRow}
-          periods={periods}
-          symbol={symbol}
-          onClose={() => setActiveRow(null)}
-        />
-      )}
-
-      <div className="space-y-4">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {groups.map(group => (
-
-            <div key={group.heading}
-              className="rounded-2xl overflow-hidden"
-              style={{ border: '1px solid var(--bg-border)', backgroundColor: 'var(--bg-card)' }}>
-
-              {/* Section header */}
-              <div className="px-4 py-2.5 flex items-center justify-between"
-                style={{ borderBottom: '1px solid var(--bg-border)', backgroundColor: 'var(--bg-hover)' }}>
-                <h3 className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
-                  {group.heading}
-                </h3>
-                <span className="text-[9px]" style={{ color: 'var(--text-muted)' }}>Click card for history</span>
-              </div>
-
-              {/* Small metric cards — clickable */}
-              <div className="p-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {group.rows.map(row => {
-                  const ttm        = row.values[ttmIdx]
-                  const prev       = row.values[1] ?? null
-                  const trend      = ttm != null && prev != null ? (ttm > prev ? 'up' : ttm < prev ? 'down' : 'flat') : null
-                  const trendColor = trend === 'up' ? '#16a34a' : trend === 'down' ? '#dc2626' : 'var(--text-muted)'
-                  const formatted  = fmtFundVal(row.label, ttm)
-
-                  return (
-                    <button
-                      key={row.label}
-                      onClick={() => setActiveRow(row)}
-                      className="rounded-xl p-3 flex flex-col gap-2 text-left transition-all hover:brightness-110 active:scale-95"
-                      style={{ backgroundColor: 'var(--bg-hover)', cursor: 'pointer', width: '100%' }}>
-
-                      {/* Label + sparkline */}
-                      <div className="flex items-start justify-between gap-1">
-                        <span className="text-[10px] font-medium leading-snug break-words min-w-0 flex-1" style={{ color: 'var(--text-secondary)' }}>
-                          {row.label}
-                        </span>
-                        <div className="shrink-0 ml-1"><TrendBar values={row.values} /></div>
-                      </div>
-
-                      {/* Current value + trend */}
-                      <div className="flex items-end justify-between gap-1">
-                        <span className="text-sm font-bold font-number leading-none truncate"
-                          style={{ color: (ttm ?? 0) < 0 ? '#dc2626' : 'var(--text-primary)' }}>
-                          {formatted}
-                        </span>
-                        {trend && trend !== 'flat' && (
-                          <span className="text-[9px] font-semibold leading-none shrink-0" style={{ color: trendColor }}>
-                            {trend === 'up' ? '▲' : '▼'}
-                          </span>
-                        )}
-                      </div>
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          ))}
-
-          {/* ── Market Stats (PSX) — from live overview data ── */}
-        {overview && (() => {
-          const fmt  = (v: number | undefined | null, prefix = '') =>
-            v && Number(v) ? `${prefix}${Number(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'
-          const fmtV = (v: number | undefined | null) =>
-            v && Number(v) >= 1_000_000 ? `${(Number(v) / 1_000_000).toFixed(2)}M`
-              : v && Number(v) >= 1_000 ? `${(Number(v) / 1_000).toFixed(1)}K`
-              : v ? String(v) : '—'
-
-          const stats: { label: string; value: string }[] = [
-            { label: 'Prev Close (LDCP)', value: fmt(Number(overview.lastClose)) },
-            { label: 'Volume',            value: fmtV(Number(overview.volume))   },
-            { label: '52W High',          value: fmt(Number(overview.high52))    },
-            { label: '52W Low',           value: fmt(Number(overview.low52))     },
-            { label: '50D MA',            value: fmt(Number((overview as any).ma50))  },
-            { label: '200D MA',           value: fmt(Number((overview as any).ma200)) },
-            { label: 'Idx Weight',        value: (overview as any).idxWeight ? String((overview as any).idxWeight) : '—' },
-          ]
-
-          return (
-            <div className="rounded-2xl overflow-hidden"
-              style={{ border: '1px solid var(--bg-border)', backgroundColor: 'var(--bg-card)' }}>
-              <div className="px-4 py-2.5 flex items-center justify-between"
-                style={{ borderBottom: '1px solid var(--bg-border)', backgroundColor: 'var(--bg-hover)' }}>
-                <h3 className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
-                  Market Stats (PSX)
-                </h3>
-              </div>
-              <div className="p-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {stats.map(s => (
-                  <div key={s.label} className="rounded-xl p-3 flex flex-col gap-2"
-                    style={{ backgroundColor: 'var(--bg-hover)' }}>
-                    <span className="text-[10px] font-medium leading-snug break-words min-w-0" style={{ color: 'var(--text-secondary)' }}>
-                      {s.label}
-                    </span>
-                    <span className="text-sm font-bold font-number leading-none truncate" style={{ color: 'var(--text-primary)' }}>
-                      {s.value}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )
-        })()}
-        </div>
-      </div>
-    </>
-  )
-}
-
-/* ── Shareholders grouped view ───────────────────────────────────── */
-function ShareholdersView({ data }: { data: StatementData }) {
-  const periods = data.periods.slice(0, 6)
-
-  // Split into groups by heading rows
-  type ShGroup = { heading: string; rows: Array<{ label: string; values: (number | null)[] }> }
-  const groups: ShGroup[] = []
-  let current: ShGroup = { heading: 'Shareholders', rows: [] }
-  for (const f of data.fields) {
-    if (f.is_heading) {
-      if (current.rows.length) groups.push(current)
-      current = { heading: f.label, rows: [] }
-    } else if (f.label.trim()) {
-      current.rows.push({ label: f.label, values: f.values })
-    }
-  }
-  if (current.rows.length) groups.push(current)
-
-  const fmt = (v: number | null) => v == null ? '—' : `${(v * 100).toFixed(2)}%`
-  const pct  = (v: number | null) => v == null ? 0 : Math.min(100, Math.max(0, v * 100))
-
-  const COLORS = [
-    '#FEA500','#16a34a','#2563eb','#9333ea','#dc2626',
-    '#0891b2','#d97706','#15803d','#7c3aed','#b91c1c',
-  ]
-
-  return (
-    <div className="space-y-6">
-      {/* Period strip */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-          Periods:
-        </span>
-        {periods.map(p => (
-          <span key={p.period_end}
-            className="px-2 py-0.5 rounded text-[10px] font-semibold"
-            style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-secondary)' }}>
-            {p.year}
-          </span>
-        ))}
-      </div>
-
-      {groups.map((group, gi) => {
-        // Compute total for this group's latest period to make a mini donut legend
-        const latestTotal = group.rows.reduce((s, r) => s + (r.values[0] ?? 0), 0)
-
-        return (
-          <div key={group.heading}>
-            {/* Group heading */}
-            <div className="flex items-center gap-3 mb-3">
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg shrink-0"
-                style={{ background: 'linear-gradient(135deg,#FEA500,#986300)' }}>
-                <h3 className="text-[11px] font-bold uppercase tracking-widest text-white">
-                  {group.heading}
-                </h3>
-              </div>
-              <div className="flex-1 h-px" style={{ backgroundColor: 'var(--bg-border)' }} />
-              {latestTotal > 0 && (
-                <span className="text-[10px] font-semibold px-2 py-1 rounded-lg"
-                  style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-secondary)' }}>
-                  Total: {(latestTotal * 100).toFixed(2)}%
-                </span>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              {group.rows.map((row, ri) => {
-                const latest = row.values[0]
-                const prev   = row.values[1] ?? null
-                const bar    = pct(latest)
-                const color  = COLORS[(gi * 5 + ri) % COLORS.length]
-                const trend  = latest != null && prev != null
-                  ? latest > prev ? 'up' : latest < prev ? 'down' : 'flat'
-                  : null
-
-                return (
-                  <div key={row.label}
-                    className="rounded-xl p-3"
-                    style={{ backgroundColor: 'var(--bg-hover)' }}>
-
-                    {/* Label + latest value + trend */}
-                    <div className="flex items-center justify-between gap-2 mb-2">
-                      <span className="text-xs font-bold leading-tight" style={{ color: 'var(--text-primary)' }}>
-                        {row.label}
-                      </span>
-                      <div className="flex items-center gap-2 shrink-0">
-                        {trend && (
-                          <span className="text-[10px] font-semibold"
-                            style={{ color: trend === 'up' ? '#16a34a' : trend === 'down' ? '#dc2626' : 'var(--text-muted)' }}>
-                            {trend === 'up' ? '▲' : '▼'}
-                          </span>
-                        )}
-                        <span className="text-sm font-bold font-number" style={{ color: 'var(--text-primary)' }}>
-                          {fmt(latest)}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Progress bar */}
-                    <div className="h-1.5 rounded-full mb-3 overflow-hidden" style={{ backgroundColor: 'var(--bg-border)' }}>
-                      <div className="h-full rounded-full transition-all duration-500"
-                        style={{ width: `${bar}%`, backgroundColor: color }} />
-                    </div>
-
-                    {/* Historical values */}
-                    <div className="flex gap-3 flex-wrap">
-                      {periods.slice(1).map((p, j) => {
-                        const v = row.values[j + 1]
-                        return (
-                          <div key={p.period_end} className="flex flex-col items-center min-w-[36px]">
-                            <span className="text-[9px] leading-none mb-0.5" style={{ color: 'var(--text-muted)' }}>
-                              {p.year}
-                            </span>
-                            <span className="text-[10px] font-number font-semibold leading-none"
-                              style={{ color: 'var(--text-secondary)' }}>
-                              {fmt(v)}
-                            </span>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
-/* ── Statement Table ─────────────────────────────────────────────── */
-// Capital Stake API returns financial statement values already in thousands of PKR (000's).
-// EPS is the only field returned as a raw rupee amount (not in thousands).
-function fmtStmt(label: string, val: number | null): string {
-  if (val == null) return '—'
-  const isEps = /\beps\b/i.test(label)
-  if (isEps) return val.toFixed(2)
-  // Values are in thousands — format with commas, wrap negatives in parens like Capital Stake
-  const abs = Math.abs(Math.round(val))
-  const str = abs.toLocaleString('en-US')
-  return val < 0 ? `(${str})` : str
-}
-
-function StatementTable({ data, maxCols = 6 }: { data: StatementData; maxCols?: number }) {
-  const periods = data.periods.slice(0, maxCols)
-  return (
-    <div className="space-y-2">
-      {/* Capital Stake note */}
-      <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
-        All numbers in thousands (000s) except EPS · Source: Capital Stake
-      </p>
-      <div className="overflow-x-auto">
-        <table className="w-full text-xs">
-          <thead>
-            <tr style={{ borderBottom: '2px solid var(--bg-border)' }}>
-              <th className="text-left py-2 px-2 min-w-[200px] font-semibold"
-                  style={{ color: 'var(--text-muted)' }}>
-                Item
-              </th>
-              {periods.map(p => (
-                <th key={p.period_end} className="text-right py-2 px-3 whitespace-nowrap font-semibold"
-                    style={{ color: 'var(--text-muted)' }}>
-                  {p.quarter ? `${p.year} ${p.quarter}` : p.year}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {data.fields.map((f, i) => {
-              if (f.is_heading) {
-                return (
-                  <tr key={i}>
-                    <td colSpan={periods.length + 1}
-                        className="py-2 px-2 text-[11px] font-bold uppercase tracking-wide pt-5"
-                        style={{ color: 'var(--text-secondary)' }}>
-                      {f.label}
-                    </td>
-                  </tr>
-                )
-              }
-              const isBold = /^(sales|gross profit|profit (from|before|after)|total)/i.test(f.label.trim())
-              return (
-                <tr key={i} style={{ borderBottom: '1px solid var(--bg-border)' }}
-                    onMouseEnter={e => (e.currentTarget as HTMLTableRowElement).style.backgroundColor = 'var(--bg-hover)'}
-                    onMouseLeave={e => (e.currentTarget as HTMLTableRowElement).style.backgroundColor = 'transparent'}>
-                  <td className={`py-2 px-2 ${isBold ? 'font-semibold' : ''}`}
-                      style={{ color: isBold ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
-                    {f.label}
-                  </td>
-                  {periods.map((_, j) => {
-                    const val = f.values[j]
-                    const display = fmtStmt(f.label, val)
-                    const isNeg = (val ?? 0) < 0
-                    return (
-                      <td key={j} className={`text-right py-2 px-3 font-number ${isBold ? 'font-semibold' : ''}`}
-                          style={{ color: isNeg ? '#dc2626' : isBold ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
-                        {display}
-                      </td>
-                    )
-                  })}
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  )
-}
-
-/* ── TradingView Widget ──────────────────────────────────────────── */
-function TradingViewWidget({ symbol }: { symbol: string }) {
-  const containerRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const container = containerRef.current
-    if (!container) return
-    container.innerHTML = ''
-    const wrapper = document.createElement('div')
-    wrapper.className = 'tradingview-widget-container'
-    wrapper.style.height = '420px'
-    const inner = document.createElement('div')
-    inner.className = 'tradingview-widget-container__widget'
-    inner.style.height = '100%'
-    wrapper.appendChild(inner)
-    const script = document.createElement('script')
-    script.type = 'text/javascript'
-    script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js'
-    script.async = true
-    script.innerHTML = JSON.stringify({
-      symbol:              `PSX:${symbol}`,
-      interval:            'D',
-      timezone:            'Asia/Karachi',
-      theme:               document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light',
-      style:               '1',
-      locale:              'en',
-      enable_publishing:   false,
-      hide_side_toolbar:   false,
-      allow_symbol_change: false,
-      save_image:          false,
-      height:              420,
-      width:               '100%',
-    })
-    wrapper.appendChild(script)
-    container.appendChild(wrapper)
-  }, [symbol])
-
-  return <div ref={containerRef} className="w-full overflow-hidden rounded-lg" style={{ height: 420 }} />
-}
-
-/* ── Index VS Stock — TradingView lightweight-charts ─────────────── */
-function IndexVsStockChart({ stockCandles, indexCandles, symbol }: {
-  stockCandles: Candle[]; indexCandles: Candle[]; symbol: string
-}) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [isLight, setIsLight] = useState(
-    () => typeof document !== 'undefined' && !document.documentElement.classList.contains('dark')
-  )
-
-  useEffect(() => {
-    const update = () => setIsLight(!document.documentElement.classList.contains('dark'))
-    update()
-    const mo = new MutationObserver(update)
-    mo.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
-    return () => mo.disconnect()
-  }, [])
-
-  useEffect(() => {
-    if (!containerRef.current || stockCandles.length < 2 || indexCandles.length < 2) return
-
-    // Build aligned % return series inside the effect so closures are fresh
-    // Strip timestamp — API returns "2026-08-19 16:00:00", chart needs "2026-08-19"
-    const stockMap = new Map(stockCandles.map(c => [c.date.slice(0, 10), c.close]))
-    const indexMap = new Map(indexCandles.map(c => [c.date.slice(0, 10), c.close]))
-    const dates    = [...stockMap.keys()].filter(d => indexMap.has(d)).sort()
-    if (dates.length < 2) return
-
-    const base0S = stockMap.get(dates[0])!
-    const base0I = indexMap.get(dates[0])!
-
-    const stockSeries = dates.map(d => ({
-      time: d as `${number}-${number}-${number}`,
-      value: +((stockMap.get(d)! / base0S - 1) * 100).toFixed(2),
-    }))
-    const indexSeries = dates.map(d => ({
-      time: d as `${number}-${number}-${number}`,
-      value: +((indexMap.get(d)! / base0I - 1) * 100).toFixed(2),
-    }))
-
-    let cancelled = false
-    let dispose: (() => void) | null = null
-
-    import('lightweight-charts').then(({ createChart, ColorType }) => {
-      if (cancelled || !containerRef.current) return
-
-      const bg     = isLight ? '#ffffff' : '#0C1628'
-      const text   = isLight ? '#64748b' : '#5B7499'
-      const grid   = isLight ? '#f1f5f9' : '#0F2040'
-      const border = isLight ? '#e2e8f0' : '#1C3054'
-      const lblBg  = isLight ? '#f8fafc' : '#112040'
-
-      const w = containerRef.current!.getBoundingClientRect().width || 600
-
-      const chart = createChart(containerRef.current!, {
-        width:  w,
-        height: 280,
-        layout: { background: { type: ColorType.Solid, color: bg }, textColor: text },
-        grid:   { vertLines: { color: grid }, horzLines: { color: grid } },
-        crosshair: {
-          vertLine: { color: border, labelBackgroundColor: lblBg },
-          horzLine: { color: border, labelBackgroundColor: lblBg },
-        },
-        rightPriceScale: {
-          borderColor: border,
-          scaleMargins: { top: 0.06, bottom: 0.06 },
-        },
-        timeScale: { borderColor: border, timeVisible: false },
-        handleScroll: true,
-        handleScale:  true,
-      })
-
-      const stockLine = chart.addLineSeries({
-        color:     '#4A8FF4',
-        lineWidth: 2,
-        title: symbol,
-      })
-      stockLine.setData(stockSeries)
-
-      const indexLine = chart.addLineSeries({
-        color:     '#F5A623',
-        lineWidth: 2,
-        lineStyle: 1,
-        title: 'KSE-100',
-      })
-      indexLine.setData(indexSeries)
-
-      chart.timeScale().fitContent()
-
-      // ── Custom tooltip ──────────────────────────────────────────
-      const tooltip = document.createElement('div')
-      Object.assign(tooltip.style, {
-        position:     'absolute',
-        display:      'none',
-        padding:      '8px 10px',
-        background:   isLight ? '#ffffff' : '#1e293b',
-        border:       `1px solid ${isLight ? '#e2e8f0' : '#334155'}`,
-        borderRadius: '6px',
-        boxShadow:    '0 2px 8px rgba(0,0,0,0.12)',
-        fontSize:     '12px',
-        pointerEvents:'none',
-        zIndex:       '10',
-        minWidth:     '120px',
-      })
-      containerRef.current!.style.position = 'relative'
-      containerRef.current!.appendChild(tooltip)
-
-      chart.subscribeCrosshairMove(param => {
-        if (!param.point || !param.time || param.point.x < 0 || param.point.y < 0) {
-          tooltip.style.display = 'none'
-          return
-        }
-        const sVal = param.seriesData.get(stockLine) as { value: number } | undefined
-        const iVal = param.seriesData.get(indexLine) as { value: number } | undefined
-        if (!sVal && !iVal) { tooltip.style.display = 'none'; return }
-
-        // Format date from YYYY-MM-DD string
-        const dateStr = typeof param.time === 'string' ? param.time : ''
-        const d = new Date(dateStr + 'T00:00:00')
-        const label = d.toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: '2-digit' })
-
-        const textColor = isLight ? '#374151' : '#cbd5e1'
-        const boldColor = isLight ? '#111827' : '#f1f5f9'
-
-        tooltip.innerHTML = `
-          <div style="font-weight:600;color:${boldColor};margin-bottom:5px;font-size:11px">${label}</div>
-          ${sVal != null ? `<div style="display:flex;align-items:center;gap:5px;margin-bottom:3px">
-            <span style="width:8px;height:8px;border-radius:50%;background:#4A8FF4;flex-shrink:0"></span>
-            <span style="color:${textColor}">${symbol}:</span>
-            <span style="font-weight:700;color:${boldColor}">${sVal.value.toFixed(2)}%</span>
-          </div>` : ''}
-          ${iVal != null ? `<div style="display:flex;align-items:center;gap:5px">
-            <span style="width:8px;height:8px;border-radius:50%;background:#F5A623;flex-shrink:0"></span>
-            <span style="color:${textColor}">KSE-100:</span>
-            <span style="font-weight:700;color:${boldColor}">${iVal.value.toFixed(2)}%</span>
-          </div>` : ''}
-        `
-
-        const containerW = containerRef.current!.getBoundingClientRect().width
-        const tipW = 145
-        let left = param.point.x + 12
-        if (left + tipW > containerW - 60) left = param.point.x - tipW - 12
-
-        tooltip.style.display = 'block'
-        tooltip.style.left = `${left}px`
-        tooltip.style.top  = `${Math.max(0, param.point.y - 40)}px`
-      })
-
-      const ro = new ResizeObserver(entries => {
-        if (!cancelled && entries[0]) {
-          chart.applyOptions({ width: entries[0].contentRect.width })
-        }
-      })
-      ro.observe(containerRef.current!)
-      dispose = () => { ro.disconnect(); chart.remove() }
-    })
-
-    return () => { cancelled = true; dispose?.() }
-  }, [isLight, stockCandles, indexCandles, symbol])
-
-  // Compute legend returns from props (for header display only)
-  const _sMap = new Map(stockCandles.map(c => [c.date.slice(0, 10), c.close]))
-  const _iMap = new Map(indexCandles.map(c => [c.date.slice(0, 10), c.close]))
-  const _dates = [..._sMap.keys()].filter(d => _iMap.has(d)).sort()
-  const _b0S = _dates.length ? _sMap.get(_dates[0])! : 1
-  const _b0I = _dates.length ? _iMap.get(_dates[0])! : 1
-  const _last = _dates[_dates.length - 1]
-  const stockRet = _last ? +(_sMap.get(_last)! / _b0S - 1).toFixed(4) * 100 : 0
-  const indexRet = _last ? +(_iMap.get(_last)! / _b0I - 1).toFixed(4) * 100 : 0
-  const fmt = (v: number) => `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`
-
-  return (
-    <div className="mt-2 rounded-lg overflow-hidden" style={{ border: '1px solid var(--bg-border)' }}>
-      {/* Legend header */}
-      <div className="flex items-center justify-between px-4 py-2.5"
-        style={{ borderBottom: '1px solid var(--bg-border)', backgroundColor: 'var(--bg-hover)' }}>
-        <span className="text-[11px] font-bold tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>
-          Index vs Stock — % Return
-        </span>
-        <div className="flex items-center gap-4 text-[12px]">
-          <span className="flex items-center gap-1.5">
-            <span className="inline-block w-4 h-0.5 rounded" style={{ backgroundColor: '#4A8FF4' }} />
-            <span className="font-bold" style={{ color: 'var(--text-primary)' }}>{symbol}</span>
-            <span className="font-extrabold tabular-nums" style={{ color: stockRet >= 0 ? '#16a34a' : '#dc2626' }}>
-              {fmt(stockRet)}
-            </span>
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="inline-block w-4" style={{ borderTop: '2px dashed #F5A623' }} />
-            <span className="font-bold" style={{ color: 'var(--text-primary)' }}>KSE-100</span>
-            <span className="font-extrabold tabular-nums" style={{ color: indexRet >= 0 ? '#16a34a' : '#dc2626' }}>
-              {fmt(indexRet)}
-            </span>
-          </span>
-        </div>
-      </div>
-      {/* Chart */}
-      <div ref={containerRef} style={{ height: 280 }} />
-    </div>
-  )
-}
-
-/* ── Main Component ──────────────────────────────────────────────── */
+/* â”€â”€ Main Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 export default function StockDetailClient({
   symbol,
   overview: overviewProp,
@@ -1194,7 +189,7 @@ export default function StockDetailClient({
   const [cmpMetricDropOpen,setCmpMetricDropOpen]= useState(false)
   const [cmpMetricCustom,  setCmpMetricCustom]  = useState('')
   const [cmpMetricLoading, setCmpMetricLoading] = useState(false)
-  // nested: metricLabel → symbol → yearly rows
+  // nested: metricLabel â†’ symbol â†’ yearly rows
   const [cmpMetricData,    setCmpMetricData]    = useState<Record<string,Record<string,{year:string;value:number}[]>>>({})
 
   function cmpToggle(sym: string) {
@@ -1239,8 +234,7 @@ export default function StockDetailClient({
 
   // Load all quotes once for search
   useEffect(() => {
-    fetch('/api/market/quotes')
-      .then(r => r.json())
+    cachedFetch<{ quotes: StockQuote[] }>('/api/market/quotes', 5 * 60_000)
       .then(j => setAllQuotes(j.quotes ?? []))
       .catch(() => {})
   }, [])
@@ -1280,7 +274,7 @@ export default function StockDetailClient({
       const res  = await fetch(url)
       const json = await res.json()
       const raw  = Array.isArray(json.data) ? json.data : []
-      // intraday: reverse chronological → chronological; weekly: last 35 days (~5 weeks)
+      // intraday: reverse chronological â†’ chronological; weekly: last 35 days (~5 weeks)
       setCandles(chartMode === 'intraday' ? [...raw].reverse() : raw.slice(-35))
     } catch { setCandles([]) }
     setChartLoad(false)
@@ -1338,8 +332,7 @@ export default function StockDetailClient({
 
     if ((tab === 'peers' || tab === 'compare') && !peers.length) {
       setPeersLoad(true)
-      fetch('/api/market/quotes')
-        .then(r => r.json())
+      cachedFetch<{ quotes: StockQuote[] }>('/api/market/quotes', 5 * 60_000)
         .then(async j => {
           const all: StockQuote[] = j.quotes ?? []
           const sectorCode = all.find(q => q.symbol === symbol)?.sector ?? ''
@@ -1354,10 +347,11 @@ export default function StockDetailClient({
               )
               .sort((a, b) => b.volume - a.volume)
             setPeers(filtered)
-            // Fetch fundamentals for self + top 10 peers in parallel
             const symbols = [symbol, ...filtered.slice(0, 10).map(p => p.symbol)]
-            const results = await Promise.all(symbols.map(s => fetchFunds(s).then(f => [s, f] as const)))
-            setPeerFunds(Object.fromEntries(results))
+            const results = await Promise.all(symbols.map(fetchFunds))
+            const acc: Record<string, PeerFunds> = {}
+            symbols.forEach((sym, i) => { acc[sym] = results[i] })
+            setPeerFunds(acc)
           }
         })
         .catch(() => {})
@@ -1444,7 +438,7 @@ export default function StockDetailClient({
   return (
     <div className="space-y-5 animate-data">
 
-      {/* ── Stock Search ────────────────────────────────────────────── */}
+      {/* â”€â”€ Stock Search â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div ref={searchRef} style={{ position: 'relative', zIndex: 40 }}>
         <div className="flex items-center gap-2 px-3 rounded-xl"
           style={{ backgroundColor: 'var(--bg-hover)', border: '1px solid var(--bg-border)' }}>
@@ -1454,7 +448,7 @@ export default function StockDetailClient({
           </svg>
           <input
             type="text"
-            placeholder="Search another stock by symbol or name…"
+            placeholder="Search another stock by symbol or nameâ€¦"
             value={searchQuery}
             onChange={e => { setSearchQuery(e.target.value); setSearchOpen(true) }}
             onFocus={() => setSearchOpen(true)}
@@ -1463,7 +457,7 @@ export default function StockDetailClient({
           />
           {searchQuery && (
             <button onClick={() => { setSearchQuery(''); setSearchOpen(false) }}
-              className="text-xs px-1" style={{ color: 'var(--text-muted)' }}>✕</button>
+              className="text-xs px-1" style={{ color: 'var(--text-muted)' }}>âœ•</button>
           )}
         </div>
 
@@ -1506,7 +500,7 @@ export default function StockDetailClient({
         )}
       </div>
 
-      {/* ── Tabs ───────────────────────────────────────────────────── */}
+      {/* â”€â”€ Tabs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="overflow-x-auto hide-scrollbar -mx-1">
         <div className="flex gap-0.5 p-1 rounded-xl w-max min-w-full"
              style={{ backgroundColor: 'var(--bg-hover)' }}>
@@ -1527,7 +521,7 @@ export default function StockDetailClient({
         </div>
       </div>
 
-      {/* ══ OVERVIEW ════════════════════════════════════════════════ */}
+      {/* â•â• OVERVIEW â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
       {tab === 'overview' && (
         overviewLoad ? (
           <div className="card space-y-4">
@@ -1566,7 +560,7 @@ export default function StockDetailClient({
                 <Stat label="52W Low"   value={formatPrice(Number(overview.low52))} />
               </div>
             </div>
-            {/* ── Score Cards ───────────────────────────────────────── */}
+            {/* â”€â”€ Score Cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             {(() => {
               if (!snapFunds || !overview) return null
 
@@ -1584,20 +578,20 @@ export default function StockDetailClient({
               const high52   = Number(overview.high52) || price
               const low52    = Number(overview.low52) || price
 
-              // ── Intrinsic Score (0–100) ──
-              // Benjamin Graham formula: IV = √(22.5 × EPS × BVPS), normalised
+              // â”€â”€ Intrinsic Score (0â€“100) â”€â”€
+              // Benjamin Graham formula: IV = âˆš(22.5 Ã— EPS Ã— BVPS), normalised
               const grahamIV   = eps > 0 && bvps > 0 ? Math.sqrt(22.5 * eps * bvps) : 0
               const ivRatio    = grahamIV > 0 && price > 0 ? grahamIV / price : 0
               const intrinsicScore = grahamIV > 0
-                ? Math.min(100, Math.round(Math.min(ivRatio, 2) * 50))  // 100 when IV ≥ 2× price
+                ? Math.min(100, Math.round(Math.min(ivRatio, 2) * 50))  // 100 when IV â‰¥ 2Ã— price
                 : null
 
-              // ── Margin of Safety (%) ──
+              // â”€â”€ Margin of Safety (%) â”€â”€
               const mos = grahamIV > 0 && price > 0
                 ? Math.round(((grahamIV - price) / grahamIV) * 100)
                 : null
 
-              // ── Stockifyy Score (0–100) — multi-factor ──
+              // â”€â”€ Stockifyy Score (0â€“100) — multi-factor â”€â”€
               let ss = 0, ssMax = 0
               // Valuation (25pts): P/E < 15 ideal
               if (pe > 0) {
@@ -1731,7 +725,7 @@ export default function StockDetailClient({
                   {grahamWarning && (
                     <div className="mt-3 flex items-start gap-2 rounded-xl px-3 py-2.5 text-[11px]"
                       style={{ backgroundColor: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.25)', color: 'var(--text-secondary)' }}>
-                      <span className="shrink-0 mt-0.5">⚠️</span>
+                      <span className="shrink-0 mt-0.5">âš ï¸</span>
                       {grahamWarning}
                     </div>
                   )}
@@ -1743,27 +737,27 @@ export default function StockDetailClient({
               )
             })()}
 
-            {/* ── Company Snapshot ──────────────────────────────────── */}
+            {/* â”€â”€ Company Snapshot â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             <div className="card">
               <SectionHeading>Company Snapshot</SectionHeading>
 
               {(() => {
-                // ── field extractor ──
+                // â”€â”€ field extractor â”€â”€
                 function pick(pattern: RegExp): number | null {
                   if (!snapFunds) return null
                   return snapFunds.fields.find(f => !f.is_heading && pattern.test(f.label.trim()))?.values[0] ?? null
                 }
 
-                // ── formatter ──
+                // â”€â”€ formatter â”€â”€
                 function fmtSnap(key: string, raw: number | null): string {
                   if (raw == null || isNaN(raw)) return '—'
                   switch (key) {
-                    // Percentage fields (stored as decimal 0–1 in fundamentals)
+                    // Percentage fields (stored as decimal 0â€“1 in fundamentals)
                     case 'divYield':
                     case 'netMargin':
                       return `${(raw * 100).toFixed(2)}%`
                     case 'freeFloatPct':
-                      // May be stored as 0–100 or 0–1; cap heuristic
+                      // May be stored as 0â€“100 or 0â€“1; cap heuristic
                       return `${raw > 1 ? raw.toFixed(2) : (raw * 100).toFixed(2)}%`
                     // Ratio / per-share fields — display as-is
                     case 'eps':
@@ -1805,7 +799,7 @@ export default function StockDetailClient({
                   peg:         pick(/peg/i),
                 }
 
-                // ── Fundamentals rows (from snapshot fetch) ──
+                // â”€â”€ Fundamentals rows (from snapshot fetch) â”€â”€
                 const fundRows: { label: string; key: keyof typeof snap; value: string }[] = [
                   { label: 'Market Cap',         key: 'mktCap',       value: fmtSnap('mktCap',       snap.mktCap)       },
                   { label: 'Shares Outstanding', key: 'sharesOut',    value: fmtSnap('sharesOut',    snap.sharesOut)    },
@@ -1858,7 +852,7 @@ export default function StockDetailClient({
               })()}
             </div>
 
-            {/* ── Index vs Stock chart ─────────────────────────────── */}
+            {/* â”€â”€ Index vs Stock chart â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             <div className="card">
               <SectionHeading>Index VS Stocks</SectionHeading>
               {vsLoad ? (
@@ -1869,7 +863,7 @@ export default function StockDetailClient({
               }
             </div>
 
-            {/* ── Pros & Cons ──────────────────────────────────────── */}
+            {/* â”€â”€ Pros & Cons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             {snapFunds && overview && (() => {
               function pickF(pattern: RegExp): number | null {
                 return snapFunds!.fields.find(f => !f.is_heading && pattern.test(f.label.trim()))?.values[0] ?? null
@@ -1894,9 +888,9 @@ export default function StockDetailClient({
               const cons: string[] = []
 
               // Valuation
-              if (pe > 0 && pe <= 12)   pros.push(`Low P/E of ${pe.toFixed(1)}× — attractively valued vs earnings`)
-              else if (pe > 0 && pe <= 18) pros.push(`Reasonable P/E of ${pe.toFixed(1)}× — fairly valued`)
-              if (pe > 25)              cons.push(`High P/E of ${pe.toFixed(1)}× — stock may be expensive relative to earnings`)
+              if (pe > 0 && pe <= 12)   pros.push(`Low P/E of ${pe.toFixed(1)}Ã— — attractively valued vs earnings`)
+              else if (pe > 0 && pe <= 18) pros.push(`Reasonable P/E of ${pe.toFixed(1)}Ã— — fairly valued`)
+              if (pe > 25)              cons.push(`High P/E of ${pe.toFixed(1)}Ã— — stock may be expensive relative to earnings`)
 
               // Profitability — banks have naturally lower net margins, skip for financials
               if (!isFinancialPC) {
@@ -1918,7 +912,7 @@ export default function StockDetailClient({
               // BVPS — skip P/B comparison for banks (high BVPS is normal)
               if (!isFinancialPC) {
                 if (bvps > 0 && price > 0 && price < bvps) pros.push(`Trading below book value (P/B < 1) — potential deep value opportunity`)
-                if (bvps > 0 && price > 0 && price > bvps * 3) cons.push(`Trading at ${(price/bvps).toFixed(1)}× book value — significant premium to assets`)
+                if (bvps > 0 && price > 0 && price > bvps * 3) cons.push(`Trading at ${(price/bvps).toFixed(1)}Ã— book value — significant premium to assets`)
               }
 
               // Dividend
@@ -1944,7 +938,7 @@ export default function StockDetailClient({
                     {/* Pros */}
                     <div className="rounded-xl p-4 space-y-2" style={{ backgroundColor: 'rgba(22,163,74,0.06)', border: '1px solid rgba(22,163,74,0.2)' }}>
                       <p className="text-[10px] font-bold uppercase tracking-wider mb-3" style={{ color: '#16a34a' }}>
-                        ✓ Strengths
+                        âœ“ Strengths
                       </p>
                       {pros.length > 0 ? pros.map((p, i) => (
                         <div key={i} className="flex gap-2 items-start">
@@ -1958,11 +952,11 @@ export default function StockDetailClient({
                     {/* Cons */}
                     <div className="rounded-xl p-4 space-y-2" style={{ backgroundColor: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.2)' }}>
                       <p className="text-[10px] font-bold uppercase tracking-wider mb-3" style={{ color: '#dc2626' }}>
-                        ✗ Concerns
+                        âœ— Concerns
                       </p>
                       {cons.length > 0 ? cons.map((c, i) => (
                         <div key={i} className="flex gap-2 items-start">
-                          <span className="mt-0.5 shrink-0 text-xs" style={{ color: '#dc2626' }}>−</span>
+                          <span className="mt-0.5 shrink-0 text-xs" style={{ color: '#dc2626' }}>âˆ’</span>
                           <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{c}</p>
                         </div>
                       )) : (
@@ -1977,7 +971,7 @@ export default function StockDetailClient({
               )
             })()}
 
-            {/* ── About / Brands ───────────────────────────────────── */}
+            {/* â”€â”€ About / Brands â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             <div className="card space-y-4">
               <SectionHeading>About the Company</SectionHeading>
 
@@ -2040,7 +1034,7 @@ export default function StockDetailClient({
               )}
             </div>
 
-            {/* ── Brands & Subsidiaries ────────────────────────────── */}
+            {/* â”€â”€ Brands & Subsidiaries â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             {(() => {
               const brands = COMPANY_BRANDS[symbol] ?? []
               return (
@@ -2067,7 +1061,7 @@ export default function StockDetailClient({
                           style={{ backgroundColor: 'var(--bg-hover)' }}>
                           <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 text-xl"
                             style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--bg-border)' }}>
-                            {brand.logo ?? '🏢'}
+                            {brand.logo ?? 'ðŸ¢'}
                           </div>
                           <div className="min-w-0">
                             <p className="text-xs font-bold leading-tight" style={{ color: 'var(--text-primary)' }}>
@@ -2091,7 +1085,7 @@ export default function StockDetailClient({
         )
       )}
 
-      {/* ══ CHART ═══════════════════════════════════════════════════ */}
+      {/* â•â• CHART â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
       {tab === 'chart' && (
         <div className="card space-y-4">
           <div className="flex items-center gap-2 flex-wrap">
@@ -2127,13 +1121,13 @@ export default function StockDetailClient({
         </div>
       )}
 
-      {/* ══ INDEX VS STOCK ══════════════════════════════════════════ */}
-      {/* ══ SECTOR PEERS ════════════════════════════════════════════ */}
+      {/* â•â• INDEX VS STOCK â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+      {/* â•â• SECTOR PEERS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
       {tab === 'peers' && (
         <div className="card space-y-3">
           <SectionHeading>Sector Peer Comparison</SectionHeading>
           <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-            All companies in the same sector · ranked by trading volume
+            All companies in the same sector Â· ranked by trading volume
           </p>
           {peersLoad ? (
             <div className="space-y-2">
@@ -2232,7 +1226,7 @@ export default function StockDetailClient({
         </div>
       )}
 
-      {/* ══ COMPARE SECTOR ═════════════════════════════════════════ */}
+      {/* â•â• COMPARE SECTOR â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
       {tab === 'compare' && (() => {
         // Pool: self + all peers (peers loaded same time as 'peers' tab)
         const selfQ    = allQuotes.find(q => q.symbol === symbol)
@@ -2322,7 +1316,7 @@ export default function StockDetailClient({
               <div>
                 <SectionHeading>Compare Sector</SectionHeading>
                 <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                  {symbol} is always included · select up to 3 sector peers to compare
+                  {symbol} is always included Â· select up to 3 sector peers to compare
                 </p>
               </div>
 
@@ -2339,7 +1333,7 @@ export default function StockDetailClient({
                     <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor:COLORS[idx+1] }} />
                     {sym}
                     <button onClick={() => setCmpSelected(p => p.filter(s=>s!==sym))}
-                      className="ml-0.5 opacity-60 hover:opacity-100 font-bold">×</button>
+                      className="ml-0.5 opacity-60 hover:opacity-100 font-bold">Ã—</button>
                   </div>
                 ))}
                 {cmpSelected.length < 3 && (
@@ -2365,14 +1359,14 @@ export default function StockDetailClient({
                         value={cmpSearch}
                         onChange={e => { setCmpSearch(e.target.value); setCmpDropOpen(true) }}
                         onFocus={() => setCmpDropOpen(true)}
-                        placeholder="Search companies in this sector…"
+                        placeholder="Search companies in this sectorâ€¦"
                         className="w-full pl-9 pr-4 py-2 rounded-lg border text-xs focus:outline-none"
                         style={{ backgroundColor:'var(--bg-hover)', borderColor:'var(--bg-border)', color:'var(--text-primary)' }}
                       />
                       {cmpSearch && (
                         <button onClick={() => { setCmpSearch(''); setCmpDropOpen(false) }}
                           className="absolute right-3 top-1/2 -translate-y-1/2 text-xs opacity-50 hover:opacity-100"
-                          style={{ color:'var(--text-muted)' }}>✕</button>
+                          style={{ color:'var(--text-muted)' }}>âœ•</button>
                       )}
                     </div>
 
@@ -2485,7 +1479,7 @@ export default function StockDetailClient({
                         }}>
                         <span style={{ color: cmpMetricSelected.length === 0 ? 'var(--text-muted)' : 'var(--text-primary)' }}>
                           {cmpMetricSelected.length === 0
-                            ? 'Select metrics to compare…'
+                            ? 'Select metrics to compareâ€¦'
                             : `${cmpMetricSelected.length} metric${cmpMetricSelected.length > 1 ? 's' : ''} selected`}
                         </span>
                         <svg width="12" height="12" viewBox="0 0 12 12" fill="none"
@@ -2544,7 +1538,7 @@ export default function StockDetailClient({
                                   value={cmpMetricCustom}
                                   onChange={e => setCmpMetricCustom(e.target.value)}
                                   onKeyDown={e => { if (e.key === 'Enter') addCustom() }}
-                                  placeholder="Type field name…"
+                                  placeholder="Type field nameâ€¦"
                                   className="flex-1 px-2.5 py-1.5 rounded-lg border text-xs focus:outline-none"
                                   style={{ backgroundColor:'var(--bg-hover)', borderColor:'var(--bg-border)', color:'var(--text-primary)' }}
                                 />
@@ -2570,7 +1564,7 @@ export default function StockDetailClient({
                             style={{ backgroundColor:'rgba(254,165,0,0.12)', color:'#FEA500', border:'1px solid rgba(254,165,0,0.35)' }}>
                             {m}
                             <button onMouseDown={e => e.preventDefault()} onClick={() => toggle(m)}
-                              className="opacity-60 hover:opacity-100 ml-0.5">×</button>
+                              className="opacity-60 hover:opacity-100 ml-0.5">Ã—</button>
                           </div>
                         ))}
                       </div>
@@ -2597,7 +1591,7 @@ export default function StockDetailClient({
                       .catch(() => ({ sym, data: null as StatementData | null }))
                   )
                   const raw = await Promise.all(fetches)
-                  // Build nested: metricLabel → symbol → rows
+                  // Build nested: metricLabel â†’ symbol â†’ rows
                   const nested: Record<string,Record<string,{year:string;value:number}[]>> = {}
                   for (const metric of effectiveMetrics) {
                     nested[metric] = {}
@@ -2621,13 +1615,13 @@ export default function StockDetailClient({
                 className="w-full py-2.5 rounded-xl text-sm font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                 style={{ background:'linear-gradient(135deg,#FEA500,#986300)', color:'white' }}>
                 Compare Sector {cmpSelected.length > 0 ? `(${cmpSelected.length+1} companies)` : ''}
-                {effectiveMetrics.length > 0 ? ` · ${effectiveMetrics.length} metric${effectiveMetrics.length>1?'s':''}` : ''}
+                {effectiveMetrics.length > 0 ? ` Â· ${effectiveMetrics.length} metric${effectiveMetrics.length>1?'s':''}` : ''}
               </button>
             </div>
 
             {/* Results */}
             {cmpResults && cmpResults.length > 0 && (() => {
-              // ── METRIC MODE: API-fetched single metric ──────────────
+              // â”€â”€ METRIC MODE: API-fetched single metric â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
               if (hasCustomMetric) {
                 if (cmpMetricLoading) return (
                   <div className="card space-y-3">
@@ -2644,7 +1638,7 @@ export default function StockDetailClient({
                   const max = Math.max(...vals.map(Math.abs).filter(Boolean), 0)
                   if (max >= 1000) return { divisor: 1000, label: 'Rs Bn' }   // values in Mn, show as Bn
                   if (max >= 1)    return { divisor: 1,    label: 'Rs Mn' }   // values in Mn, show as Mn
-                  return              { divisor: 0.001,    label: 'Rs Th' }   // very small → in thousands
+                  return              { divisor: 0.001,    label: 'Rs Th' }   // very small â†’ in thousands
                 }
                 function fmtMetricVal(v: number, divisor: number) {
                   if (v == null || v === 0) return '—'
@@ -2765,7 +1759,7 @@ export default function StockDetailClient({
                 )
               }
 
-              // ── DEFAULT MODE: radar + individual tables ─────────────
+              // â”€â”€ DEFAULT MODE: radar + individual tables â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
               return (
               <div className="card space-y-6">
                 {/* Legend */}
@@ -2922,7 +1916,7 @@ export default function StockDetailClient({
         )
       })()}
 
-      {/* ══ FINANCIALS ══════════════════════════════════════════════ */}
+      {/* â•â• FINANCIALS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
       {tab === 'financials' && (
         <div className="card space-y-4">
           {/* Filter row */}
@@ -2987,7 +1981,7 @@ export default function StockDetailClient({
         </div>
       )}
 
-      {/* ══ FUNDAMENTALS ════════════════════════════════════════════ */}
+      {/* â•â• FUNDAMENTALS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
       {tab === 'fundamentals' && (
         <div className="card space-y-4">
           <SectionHeading>Financial Ratios &amp; Metrics</SectionHeading>
@@ -2998,7 +1992,7 @@ export default function StockDetailClient({
         </div>
       )}
 
-      {/* ══ SHAREHOLDERS ════════════════════════════════════════════ */}
+      {/* â•â• SHAREHOLDERS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
       {tab === 'shareholders' && (
         <div className="card">
           <SectionHeading>Shareholder Pattern</SectionHeading>
@@ -3009,7 +2003,7 @@ export default function StockDetailClient({
         </div>
       )}
 
-      {/* ══ NEWS ═══════════════════════════════════════════════════ */}
+      {/* â•â• NEWS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
       {tab === 'news' && (
         <div className="space-y-3">
           {newsLoad ? (
@@ -3033,7 +2027,7 @@ export default function StockDetailClient({
                     <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
                       {item.source}
                     </span>
-                    <span style={{ color: 'var(--text-muted)' }}>·</span>
+                    <span style={{ color: 'var(--text-muted)' }}>Â·</span>
                     <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
                       {new Date(item.date).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </span>
@@ -3049,7 +2043,7 @@ export default function StockDetailClient({
         </div>
       )}
 
-      {/* ══ ANNOUNCEMENTS ══════════════════════════════════════════ */}
+      {/* â•â• ANNOUNCEMENTS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
       {tab === 'announcements' && (
         <div className="card">
           <SectionHeading>Corporate Announcements (Last 12 Months)</SectionHeading>
@@ -3112,7 +2106,7 @@ export default function StockDetailClient({
         </div>
       )}
 
-      {/* ══ COMPANY REPORT ══════════════════════════════════════════ */}
+      {/* â•â• COMPANY REPORT â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
       {tab === 'report' && (() => {
         function pickR(pattern: RegExp): number | null {
           return snapFunds?.fields.find(f => !f.is_heading && pattern.test(f.label.trim()))?.values[0] ?? null
@@ -3170,7 +2164,7 @@ export default function StockDetailClient({
                   {symbol} — Company Report
                 </h2>
                 <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                  Generated {new Date().toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })} · Data sourced from PSX
+                  Generated {new Date().toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })} Â· Data sourced from PSX
                 </p>
               </div>
               <button
@@ -3197,10 +2191,10 @@ export default function StockDetailClient({
 
               {/* Valuation */}
               <Section title="Valuation">
-                <Row label="P/E Ratio"         value={pe   > 0 ? `${pe.toFixed(1)}×`   : '—'} />
+                <Row label="P/E Ratio"         value={pe   > 0 ? `${pe.toFixed(1)}Ã—`   : '—'} />
                 <Row label="EPS"               value={eps  ? `Rs ${eps.toFixed(2)}`    : '—'} />
                 <Row label="Book Value / Share" value={bvps ? `Rs ${bvps.toFixed(2)}`  : '—'} />
-                <Row label="P/B Ratio"          value={pb   > 0 ? `${pb.toFixed(2)}×`  : '—'} />
+                <Row label="P/B Ratio"          value={pb   > 0 ? `${pb.toFixed(2)}Ã—`  : '—'} />
                 <Row label="Graham Intr. Value" value={!isFinancialR && grahamIV > 0 ? `Rs ${grahamIV.toFixed(2)}` : 'N/A'} />
                 <Row label="Margin of Safety"   value={!isFinancialR && mos !== null ? `${mos >= 0 ? '+' : ''}${mos}%` : 'N/A'} highlight={!isFinancialR && mos !== null && mos >= 20} />
               </Section>
@@ -3228,9 +2222,9 @@ export default function StockDetailClient({
                   const iScore = !isFinancialR && grahamIV > 0 ? Math.min(100, Math.round(Math.min(grahamIV / Math.max(price, 1), 2) * 50)) : null
                   return (
                     <>
-                      <Row label="Intrinsic Score (0–100)"  value={iScore !== null ? `${iScore} / 100` : 'N/A'} />
+                      <Row label="Intrinsic Score (0â€“100)"  value={iScore !== null ? `${iScore} / 100` : 'N/A'} />
                       <Row label="Margin of Safety"          value={!isFinancialR && mos !== null ? `${mos >= 0 ? '+' : ''}${mos}%` : 'N/A'} />
-                      <Row label="Stockifyy Score (0–100)"  value={score !== null ? `${score} / 100` : '—'} highlight />
+                      <Row label="Stockifyy Score (0â€“100)"  value={score !== null ? `${score} / 100` : '—'} highlight />
                       <Row label="Overall Grade"             value={grade} />
                     </>
                   )

@@ -1,5 +1,17 @@
 'use client'
 
+// =============================================================================
+// FILE: app/(dashboard)/settings/page.tsx
+// PURPOSE: User settings page. Handles:
+//          1. Profile display — shows name, email, account info
+//          2. Password change — calls Supabase updateUser()
+//          3. Account deletion — calls /api/auth/delete-account then signs out
+//
+//          IMPORTANT: Delete account calls the API FIRST, then signs out.
+//          This order prevents a race condition (S-03) where signing out first
+//          could cause the delete API call to fail due to expired session.
+// =============================================================================
+
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -208,10 +220,14 @@ export default function SettingsPage() {
     if (!user) return
     setDeleting(true)
     try {
-      // Sign out first so the session is cleared
+      // Delete account data first while session is still valid
+      const res = await fetch('/api/auth/delete-account', { method: 'DELETE' })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        console.error('[delete account]', body)
+      }
+      // Sign out after deletion completes
       await supabase.auth.signOut()
-      // Call the admin delete endpoint (server-side, uses service role)
-      await fetch('/api/auth/delete-account', { method: 'DELETE' })
     } catch { /* best effort */ }
     router.push('/login')
   }

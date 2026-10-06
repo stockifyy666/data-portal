@@ -1,3 +1,8 @@
+// =============================================================================
+// FILE: app/(dashboard)/stocks/[symbol]/page.tsx
+// PURPOSE: Individual stock detail page (server component). Fetches overview data and
+//           renders the StockDetailClient with chart, financials, and news tabs.
+// =============================================================================
 import { notFound }        from 'next/navigation'
 import { Suspense }         from 'react'
 import Link                 from 'next/link'
@@ -9,7 +14,7 @@ type Params = { symbol: string }
 
 export async function generateMetadata({ params }: { params: Promise<Params> }) {
   const { symbol } = await params
-  return { title: `${symbol.toUpperCase()} — Stockifyy` }
+  return { title: `${symbol.toUpperCase()} â€” Stockifyy` }
 }
 
 function isValidSymbol(s: string) { return /^[A-Z0-9]{2,10}$/.test(s) }

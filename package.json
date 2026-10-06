@@ -12,7 +12,7 @@
     "@supabase/ssr": "^0.12.5",
     "@supabase/supabase-js": "^2.44.4",
     "@upstash/ratelimit": "^1.2.1",
-    "@upstash/redis": "^1.31.5",
+    "@upstash/redis": "^1.39.0",
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
     "date-fns-tz": "^3.1.3",
