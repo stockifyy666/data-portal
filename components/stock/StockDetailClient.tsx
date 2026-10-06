@@ -118,7 +118,7 @@ function LoadingRows({ n = 6 }: { n?: number }) {
 }
 
 function fmtNum(v: number | null | undefined, decimals = 2): string {
-  if (v == null || isNaN(v)) return '—'
+  if (v == null || isNaN(v)) return '-'
   // Values that are ratios stored as decimals (< 10 and not currency) get %
   return v.toFixed(decimals)
 }
@@ -166,7 +166,7 @@ export default function StockDetailClient({
   const [fundLoad,     setFundLoad]     = useState(false)
   const [fundInterval, setFundInterval] = useState<'annual' | 'quarterly'>('annual')
 
-  // Snapshot fundamentals — loaded on overview tab so Company Snapshot shows immediately
+  // Snapshot fundamentals - loaded on overview tab so Company Snapshot shows immediately
   const [snapFunds,    setSnapFunds]    = useState<StatementData | null>(null)
   const [snapLoad,     setSnapLoad]     = useState(false)
 
@@ -448,7 +448,7 @@ export default function StockDetailClient({
           </svg>
           <input
             type="text"
-            placeholder="Search another stock by symbol or nameâ€¦"
+            placeholder="Search another stock by symbol or name..."
             value={searchQuery}
             onChange={e => { setSearchQuery(e.target.value); setSearchOpen(true) }}
             onFocus={() => setSearchOpen(true)}
@@ -457,7 +457,7 @@ export default function StockDetailClient({
           />
           {searchQuery && (
             <button onClick={() => { setSearchQuery(''); setSearchOpen(false) }}
-              className="text-xs px-1" style={{ color: 'var(--text-muted)' }}>âœ•</button>
+              className="text-xs px-1" style={{ color: 'var(--text-muted)' }}>&#10005;</button>
           )}
         </div>
 
@@ -579,11 +579,11 @@ export default function StockDetailClient({
               const low52    = Number(overview.low52) || price
 
               // â”€â”€ Intrinsic Score (0â€“100) â”€â”€
-              // Benjamin Graham formula: IV = âˆš(22.5 Ã— EPS Ã— BVPS), normalised
+              // Benjamin Graham formula: IV = âˆš(22.5 Ã- EPS Ã- BVPS), normalised
               const grahamIV   = eps > 0 && bvps > 0 ? Math.sqrt(22.5 * eps * bvps) : 0
               const ivRatio    = grahamIV > 0 && price > 0 ? grahamIV / price : 0
               const intrinsicScore = grahamIV > 0
-                ? Math.min(100, Math.round(Math.min(ivRatio, 2) * 50))  // 100 when IV â‰¥ 2Ã— price
+                ? Math.min(100, Math.round(Math.min(ivRatio, 2) * 50))  // 100 when IV â‰¥ 2Ã- price
                 : null
 
               // â”€â”€ Margin of Safety (%) â”€â”€
@@ -591,7 +591,7 @@ export default function StockDetailClient({
                 ? Math.round(((grahamIV - price) / grahamIV) * 100)
                 : null
 
-              // â”€â”€ Stockifyy Score (0â€“100) — multi-factor â”€â”€
+              // â”€â”€ Stockifyy Score (0â€“100) - multi-factor â”€â”€
               let ss = 0, ssMax = 0
               // Valuation (25pts): P/E < 15 ideal
               if (pe > 0) {
@@ -644,7 +644,7 @@ export default function StockDetailClient({
                       </svg>
                       <span className="absolute inset-0 flex items-center justify-center text-base font-black"
                         style={{ color: score !== null ? color : 'var(--text-muted)' }}>
-                        {score !== null ? score : '—'}
+                        {score !== null ? score : '-'}
                       </span>
                     </div>
                     <div>
@@ -663,7 +663,7 @@ export default function StockDetailClient({
 
               const mosDisplay = mos !== null
                 ? `${mos >= 0 ? '+' : ''}${mos}%`
-                : '—'
+                : '-'
               const mosSub = mos !== null
                 ? mos >= 20 ? 'Undervalued' : mos >= 0 ? 'Near Fair Value' : 'Overvalued'
                 : 'Insufficient data'
@@ -674,7 +674,7 @@ export default function StockDetailClient({
               const isFinancial = ['0807','0812','0813','0815','0819','0836'].includes(sectorCode)
               const isBank      = sectorCode === '0807'
               const grahamWarning = isBank
-                ? 'Note: Graham IV is less reliable for banks — high BVPS inflates the score. Use Stockifyy Score instead.'
+                ? 'Note: Graham IV is less reliable for banks - high BVPS inflates the score. Use Stockifyy Score instead.'
                 : isFinancial
                 ? 'Note: Graham IV may overstate intrinsic value for financial/insurance companies due to high book values.'
                 : eps <= 0
@@ -750,7 +750,7 @@ export default function StockDetailClient({
 
                 // â”€â”€ formatter â”€â”€
                 function fmtSnap(key: string, raw: number | null): string {
-                  if (raw == null || isNaN(raw)) return '—'
+                  if (raw == null || isNaN(raw)) return '-'
                   switch (key) {
                     // Percentage fields (stored as decimal 0â€“1 in fundamentals)
                     case 'divYield':
@@ -759,7 +759,7 @@ export default function StockDetailClient({
                     case 'freeFloatPct':
                       // May be stored as 0â€“100 or 0â€“1; cap heuristic
                       return `${raw > 1 ? raw.toFixed(2) : (raw * 100).toFixed(2)}%`
-                    // Ratio / per-share fields — display as-is
+                    // Ratio / per-share fields - display as-is
                     case 'eps':
                     case 'pe':
                     case 'pb':
@@ -888,41 +888,41 @@ export default function StockDetailClient({
               const cons: string[] = []
 
               // Valuation
-              if (pe > 0 && pe <= 12)   pros.push(`Low P/E of ${pe.toFixed(1)}Ã— — attractively valued vs earnings`)
-              else if (pe > 0 && pe <= 18) pros.push(`Reasonable P/E of ${pe.toFixed(1)}Ã— — fairly valued`)
-              if (pe > 25)              cons.push(`High P/E of ${pe.toFixed(1)}Ã— — stock may be expensive relative to earnings`)
+              if (pe > 0 && pe <= 12)   pros.push(`Low P/E of ${pe.toFixed(1)}Ã- - attractively valued vs earnings`)
+              else if (pe > 0 && pe <= 18) pros.push(`Reasonable P/E of ${pe.toFixed(1)}Ã- - fairly valued`)
+              if (pe > 25)              cons.push(`High P/E of ${pe.toFixed(1)}Ã- - stock may be expensive relative to earnings`)
 
-              // Profitability — banks have naturally lower net margins, skip for financials
+              // Profitability - banks have naturally lower net margins, skip for financials
               if (!isFinancialPC) {
-                if (npmPct >= 15)           pros.push(`Strong net profit margin of ${npmPct.toFixed(2)}% — efficient business`)
-                if (npmPct > 0 && npmPct < 5) cons.push(`Thin net profit margin of ${npmPct.toFixed(2)}% — limited earnings buffer`)
-                if (npmPct < 0)             cons.push(`Negative net profit margin — company is currently unprofitable`)
+                if (npmPct >= 15)           pros.push(`Strong net profit margin of ${npmPct.toFixed(2)}% - efficient business`)
+                if (npmPct > 0 && npmPct < 5) cons.push(`Thin net profit margin of ${npmPct.toFixed(2)}% - limited earnings buffer`)
+                if (npmPct < 0)             cons.push(`Negative net profit margin - company is currently unprofitable`)
               }
 
-              // ROE — higher threshold for banks
+              // ROE - higher threshold for banks
               const roeThreshold = isFinancialPC ? 12 : 15
-              if (roePct >= roeThreshold)       pros.push(`High ROE of ${roePct.toFixed(2)}% — strong return for shareholders`)
-              if (roePct > 0 && roePct < (isFinancialPC ? 8 : 8)) cons.push(`Low ROE of ${roePct.toFixed(2)}% — weak returns on shareholder equity`)
-              if (roePct < 0)                   cons.push(`Negative ROE — equity is being eroded`)
+              if (roePct >= roeThreshold)       pros.push(`High ROE of ${roePct.toFixed(2)}% - strong return for shareholders`)
+              if (roePct > 0 && roePct < (isFinancialPC ? 8 : 8)) cons.push(`Low ROE of ${roePct.toFixed(2)}% - weak returns on shareholder equity`)
+              if (roePct < 0)                   cons.push(`Negative ROE - equity is being eroded`)
 
               // EPS
-              if (eps > 0)              pros.push(`Positive EPS of Rs ${eps.toFixed(2)} — company is profitable`)
-              if (eps < 0)              cons.push(`Negative EPS of Rs ${eps.toFixed(2)} — company reporting a loss`)
+              if (eps > 0)              pros.push(`Positive EPS of Rs ${eps.toFixed(2)} - company is profitable`)
+              if (eps < 0)              cons.push(`Negative EPS of Rs ${eps.toFixed(2)} - company reporting a loss`)
 
-              // BVPS — skip P/B comparison for banks (high BVPS is normal)
+              // BVPS - skip P/B comparison for banks (high BVPS is normal)
               if (!isFinancialPC) {
-                if (bvps > 0 && price > 0 && price < bvps) pros.push(`Trading below book value (P/B < 1) — potential deep value opportunity`)
-                if (bvps > 0 && price > 0 && price > bvps * 3) cons.push(`Trading at ${(price/bvps).toFixed(1)}Ã— book value — significant premium to assets`)
+                if (bvps > 0 && price > 0 && price < bvps) pros.push(`Trading below book value (P/B < 1) - potential deep value opportunity`)
+                if (bvps > 0 && price > 0 && price > bvps * 3) cons.push(`Trading at ${(price/bvps).toFixed(1)}Ã- book value - significant premium to assets`)
               }
 
               // Dividend
-              if (divYld >= 5)              pros.push(`High dividend yield of ${divYld.toFixed(2)}% — strong income for investors`)
+              if (divYld >= 5)              pros.push(`High dividend yield of ${divYld.toFixed(2)}% - strong income for investors`)
               else if (divYld >= 2)         pros.push(`Decent dividend yield of ${divYld.toFixed(2)}%`)
-              if (dps === 0)                cons.push(`No dividend paid — company does not distribute cash to shareholders`)
+              if (dps === 0)                cons.push(`No dividend paid - company does not distribute cash to shareholders`)
 
               // 52W position
-              if (pos52 <= 0.2)             pros.push(`Price near 52-week low — potential value entry point`)
-              if (pos52 >= 0.9)             cons.push(`Price near 52-week high — limited near-term upside unless fundamentals improve`)
+              if (pos52 <= 0.2)             pros.push(`Price near 52-week low - potential value entry point`)
+              if (pos52 >= 0.9)             cons.push(`Price near 52-week high - limited near-term upside unless fundamentals improve`)
 
               // Financial sector note
               if (isFinancialPC) {
@@ -938,7 +938,7 @@ export default function StockDetailClient({
                     {/* Pros */}
                     <div className="rounded-xl p-4 space-y-2" style={{ backgroundColor: 'rgba(22,163,74,0.06)', border: '1px solid rgba(22,163,74,0.2)' }}>
                       <p className="text-[10px] font-bold uppercase tracking-wider mb-3" style={{ color: '#16a34a' }}>
-                        âœ“ Strengths
+                        &#10003; Strengths
                       </p>
                       {pros.length > 0 ? pros.map((p, i) => (
                         <div key={i} className="flex gap-2 items-start">
@@ -952,11 +952,11 @@ export default function StockDetailClient({
                     {/* Cons */}
                     <div className="rounded-xl p-4 space-y-2" style={{ backgroundColor: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.2)' }}>
                       <p className="text-[10px] font-bold uppercase tracking-wider mb-3" style={{ color: '#dc2626' }}>
-                        âœ— Concerns
+                        &#10007; Concerns
                       </p>
                       {cons.length > 0 ? cons.map((c, i) => (
                         <div key={i} className="flex gap-2 items-start">
-                          <span className="mt-0.5 shrink-0 text-xs" style={{ color: '#dc2626' }}>âˆ’</span>
+                          <span className="mt-0.5 shrink-0 text-xs" style={{ color: ‘#dc2626’ }}>&#8722;</span>
                           <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{c}</p>
                         </div>
                       )) : (
@@ -1156,11 +1156,11 @@ export default function StockDetailClient({
                     const selfQ         = allQuotes.find(q => q.symbol === symbol)
                     const selfEps       = Number(overview?.eps ?? selfQ?.eps ?? 0)
                     const selfDps       = selfQ?.dps ?? 0
-                    const selfPe        = selfEps > 0 ? (selfPrice / selfEps).toFixed(1) : '—'
-                    const selfDivY      = selfDps > 0 && selfPrice > 0 ? `${((selfDps/selfPrice)*100).toFixed(2)}%` : '—'
+                    const selfPe        = selfEps > 0 ? (selfPrice / selfEps).toFixed(1) : '-'
+                    const selfDivY      = selfDps > 0 && selfPrice > 0 ? `${((selfDps/selfPrice)*100).toFixed(2)}%` : '-'
                     const selfChgColor  = selfChangePct >= 0 ? '#16a34a' : '#dc2626'
                     function fmtMC(mc: number) {
-                      if (!mc) return '—'
+                      if (!mc) return '-'
                       if (mc >= 1e12) return `${(mc/1e12).toFixed(2)}T`
                       if (mc >= 1e9)  return `${(mc/1e9).toFixed(2)}B`
                       if (mc >= 1e6)  return `${(mc/1e6).toFixed(1)}M`
@@ -1182,17 +1182,17 @@ export default function StockDetailClient({
                         </td>
                         <td className="py-2.5 px-2 text-right text-xs font-bold tabular-nums" style={{ color:'var(--text-primary)' }}>{selfPrice.toFixed(2)}</td>
                         <td className="py-2.5 px-2 text-right text-xs font-semibold tabular-nums" style={{ color:selfChgColor }}>{selfChangePct>=0?'+':''}{selfChangePct.toFixed(2)}%</td>
-                        <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color:selfEps<0?'#dc2626':'var(--text-secondary)' }}>{selfEps?selfEps.toFixed(2):'—'}</td>
+                        <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color:selfEps<0?'#dc2626':'var(--text-secondary)' }}>{selfEps?selfEps.toFixed(2):'-'}</td>
                         <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color:'var(--text-secondary)' }}>{selfPe}</td>
-                        <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color:'var(--text-secondary)' }}>—</td>
+                        <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color:'var(--text-secondary)' }}>-</td>
                         <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color:'var(--text-secondary)' }}>{fmtMC(selfQ?.mc??0)}</td>
-                        <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color:'var(--text-secondary)' }}>—</td>
+                        <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color:'var(--text-secondary)' }}>-</td>
                         <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color:'var(--text-secondary)' }}>{selfDivY}</td>
-                        <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color:'var(--text-secondary)' }}>—</td>
+                        <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color:'var(--text-secondary)' }}>-</td>
                       </tr>,
                       ...peers.map((peer, i) => {
-                        const pe      = peer.eps > 0 ? (peer.price/peer.eps).toFixed(1) : '—'
-                        const divY    = peer.dps>0&&peer.price>0 ? `${((peer.dps/peer.price)*100).toFixed(2)}%` : '—'
+                        const pe      = peer.eps > 0 ? (peer.price/peer.eps).toFixed(1) : '-'
+                        const divY    = peer.dps>0&&peer.price>0 ? `${((peer.dps/peer.price)*100).toFixed(2)}%` : '-'
                         const chgClr  = peer.changePct>=0?'#16a34a':'#dc2626'
                         return (
                           <tr key={peer.symbol} style={{ borderBottom:'1px solid var(--bg-border)', backgroundColor:i%2===0?'transparent':'var(--bg-hover)' }}>
@@ -1207,13 +1207,13 @@ export default function StockDetailClient({
                             </td>
                             <td className="py-2.5 px-2 text-right text-xs font-bold tabular-nums" style={{ color:'var(--text-primary)' }}>{peer.price.toFixed(2)}</td>
                             <td className="py-2.5 px-2 text-right text-xs font-semibold tabular-nums" style={{ color:chgClr }}>{peer.changePct>=0?'+':''}{peer.changePct.toFixed(2)}%</td>
-                            <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color:peer.eps<0?'#dc2626':'var(--text-secondary)' }}>{peer.eps?peer.eps.toFixed(2):'—'}</td>
+                            <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color:peer.eps<0?'#dc2626':'var(--text-secondary)' }}>{peer.eps?peer.eps.toFixed(2):'-'}</td>
                             <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color:'var(--text-secondary)' }}>{pe}</td>
-                            <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color:'var(--text-secondary)' }}>—</td>
+                            <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color:'var(--text-secondary)' }}>-</td>
                             <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color:'var(--text-secondary)' }}>{fmtMC(peer.mc)}</td>
-                            <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color:'var(--text-secondary)' }}>—</td>
+                            <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color:'var(--text-secondary)' }}>-</td>
                             <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color:'var(--text-secondary)' }}>{divY}</td>
-                            <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color:'var(--text-secondary)' }}>—</td>
+                            <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color:'var(--text-secondary)' }}>-</td>
                           </tr>
                         )
                       }),
@@ -1302,7 +1302,7 @@ export default function StockDetailClient({
           return AXES.map((_,ai) => { const v=normalized[ai][si]; const p=axPt(ai,v*R); return `${p.x},${p.y}` }).join(' ')
         }
         function fmtMC(mc: number) {
-          if (!mc) return '—'
+          if (!mc) return '-'
           if (mc>=1e12) return `${(mc/1e12).toFixed(2)}T`
           if (mc>=1e9)  return `${(mc/1e9).toFixed(2)}B`
           if (mc>=1e6)  return `${(mc/1e6).toFixed(1)}M`
@@ -1333,7 +1333,7 @@ export default function StockDetailClient({
                     <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor:COLORS[idx+1] }} />
                     {sym}
                     <button onClick={() => setCmpSelected(p => p.filter(s=>s!==sym))}
-                      className="ml-0.5 opacity-60 hover:opacity-100 font-bold">Ã—</button>
+                      className="ml-0.5 opacity-60 hover:opacity-100 font-bold">Ã-</button>
                   </div>
                 ))}
                 {cmpSelected.length < 3 && (
@@ -1359,14 +1359,14 @@ export default function StockDetailClient({
                         value={cmpSearch}
                         onChange={e => { setCmpSearch(e.target.value); setCmpDropOpen(true) }}
                         onFocus={() => setCmpDropOpen(true)}
-                        placeholder="Search companies in this sectorâ€¦"
+                        placeholder="Search companies in this sector..."
                         className="w-full pl-9 pr-4 py-2 rounded-lg border text-xs focus:outline-none"
                         style={{ backgroundColor:'var(--bg-hover)', borderColor:'var(--bg-border)', color:'var(--text-primary)' }}
                       />
                       {cmpSearch && (
                         <button onClick={() => { setCmpSearch(''); setCmpDropOpen(false) }}
                           className="absolute right-3 top-1/2 -translate-y-1/2 text-xs opacity-50 hover:opacity-100"
-                          style={{ color:'var(--text-muted)' }}>âœ•</button>
+                          style={{ color:'var(--text-muted)' }}>&#10005;</button>
                       )}
                     </div>
 
@@ -1427,7 +1427,7 @@ export default function StockDetailClient({
                 )}
               </div>
 
-              {/* Metric selector — dropdown with checkboxes */}
+              {/* Metric selector - dropdown with checkboxes */}
               {(() => {
                 const METRIC_GROUPS = [
                   { label: 'General',      items: ['Revenue','Net Revenue','Gross Profit','Operating Profit','EBITDA','Net Profit','Total Assets','Total Equity','Total Debt','Cash & Equivalents'] },
@@ -1456,7 +1456,7 @@ export default function StockDetailClient({
                     <div className="flex items-center justify-between">
                       <span className="text-[11px] font-bold" style={{ color:'var(--text-secondary)' }}>
                         Compare by Metrics
-                        <span className="font-normal opacity-60 ml-1">(optional — replaces default)</span>
+                        <span className="font-normal opacity-60 ml-1">(optional - replaces default)</span>
                       </span>
                       {cmpMetricSelected.length > 0 && (
                         <button onMouseDown={e => e.preventDefault()}
@@ -1479,7 +1479,7 @@ export default function StockDetailClient({
                         }}>
                         <span style={{ color: cmpMetricSelected.length === 0 ? 'var(--text-muted)' : 'var(--text-primary)' }}>
                           {cmpMetricSelected.length === 0
-                            ? 'Select metrics to compareâ€¦'
+                            ? 'Select metrics to compare...'
                             : `${cmpMetricSelected.length} metric${cmpMetricSelected.length > 1 ? 's' : ''} selected`}
                         </span>
                         <svg width="12" height="12" viewBox="0 0 12 12" fill="none"
@@ -1538,7 +1538,7 @@ export default function StockDetailClient({
                                   value={cmpMetricCustom}
                                   onChange={e => setCmpMetricCustom(e.target.value)}
                                   onKeyDown={e => { if (e.key === 'Enter') addCustom() }}
-                                  placeholder="Type field nameâ€¦"
+                                  placeholder="Type field name..."
                                   className="flex-1 px-2.5 py-1.5 rounded-lg border text-xs focus:outline-none"
                                   style={{ backgroundColor:'var(--bg-hover)', borderColor:'var(--bg-border)', color:'var(--text-primary)' }}
                                 />
@@ -1564,7 +1564,7 @@ export default function StockDetailClient({
                             style={{ backgroundColor:'rgba(254,165,0,0.12)', color:'#FEA500', border:'1px solid rgba(254,165,0,0.35)' }}>
                             {m}
                             <button onMouseDown={e => e.preventDefault()} onClick={() => toggle(m)}
-                              className="opacity-60 hover:opacity-100 ml-0.5">Ã—</button>
+                              className="opacity-60 hover:opacity-100 ml-0.5">Ã-</button>
                           </div>
                         ))}
                       </div>
@@ -1641,7 +1641,7 @@ export default function StockDetailClient({
                   return              { divisor: 0.001,    label: 'Rs Th' }   // very small â†’ in thousands
                 }
                 function fmtMetricVal(v: number, divisor: number) {
-                  if (v == null || v === 0) return '—'
+                  if (v == null || v === 0) return '-'
                   const scaled = v / divisor
                   return scaled >= 100 ? scaled.toFixed(0) : scaled >= 10 ? scaled.toFixed(1) : scaled.toFixed(2)
                 }
@@ -1695,10 +1695,10 @@ export default function StockDetailClient({
                             </div>
                           ) : (
                             <>
-                              {/* Bar chart — latest value */}
+                              {/* Bar chart - latest value */}
                               <div className="space-y-2.5">
                                 <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color:'var(--text-muted)' }}>
-                                  Latest Year — {allYears[0] ?? ''}
+                                  Latest Year - {allYears[0] ?? ''}
                                 </p>
                                 {latestVals.map(s => (
                                   <div key={s.symbol}>
@@ -1708,7 +1708,7 @@ export default function StockDetailClient({
                                         <span className="text-xs font-bold" style={{ color:'var(--text-primary)' }}>{s.symbol}</span>
                                       </div>
                                       <span className="text-xs font-bold tabular-nums" style={{ color: s.val ? s.color : 'var(--text-muted)' }}>
-                                        {s.val ? `${fmtMetricVal(s.val, unit.divisor)} ${unit.label}` : '—'}
+                                        {s.val ? `${fmtMetricVal(s.val, unit.divisor)} ${unit.label}` : '-'}
                                       </span>
                                     </div>
                                     <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor:'var(--bg-hover)' }}>
@@ -1740,7 +1740,7 @@ export default function StockDetailClient({
                                             return (
                                               <td key={s.symbol} className="py-2 px-3 text-right font-bold tabular-nums"
                                                 style={{ color: row ? 'var(--text-primary)' : 'var(--text-muted)' }}>
-                                                {row ? fmtMetricVal(row.value, unit.divisor) : '—'}
+                                                {row ? fmtMetricVal(row.value, unit.divisor) : '-'}
                                               </td>
                                             )
                                           })}
@@ -1840,10 +1840,10 @@ export default function StockDetailClient({
 
                       function fmtVal(key: AxisKey, s: CmpStock): string {
                         const v = s[key] as number
-                        if (key === 'volume') return v > 0 ? v.toLocaleString() : '—'
+                        if (key === 'volume') return v > 0 ? v.toLocaleString() : '-'
                         if (key === 'mc')     return fmtMC(v)
-                        if (key === 'roe' || key === 'pb') return '—'
-                        return v !== 0 ? v.toFixed(2) : '—'
+                        if (key === 'roe' || key === 'pb') return '-'
+                        return v !== 0 ? v.toFixed(2) : '-'
                       }
 
                       return (
@@ -1889,15 +1889,15 @@ export default function StockDetailClient({
                       <table className="w-full text-xs">
                         <tbody>
                           {[
-                            { label:'Price',     value: s.price>0 ? `Rs ${s.price.toFixed(2)}` : '—' },
-                            { label:'Volume',    value: s.volume>0 ? s.volume.toLocaleString() : '—' },
-                            { label:'EPS',       value: s.eps!==0 ? s.eps.toFixed(2) : '—' },
-                            { label:'P/E',       value: s.pe>0 ? s.pe.toFixed(1) : '—' },
-                            { label:'DPS',       value: s.dps>0 ? s.dps.toFixed(2) : '—' },
-                            { label:'Div Yield', value: s.divY>0 ? `${s.divY.toFixed(2)}%` : '—' },
+                            { label:'Price',     value: s.price>0 ? `Rs ${s.price.toFixed(2)}` : '-' },
+                            { label:'Volume',    value: s.volume>0 ? s.volume.toLocaleString() : '-' },
+                            { label:'EPS',       value: s.eps!==0 ? s.eps.toFixed(2) : '-' },
+                            { label:'P/E',       value: s.pe>0 ? s.pe.toFixed(1) : '-' },
+                            { label:'DPS',       value: s.dps>0 ? s.dps.toFixed(2) : '-' },
+                            { label:'Div Yield', value: s.divY>0 ? `${s.divY.toFixed(2)}%` : '-' },
                             { label:'Mkt Cap',   value: fmtMC(s.mc) },
-                            { label:'ROE',       value: '—' },
-                            { label:'P/B',       value: '—' },
+                            { label:'ROE',       value: '-' },
+                            { label:'P/B',       value: '-' },
                           ].map((row,ri,arr) => (
                             <tr key={row.label} style={{ borderBottom: ri<arr.length-1 ? '1px solid var(--bg-border)' : 'none' }}>
                               <td className="py-2 px-3 font-medium" style={{ color:'var(--text-muted)' }}>{row.label}</td>
@@ -1947,7 +1947,7 @@ export default function StockDetailClient({
             </div>
           </div>
 
-          {/* Financial PDF reports — filtered by annual / quarterly toggle */}
+          {/* Financial PDF reports - filtered by annual / quarterly toggle */}
           {stmtPdfs.length > 0 && (() => {
             const isAnnual = (t: string) => /annual|year ended|full.?year|transmission/i.test(t)
             const isQuarterly = (t: string) => /q[1-4]|quarter|half.?year|period ended/i.test(t)
@@ -2161,7 +2161,7 @@ export default function StockDetailClient({
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div>
                 <h2 className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>
-                  {symbol} — Company Report
+                  {symbol} - Company Report
                 </h2>
                 <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
                   Generated {new Date().toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })} Â· Data sourced from PSX
@@ -2179,32 +2179,32 @@ export default function StockDetailClient({
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* Market Data */}
               <Section title="Market Data">
-                <Row label="Current Price"   value={price ? `Rs ${price.toFixed(2)}` : '—'} highlight />
-                <Row label="Change Today"    value={overview ? `${Number(overview.changePct) >= 0 ? '+' : ''}${(Number(overview.changePct)).toFixed(2)}%` : '—'} />
-                <Row label="52-Week High"    value={high52 ? `Rs ${high52.toFixed(2)}` : '—'} />
-                <Row label="52-Week Low"     value={low52  ? `Rs ${low52.toFixed(2)}`  : '—'} />
-                <Row label="Volume"          value={vol ? vol.toLocaleString() : '—'} />
-                <Row label="Market Cap"      value={mc ? (mc >= 1e9 ? `Rs ${(mc/1e9).toFixed(2)}B` : `Rs ${(mc/1e6).toFixed(0)}M`) : '—'} />
-                <Row label="Open"            value={overview?.open  ? `Rs ${Number(overview.open).toFixed(2)}`  : '—'} />
-                <Row label="Prev Close"      value={overview?.lastClose ? `Rs ${Number(overview.lastClose).toFixed(2)}` : '—'} />
+                <Row label="Current Price"   value={price ? `Rs ${price.toFixed(2)}` : '-'} highlight />
+                <Row label="Change Today"    value={overview ? `${Number(overview.changePct) >= 0 ? '+' : ''}${(Number(overview.changePct)).toFixed(2)}%` : '-'} />
+                <Row label="52-Week High"    value={high52 ? `Rs ${high52.toFixed(2)}` : '-'} />
+                <Row label="52-Week Low"     value={low52  ? `Rs ${low52.toFixed(2)}`  : '-'} />
+                <Row label="Volume"          value={vol ? vol.toLocaleString() : '-'} />
+                <Row label="Market Cap"      value={mc ? (mc >= 1e9 ? `Rs ${(mc/1e9).toFixed(2)}B` : `Rs ${(mc/1e6).toFixed(0)}M`) : '-'} />
+                <Row label="Open"            value={overview?.open  ? `Rs ${Number(overview.open).toFixed(2)}`  : '-'} />
+                <Row label="Prev Close"      value={overview?.lastClose ? `Rs ${Number(overview.lastClose).toFixed(2)}` : '-'} />
               </Section>
 
               {/* Valuation */}
               <Section title="Valuation">
-                <Row label="P/E Ratio"         value={pe   > 0 ? `${pe.toFixed(1)}Ã—`   : '—'} />
-                <Row label="EPS"               value={eps  ? `Rs ${eps.toFixed(2)}`    : '—'} />
-                <Row label="Book Value / Share" value={bvps ? `Rs ${bvps.toFixed(2)}`  : '—'} />
-                <Row label="P/B Ratio"          value={pb   > 0 ? `${pb.toFixed(2)}Ã—`  : '—'} />
+                <Row label="P/E Ratio"         value={pe   > 0 ? `${pe.toFixed(1)}Ã-`   : '-'} />
+                <Row label="EPS"               value={eps  ? `Rs ${eps.toFixed(2)}`    : '-'} />
+                <Row label="Book Value / Share" value={bvps ? `Rs ${bvps.toFixed(2)}`  : '-'} />
+                <Row label="P/B Ratio"          value={pb   > 0 ? `${pb.toFixed(2)}Ã-`  : '-'} />
                 <Row label="Graham Intr. Value" value={!isFinancialR && grahamIV > 0 ? `Rs ${grahamIV.toFixed(2)}` : 'N/A'} />
                 <Row label="Margin of Safety"   value={!isFinancialR && mos !== null ? `${mos >= 0 ? '+' : ''}${mos}%` : 'N/A'} highlight={!isFinancialR && mos !== null && mos >= 20} />
               </Section>
 
               {/* Profitability */}
               <Section title="Profitability">
-                <Row label="Net Profit Margin" value={npmPct ? `${npmPct.toFixed(2)}%` : '—'} />
-                <Row label="Return on Equity"  value={roePct ? `${roePct.toFixed(2)}%` : '—'} />
-                <Row label="Dividend / Share"  value={dps  ? `Rs ${dps.toFixed(2)}`   : '—'} />
-                <Row label="Dividend Yield"    value={divYld > 0 ? `${divYld.toFixed(2)}%` : '—'} />
+                <Row label="Net Profit Margin" value={npmPct ? `${npmPct.toFixed(2)}%` : '-'} />
+                <Row label="Return on Equity"  value={roePct ? `${roePct.toFixed(2)}%` : '-'} />
+                <Row label="Dividend / Share"  value={dps  ? `Rs ${dps.toFixed(2)}`   : '-'} />
+                <Row label="Dividend Yield"    value={divYld > 0 ? `${divYld.toFixed(2)}%` : '-'} />
               </Section>
 
               {/* Scores */}
@@ -2218,13 +2218,13 @@ export default function StockDetailClient({
                   const pos52 = high52 > low52 ? (price - low52) / (high52 - low52) : 0.5
                   ssMax += 20; ss += pos52 <= 0.25 ? 20 : pos52 <= 0.45 ? 15 : pos52 <= 0.65 ? 10 : pos52 <= 0.85 ? 5 : 2
                   const score = ssMax > 0 ? Math.round((ss / ssMax) * 100) : null
-                  const grade = score !== null ? (score >= 75 ? 'Excellent' : score >= 55 ? 'Good' : score >= 35 ? 'Fair' : 'Weak') : '—'
+                  const grade = score !== null ? (score >= 75 ? 'Excellent' : score >= 55 ? 'Good' : score >= 35 ? 'Fair' : 'Weak') : '-'
                   const iScore = !isFinancialR && grahamIV > 0 ? Math.min(100, Math.round(Math.min(grahamIV / Math.max(price, 1), 2) * 50)) : null
                   return (
                     <>
                       <Row label="Intrinsic Score (0â€“100)"  value={iScore !== null ? `${iScore} / 100` : 'N/A'} />
                       <Row label="Margin of Safety"          value={!isFinancialR && mos !== null ? `${mos >= 0 ? '+' : ''}${mos}%` : 'N/A'} />
-                      <Row label="Stockifyy Score (0â€“100)"  value={score !== null ? `${score} / 100` : '—'} highlight />
+                      <Row label="Stockifyy Score (0â€“100)"  value={score !== null ? `${score} / 100` : '-'} highlight />
                       <Row label="Overall Grade"             value={grade} />
                     </>
                   )
