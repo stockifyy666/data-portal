@@ -45,7 +45,7 @@ const nextConfig = {
               isDev ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'" : "script-src 'self' 'unsafe-inline'",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com",
-              "img-src 'self' data: blob: https://csapis.com https://*.supabase.co",
+              "img-src 'self' data: blob: https://csapis.com https://*.supabase.co https://i.brecorder.com https://*.brecorder.com https://*.dawn.com https://arynews.tv https://*.arynews.tv https://*.geo.tv https://*.tribune.com.pk",
               "connect-src 'self' https://*.supabase.co https://csapis.com wss://*.supabase.co",
               "frame-ancestors 'none'",
               "base-uri 'self'",
