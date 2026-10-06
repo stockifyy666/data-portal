@@ -4,10 +4,10 @@
 // FILE: components/stock/StockDetailClient.tsx
 // PURPOSE: Stock detail page orchestrator for a single stock (e.g. /stocks/ENGRO).
 //          Manages all tab state and data fetching; delegates rendering to:
-//          - StockChartComponents  â†’ MiniChart, TradingViewWidget, IndexVsStockChart
-//          - StockFundamentalsView â†’ FundamentalsView (thematic metric cards + modal)
-//          - StockShareholdersView â†’ ShareholdersView (progress bar breakdown)
-//          - StockStatementTable   â†’ StatementTable (income/balance/cashflow)
+//          - StockChartComponents  â†' MiniChart, TradingViewWidget, IndexVsStockChart
+//          - StockFundamentalsView â†' FundamentalsView (thematic metric cards + modal)
+//          - StockShareholdersView â†' ShareholdersView (progress bar breakdown)
+//          - StockStatementTable   â†' StatementTable (income/balance/cashflow)
 //
 //          All market data fetched via cachedFetch (browser in-memory cache, 5min TTL).
 //          Search bar at top uses /api/market/quotes to power stock search.
@@ -30,7 +30,7 @@ import type { StockQuote } from '@/types/market'
 import { COMPANY_BRANDS } from '@/data/company-brands'
 import KMIBadge, { isKMI } from '@/components/ui/KMIBadge'
 
-/* â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* â"€â"€ Types â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */
 type Overview = Record<string, number | string>
 
 type Candle = {
@@ -65,7 +65,7 @@ type Announcement = {
   pdf_id: string | null; name: string
 }
 
-/* â”€â”€ Tabs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* â"€â"€ Tabs â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */
 const TABS = [
   { id: 'overview',      label: 'Overview',        Icon: BarChart2  },
   { id: 'chart',         label: 'Chart',            Icon: TrendingUp },
@@ -81,7 +81,7 @@ const TABS = [
 
 type TabId = typeof TABS[number]['id']
 
-/* â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* â"€â"€ Helpers â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div>
@@ -123,7 +123,7 @@ function fmtNum(v: number | null | undefined, decimals = 2): string {
   return v.toFixed(decimals)
 }
 
-/* â”€â”€ Main Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* â"€â"€ Main Component â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */
 export default function StockDetailClient({
   symbol,
   overview: overviewProp,
@@ -189,7 +189,7 @@ export default function StockDetailClient({
   const [cmpMetricDropOpen,setCmpMetricDropOpen]= useState(false)
   const [cmpMetricCustom,  setCmpMetricCustom]  = useState('')
   const [cmpMetricLoading, setCmpMetricLoading] = useState(false)
-  // nested: metricLabel â†’ symbol â†’ yearly rows
+  // nested: metricLabel â†' symbol â†' yearly rows
   const [cmpMetricData,    setCmpMetricData]    = useState<Record<string,Record<string,{year:string;value:number}[]>>>({})
 
   function cmpToggle(sym: string) {
@@ -274,7 +274,7 @@ export default function StockDetailClient({
       const res  = await fetch(url)
       const json = await res.json()
       const raw  = Array.isArray(json.data) ? json.data : []
-      // intraday: reverse chronological â†’ chronological; weekly: last 35 days (~5 weeks)
+      // intraday: reverse chronological â†' chronological; weekly: last 35 days (~5 weeks)
       setCandles(chartMode === 'intraday' ? [...raw].reverse() : raw.slice(-35))
     } catch { setCandles([]) }
     setChartLoad(false)
@@ -438,7 +438,7 @@ export default function StockDetailClient({
   return (
     <div className="space-y-5 animate-data">
 
-      {/* â”€â”€ Stock Search â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* â"€â"€ Stock Search â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */}
       <div ref={searchRef} style={{ position: 'relative', zIndex: 40 }}>
         <div className="flex items-center gap-2 px-3 rounded-xl"
           style={{ backgroundColor: 'var(--bg-hover)', border: '1px solid var(--bg-border)' }}>
@@ -457,7 +457,7 @@ export default function StockDetailClient({
           />
           {searchQuery && (
             <button onClick={() => { setSearchQuery(''); setSearchOpen(false) }}
-              className="text-xs px-1" style={{ color: 'var(--text-muted)' }}>&#10005;</button>
+              className="text-xs px-1" style={{ color: 'var(--text-muted)' }}>{'✕'}</button>
           )}
         </div>
 
@@ -500,7 +500,7 @@ export default function StockDetailClient({
         )}
       </div>
 
-      {/* â”€â”€ Tabs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* â"€â"€ Tabs â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */}
       <div className="overflow-x-auto hide-scrollbar -mx-1">
         <div className="flex gap-0.5 p-1 rounded-xl w-max min-w-full"
              style={{ backgroundColor: 'var(--bg-hover)' }}>
@@ -560,7 +560,7 @@ export default function StockDetailClient({
                 <Stat label="52W Low"   value={formatPrice(Number(overview.low52))} />
               </div>
             </div>
-            {/* â”€â”€ Score Cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+            {/* â"€â"€ Score Cards â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */}
             {(() => {
               if (!snapFunds || !overview) return null
 
@@ -578,7 +578,7 @@ export default function StockDetailClient({
               const high52   = Number(overview.high52) || price
               const low52    = Number(overview.low52) || price
 
-              // â”€â”€ Intrinsic Score (0â€“100) â”€â”€
+              // â"€â"€ Intrinsic Score (0-100) â"€â"€
               // Benjamin Graham formula: IV = âˆš(22.5 Ã- EPS Ã- BVPS), normalised
               const grahamIV   = eps > 0 && bvps > 0 ? Math.sqrt(22.5 * eps * bvps) : 0
               const ivRatio    = grahamIV > 0 && price > 0 ? grahamIV / price : 0
@@ -586,12 +586,12 @@ export default function StockDetailClient({
                 ? Math.min(100, Math.round(Math.min(ivRatio, 2) * 50))  // 100 when IV â‰¥ 2Ã- price
                 : null
 
-              // â”€â”€ Margin of Safety (%) â”€â”€
+              // â"€â"€ Margin of Safety (%) â"€â"€
               const mos = grahamIV > 0 && price > 0
                 ? Math.round(((grahamIV - price) / grahamIV) * 100)
                 : null
 
-              // â”€â”€ Stockifyy Score (0â€“100) - multi-factor â”€â”€
+              // â"€â"€ Stockifyy Score (0-100) - multi-factor â"€â"€
               let ss = 0, ssMax = 0
               // Valuation (25pts): P/E < 15 ideal
               if (pe > 0) {
@@ -737,27 +737,27 @@ export default function StockDetailClient({
               )
             })()}
 
-            {/* â”€â”€ Company Snapshot â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+            {/* â"€â"€ Company Snapshot â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */}
             <div className="card">
               <SectionHeading>Company Snapshot</SectionHeading>
 
               {(() => {
-                // â”€â”€ field extractor â”€â”€
+                // â"€â"€ field extractor â"€â"€
                 function pick(pattern: RegExp): number | null {
                   if (!snapFunds) return null
                   return snapFunds.fields.find(f => !f.is_heading && pattern.test(f.label.trim()))?.values[0] ?? null
                 }
 
-                // â”€â”€ formatter â”€â”€
+                // â"€â"€ formatter â"€â"€
                 function fmtSnap(key: string, raw: number | null): string {
                   if (raw == null || isNaN(raw)) return '-'
                   switch (key) {
-                    // Percentage fields (stored as decimal 0â€“1 in fundamentals)
+                    // Percentage fields (stored as decimal 0â€"1 in fundamentals)
                     case 'divYield':
                     case 'netMargin':
                       return `${(raw * 100).toFixed(2)}%`
                     case 'freeFloatPct':
-                      // May be stored as 0â€“100 or 0â€“1; cap heuristic
+                      // May be stored as 0â€"100 or 0â€"1; cap heuristic
                       return `${raw > 1 ? raw.toFixed(2) : (raw * 100).toFixed(2)}%`
                     // Ratio / per-share fields - display as-is
                     case 'eps':
@@ -799,7 +799,7 @@ export default function StockDetailClient({
                   peg:         pick(/peg/i),
                 }
 
-                // â”€â”€ Fundamentals rows (from snapshot fetch) â”€â”€
+                // â"€â"€ Fundamentals rows (from snapshot fetch) â"€â"€
                 const fundRows: { label: string; key: keyof typeof snap; value: string }[] = [
                   { label: 'Market Cap',         key: 'mktCap',       value: fmtSnap('mktCap',       snap.mktCap)       },
                   { label: 'Shares Outstanding', key: 'sharesOut',    value: fmtSnap('sharesOut',    snap.sharesOut)    },
@@ -852,7 +852,7 @@ export default function StockDetailClient({
               })()}
             </div>
 
-            {/* â”€â”€ Index vs Stock chart â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+            {/* â"€â"€ Index vs Stock chart â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */}
             <div className="card">
               <SectionHeading>Index VS Stocks</SectionHeading>
               {vsLoad ? (
@@ -863,7 +863,7 @@ export default function StockDetailClient({
               }
             </div>
 
-            {/* â”€â”€ Pros & Cons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+            {/* â"€â"€ Pros & Cons â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */}
             {snapFunds && overview && (() => {
               function pickF(pattern: RegExp): number | null {
                 return snapFunds!.fields.find(f => !f.is_heading && pattern.test(f.label.trim()))?.values[0] ?? null
@@ -938,7 +938,7 @@ export default function StockDetailClient({
                     {/* Pros */}
                     <div className="rounded-xl p-4 space-y-2" style={{ backgroundColor: 'rgba(22,163,74,0.06)', border: '1px solid rgba(22,163,74,0.2)' }}>
                       <p className="text-[10px] font-bold uppercase tracking-wider mb-3" style={{ color: '#16a34a' }}>
-                        &#10003; Strengths
+                        {'✓'} Strengths
                       </p>
                       {pros.length > 0 ? pros.map((p, i) => (
                         <div key={i} className="flex gap-2 items-start">
@@ -952,11 +952,11 @@ export default function StockDetailClient({
                     {/* Cons */}
                     <div className="rounded-xl p-4 space-y-2" style={{ backgroundColor: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.2)' }}>
                       <p className="text-[10px] font-bold uppercase tracking-wider mb-3" style={{ color: '#dc2626' }}>
-                        &#10007; Concerns
+                        {'✗'} Concerns
                       </p>
                       {cons.length > 0 ? cons.map((c, i) => (
                         <div key={i} className="flex gap-2 items-start">
-                          <span className="mt-0.5 shrink-0 text-xs" style={{ color: ‘#dc2626’ }}>&#8722;</span>
+                          <span className="mt-0.5 shrink-0 text-xs" style={{ color: '#dc2626' }}>-</span>
                           <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{c}</p>
                         </div>
                       )) : (
@@ -971,7 +971,7 @@ export default function StockDetailClient({
               )
             })()}
 
-            {/* â”€â”€ About / Brands â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+            {/* â"€â"€ About / Brands â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */}
             <div className="card space-y-4">
               <SectionHeading>About the Company</SectionHeading>
 
@@ -1034,7 +1034,7 @@ export default function StockDetailClient({
               )}
             </div>
 
-            {/* â”€â”€ Brands & Subsidiaries â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+            {/* â"€â"€ Brands & Subsidiaries â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */}
             {(() => {
               const brands = COMPANY_BRANDS[symbol] ?? []
               return (
@@ -1366,7 +1366,7 @@ export default function StockDetailClient({
                       {cmpSearch && (
                         <button onClick={() => { setCmpSearch(''); setCmpDropOpen(false) }}
                           className="absolute right-3 top-1/2 -translate-y-1/2 text-xs opacity-50 hover:opacity-100"
-                          style={{ color:'var(--text-muted)' }}>&#10005;</button>
+                          style={{ color:'var(--text-muted)' }}>{'✕'}</button>
                       )}
                     </div>
 
@@ -1591,7 +1591,7 @@ export default function StockDetailClient({
                       .catch(() => ({ sym, data: null as StatementData | null }))
                   )
                   const raw = await Promise.all(fetches)
-                  // Build nested: metricLabel â†’ symbol â†’ rows
+                  // Build nested: metricLabel â†' symbol â†' rows
                   const nested: Record<string,Record<string,{year:string;value:number}[]>> = {}
                   for (const metric of effectiveMetrics) {
                     nested[metric] = {}
@@ -1621,7 +1621,7 @@ export default function StockDetailClient({
 
             {/* Results */}
             {cmpResults && cmpResults.length > 0 && (() => {
-              // â”€â”€ METRIC MODE: API-fetched single metric â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+              // â"€â"€ METRIC MODE: API-fetched single metric â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
               if (hasCustomMetric) {
                 if (cmpMetricLoading) return (
                   <div className="card space-y-3">
@@ -1638,7 +1638,7 @@ export default function StockDetailClient({
                   const max = Math.max(...vals.map(Math.abs).filter(Boolean), 0)
                   if (max >= 1000) return { divisor: 1000, label: 'Rs Bn' }   // values in Mn, show as Bn
                   if (max >= 1)    return { divisor: 1,    label: 'Rs Mn' }   // values in Mn, show as Mn
-                  return              { divisor: 0.001,    label: 'Rs Th' }   // very small â†’ in thousands
+                  return              { divisor: 0.001,    label: 'Rs Th' }   // very small â†' in thousands
                 }
                 function fmtMetricVal(v: number, divisor: number) {
                   if (v == null || v === 0) return '-'
@@ -1759,7 +1759,7 @@ export default function StockDetailClient({
                 )
               }
 
-              // â”€â”€ DEFAULT MODE: radar + individual tables â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+              // â"€â"€ DEFAULT MODE: radar + individual tables â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
               return (
               <div className="card space-y-6">
                 {/* Legend */}
@@ -2222,9 +2222,9 @@ export default function StockDetailClient({
                   const iScore = !isFinancialR && grahamIV > 0 ? Math.min(100, Math.round(Math.min(grahamIV / Math.max(price, 1), 2) * 50)) : null
                   return (
                     <>
-                      <Row label="Intrinsic Score (0â€“100)"  value={iScore !== null ? `${iScore} / 100` : 'N/A'} />
+                      <Row label="Intrinsic Score (0-100)"  value={iScore !== null ? `${iScore} / 100` : 'N/A'} />
                       <Row label="Margin of Safety"          value={!isFinancialR && mos !== null ? `${mos >= 0 ? '+' : ''}${mos}%` : 'N/A'} />
-                      <Row label="Stockifyy Score (0â€“100)"  value={score !== null ? `${score} / 100` : '-'} highlight />
+                      <Row label="Stockifyy Score (0-100)"  value={score !== null ? `${score} / 100` : '-'} highlight />
                       <Row label="Overall Grade"             value={grade} />
                     </>
                   )
