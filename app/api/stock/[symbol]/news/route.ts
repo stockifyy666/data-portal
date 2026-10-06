@@ -28,8 +28,8 @@ export async function GET(
       }
     )
 
-    const raw = data as any
-    const list: any[] = Array.isArray(raw) ? raw : Array.isArray(raw?.data) ? raw.data : []
+    const rawData = data as any
+    const list: any[] = Array.isArray(rawData) ? rawData : Array.isArray(rawData?.data) ? rawData.data : []
     const news = list.map((item: any) => {
       const rawImage =
         item.image ?? item.thumbnail ?? item.image_url ?? item.imageUrl ??
