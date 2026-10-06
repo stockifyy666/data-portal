@@ -14,7 +14,7 @@ type Params = { symbol: string }
 
 export async function generateMetadata({ params }: { params: Promise<Params> }) {
   const { symbol } = await params
-  return { title: `${symbol.toUpperCase()} â€” Stockifyy` }
+  return { title: `${symbol.toUpperCase()} — Stockifyy` }
 }
 
 function isValidSymbol(s: string) { return /^[A-Z0-9]{2,10}$/.test(s) }

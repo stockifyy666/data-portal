@@ -28,7 +28,28 @@ export async function GET(
       }
     )
 
-    return NextResponse.json(data)
+    const raw = data as any
+    const list: any[] = Array.isArray(raw) ? raw : Array.isArray(raw?.data) ? raw.data : []
+    const news = list.map((item: any) => {
+      const rawImage =
+        item.image ?? item.thumbnail ?? item.image_url ?? item.imageUrl ??
+        item.img ?? item.img_url ?? item.featured_image ?? item.banner ??
+        item.cover ?? item.photo ?? item.media_url ?? ''
+      let image = rawImage
+      if (!image && typeof item.description === 'string') {
+        const m = item.description.match(/<img[^>]+src="([^"]+)"/i)
+        if (m) image = m[1]
+      }
+      return {
+        title:       item.title       ?? item.heading  ?? '',
+        date:        item.date        ?? item.created_at ?? '',
+        description: (item.description ?? item.summary ?? '').replace(/<[^>]*>/g, '').slice(0, 300),
+        link:        item.link        ?? item.url       ?? '',
+        image,
+        source:      item.source      ?? item.publisher ?? 'PSX News',
+      }
+    }).filter((n: any) => n.title)
+    return NextResponse.json({ data: news })
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unknown error'
     console.error('[API /stock/news]', msg)

@@ -579,11 +579,11 @@ export default function StockDetailClient({
               const low52    = Number(overview.low52) || price
 
               // â"€â"€ Intrinsic Score (0-100) â"€â"€
-              // Benjamin Graham formula: IV = âˆš(22.5 Ã- EPS Ã- BVPS), normalised
+              // Benjamin Graham formula: IV = âˆš(22.5 x EPS x BVPS), normalised
               const grahamIV   = eps > 0 && bvps > 0 ? Math.sqrt(22.5 * eps * bvps) : 0
               const ivRatio    = grahamIV > 0 && price > 0 ? grahamIV / price : 0
               const intrinsicScore = grahamIV > 0
-                ? Math.min(100, Math.round(Math.min(ivRatio, 2) * 50))  // 100 when IV â‰¥ 2Ã- price
+                ? Math.min(100, Math.round(Math.min(ivRatio, 2) * 50))  // 100 when IV â‰¥ 2x price
                 : null
 
               // â"€â"€ Margin of Safety (%) â"€â"€
@@ -888,9 +888,9 @@ export default function StockDetailClient({
               const cons: string[] = []
 
               // Valuation
-              if (pe > 0 && pe <= 12)   pros.push(`Low P/E of ${pe.toFixed(1)}Ã- - attractively valued vs earnings`)
-              else if (pe > 0 && pe <= 18) pros.push(`Reasonable P/E of ${pe.toFixed(1)}Ã- - fairly valued`)
-              if (pe > 25)              cons.push(`High P/E of ${pe.toFixed(1)}Ã- - stock may be expensive relative to earnings`)
+              if (pe > 0 && pe <= 12)   pros.push(`Low P/E of ${pe.toFixed(1)}x - attractively valued vs earnings`)
+              else if (pe > 0 && pe <= 18) pros.push(`Reasonable P/E of ${pe.toFixed(1)}x - fairly valued`)
+              if (pe > 25)              cons.push(`High P/E of ${pe.toFixed(1)}x - stock may be expensive relative to earnings`)
 
               // Profitability - banks have naturally lower net margins, skip for financials
               if (!isFinancialPC) {
@@ -912,7 +912,7 @@ export default function StockDetailClient({
               // BVPS - skip P/B comparison for banks (high BVPS is normal)
               if (!isFinancialPC) {
                 if (bvps > 0 && price > 0 && price < bvps) pros.push(`Trading below book value (P/B < 1) - potential deep value opportunity`)
-                if (bvps > 0 && price > 0 && price > bvps * 3) cons.push(`Trading at ${(price/bvps).toFixed(1)}Ã- book value - significant premium to assets`)
+                if (bvps > 0 && price > 0 && price > bvps * 3) cons.push(`Trading at ${(price/bvps).toFixed(1)}x book value - significant premium to assets`)
               }
 
               // Dividend
@@ -1127,7 +1127,7 @@ export default function StockDetailClient({
         <div className="card space-y-3">
           <SectionHeading>Sector Peer Comparison</SectionHeading>
           <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-            All companies in the same sector Â· ranked by trading volume
+            All companies in the same sector · ranked by trading volume
           </p>
           {peersLoad ? (
             <div className="space-y-2">
@@ -1316,7 +1316,7 @@ export default function StockDetailClient({
               <div>
                 <SectionHeading>Compare Sector</SectionHeading>
                 <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                  {symbol} is always included Â· select up to 3 sector peers to compare
+                  {symbol} is always included · select up to 3 sector peers to compare
                 </p>
               </div>
 
@@ -1333,7 +1333,7 @@ export default function StockDetailClient({
                     <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor:COLORS[idx+1] }} />
                     {sym}
                     <button onClick={() => setCmpSelected(p => p.filter(s=>s!==sym))}
-                      className="ml-0.5 opacity-60 hover:opacity-100 font-bold">Ã-</button>
+                      className="ml-0.5 opacity-60 hover:opacity-100 font-bold">x</button>
                   </div>
                 ))}
                 {cmpSelected.length < 3 && (
@@ -1564,7 +1564,7 @@ export default function StockDetailClient({
                             style={{ backgroundColor:'rgba(254,165,0,0.12)', color:'#FEA500', border:'1px solid rgba(254,165,0,0.35)' }}>
                             {m}
                             <button onMouseDown={e => e.preventDefault()} onClick={() => toggle(m)}
-                              className="opacity-60 hover:opacity-100 ml-0.5">Ã-</button>
+                              className="opacity-60 hover:opacity-100 ml-0.5">x</button>
                           </div>
                         ))}
                       </div>
@@ -1615,7 +1615,7 @@ export default function StockDetailClient({
                 className="w-full py-2.5 rounded-xl text-sm font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                 style={{ background:'linear-gradient(135deg,#FEA500,#986300)', color:'white' }}>
                 Compare Sector {cmpSelected.length > 0 ? `(${cmpSelected.length+1} companies)` : ''}
-                {effectiveMetrics.length > 0 ? ` Â· ${effectiveMetrics.length} metric${effectiveMetrics.length>1?'s':''}` : ''}
+                {effectiveMetrics.length > 0 ? ` · ${effectiveMetrics.length} metric${effectiveMetrics.length>1?'s':''}` : ''}
               </button>
             </div>
 
@@ -2027,7 +2027,7 @@ export default function StockDetailClient({
                     <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
                       {item.source}
                     </span>
-                    <span style={{ color: 'var(--text-muted)' }}>Â·</span>
+                    <span style={{ color: 'var(--text-muted)' }}>·</span>
                     <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
                       {new Date(item.date).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </span>
@@ -2164,7 +2164,7 @@ export default function StockDetailClient({
                   {symbol} - Company Report
                 </h2>
                 <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                  Generated {new Date().toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })} Â· Data sourced from PSX
+                  Generated {new Date().toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })} · Data sourced from PSX
                 </p>
               </div>
               <button
@@ -2191,10 +2191,10 @@ export default function StockDetailClient({
 
               {/* Valuation */}
               <Section title="Valuation">
-                <Row label="P/E Ratio"         value={pe   > 0 ? `${pe.toFixed(1)}Ã-`   : '-'} />
+                <Row label="P/E Ratio"         value={pe   > 0 ? `${pe.toFixed(1)}x`   : '-'} />
                 <Row label="EPS"               value={eps  ? `Rs ${eps.toFixed(2)}`    : '-'} />
                 <Row label="Book Value / Share" value={bvps ? `Rs ${bvps.toFixed(2)}`  : '-'} />
-                <Row label="P/B Ratio"          value={pb   > 0 ? `${pb.toFixed(2)}Ã-`  : '-'} />
+                <Row label="P/B Ratio"          value={pb   > 0 ? `${pb.toFixed(2)}x`  : '-'} />
                 <Row label="Graham Intr. Value" value={!isFinancialR && grahamIV > 0 ? `Rs ${grahamIV.toFixed(2)}` : 'N/A'} />
                 <Row label="Margin of Safety"   value={!isFinancialR && mos !== null ? `${mos >= 0 ? '+' : ''}${mos}%` : 'N/A'} highlight={!isFinancialR && mos !== null && mos >= 20} />
               </Section>
