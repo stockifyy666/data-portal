@@ -198,7 +198,6 @@ export default function SettingsPage() {
   async function handleSaveProfile() {
     if (!user) return
     setSaving(true)
-    setSaveMsg(null)
     const trimName = fullName.trim()
     const trimUser = username.trim().toLowerCase().replace(/[^a-z0-9_]/g, '')
     const { error } = await (supabase as any)

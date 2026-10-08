@@ -4,10 +4,10 @@
 // FILE: components/stock/StockDetailClient.tsx
 // PURPOSE: Stock detail page orchestrator for a single stock (e.g. /stocks/ENGRO).
 //          Manages all tab state and data fetching; delegates rendering to:
-//          - StockChartComponents  ->€ ' MiniChart, TradingViewWidget, IndexVsStockChart
-//          - StockFundamentalsView ->€ ' FundamentalsView (thematic metric cards + modal)
-//          - StockShareholdersView ->€ ' ShareholdersView (progress bar breakdown)
-//          - StockStatementTable   ->€ ' StatementTable (income/balance/cashflow)
+//          - StockChartComponents  ->-' MiniChart, TradingViewWidget, IndexVsStockChart
+//          - StockFundamentalsView ->-' FundamentalsView (thematic metric cards + modal)
+//          - StockShareholdersView ->-' ShareholdersView (progress bar breakdown)
+//          - StockStatementTable   ->-' StatementTable (income/balance/cashflow)
 //
 //          All market data fetched via cachedFetch (browser in-memory cache, 5min TTL).
 //          Search bar at top uses /api/market/quotes to power stock search.
@@ -51,7 +51,7 @@ const TABS = [
 
 type TabId = typeof TABS[number]['id']
 
-/* -"â‚¬-"â‚¬ Helpers -"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬ */
+/* -"--"- Helpers -"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"- */
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div>
@@ -71,7 +71,7 @@ function fmtNum(v: number | null | undefined, decimals = 2): string {
   return v.toFixed(decimals)
 }
 
-/* -"â‚¬-"â‚¬ Main Component -"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬ */
+/* -"--"- Main Component -"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"- */
 export default function StockDetailClient({
   symbol,
   overview: overviewProp,
@@ -203,7 +203,7 @@ export default function StockDetailClient({
       const res  = await fetch(url)
       const json = await res.json()
       const raw  = Array.isArray(json.data) ? json.data : []
-      // intraday: reverse chronological ->€ ' chronological; weekly: last 35 days (~5 weeks)
+      // intraday: reverse chronological ->-' chronological; weekly: last 35 days (~5 weeks)
       setCandles(chartMode === 'intraday' ? [...raw].reverse() : raw.slice(-35))
     } catch { setCandles([]) }
     setChartLoad(false)
@@ -367,7 +367,7 @@ export default function StockDetailClient({
   return (
     <div className="space-y-5 animate-data">
 
-      {/* ->"�‚¬->"�‚¬ Stock Search ->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬ */}
+      {/* ->"-->"- Stock Search ->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"- */}
       <div ref={searchRef} style={{ position: 'relative', zIndex: 40 }}>
         <div className="flex items-center gap-2 px-3 rounded-xl"
           style={{ backgroundColor: 'var(--bg-hover)', border: '1px solid var(--bg-border)' }}>
@@ -429,7 +429,7 @@ export default function StockDetailClient({
         )}
       </div>
 
-      {/* ->"�‚¬->"�‚¬ Tabs ->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬ */}
+      {/* ->"-->"- Tabs ->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"- */}
       <div className="overflow-x-auto hide-scrollbar -mx-1">
         <div className="flex gap-0.5 p-1 rounded-xl w-max min-w-full"
              style={{ backgroundColor: 'var(--bg-hover)' }}>
@@ -489,7 +489,7 @@ export default function StockDetailClient({
                 <Stat label="52W Low"   value={formatPrice(Number(overview.low52))} />
               </div>
             </div>
-            {/* ->"�‚¬->"�‚¬ Score Cards ->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬ */}
+            {/* ->"-->"- Score Cards ->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"- */}
             {(() => {
               if (!snapFunds || !overview) return null
 
@@ -507,20 +507,20 @@ export default function StockDetailClient({
               const high52   = Number(overview.high52) || price
               const low52    = Number(overview.low52) || price
 
-              // ->"â‚¬->"â‚¬ Intrinsic Score (0-100) ->"â‚¬->"â‚¬
-              // Benjamin Graham formula: IV = ->†Å¡(22.5 x EPS x BVPS), normalised
+              // ->"-->"- Intrinsic Score (0-100) ->"-->"-
+              // Benjamin Graham formula: IV = ->-(22.5 x EPS x BVPS), normalised
               const grahamIV   = eps > 0 && bvps > 0 ? Math.sqrt(22.5 * eps * bvps) : 0
               const ivRatio    = grahamIV > 0 && price > 0 ? grahamIV / price : 0
               const intrinsicScore = grahamIV > 0
-                ? Math.min(100, Math.round(Math.min(ivRatio, 2) * 50))  // 100 when IV ->€°-> 2x price
+                ? Math.min(100, Math.round(Math.min(ivRatio, 2) * 50))  // 100 when IV ->--> 2x price
                 : null
 
-              // ->"â‚¬->"â‚¬ Margin of Safety (%) ->"â‚¬->"â‚¬
+              // ->"-->"- Margin of Safety (%) ->"-->"-
               const mos = grahamIV > 0 && price > 0
                 ? Math.round(((grahamIV - price) / grahamIV) * 100)
                 : null
 
-              // ->"â‚¬->"â‚¬ Stockifyy Score (0-100) - multi-factor ->"â‚¬->"â‚¬
+              // ->"-->"- Stockifyy Score (0-100) - multi-factor ->"-->"-
               let ss = 0, ssMax = 0
               // Valuation (25pts): P/E < 15 ideal
               if (pe > 0) {
@@ -666,27 +666,27 @@ export default function StockDetailClient({
               )
             })()}
 
-            {/* ->"�‚¬->"�‚¬ Company Snapshot ->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬ */}
+            {/* ->"-->"- Company Snapshot ->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"- */}
             <div className="card">
               <SectionHeading>Company Snapshot</SectionHeading>
 
               {(() => {
-                // ->"â‚¬->"â‚¬ field extractor ->"â‚¬->"â‚¬
+                // ->"-->"- field extractor ->"-->"-
                 function pick(pattern: RegExp): number | null {
                   if (!snapFunds) return null
                   return snapFunds.fields.find(f => !f.is_heading && pattern.test(f.label.trim()))?.values[0] ?? null
                 }
 
-                // ->"â‚¬->"â‚¬ formatter ->"â‚¬->"â‚¬
+                // ->"-->"- formatter ->"-->"-
                 function fmtSnap(key: string, raw: number | null): string {
                   if (raw == null || isNaN(raw)) return '-'
                   switch (key) {
-                    // Percentage fields (stored as decimal 0->‚¬"1 in fundamentals)
+                    // Percentage fields (stored as decimal 0->-"1 in fundamentals)
                     case 'divYield':
                     case 'netMargin':
                       return `${(raw * 100).toFixed(2)}%`
                     case 'freeFloatPct':
-                      // May be stored as 0->‚¬"100 or 0->‚¬"1; cap heuristic
+                      // May be stored as 0->-"100 or 0->-"1; cap heuristic
                       return `${raw > 1 ? raw.toFixed(2) : (raw * 100).toFixed(2)}%`
                     // Ratio / per-share fields - display as-is
                     case 'eps':
@@ -728,7 +728,7 @@ export default function StockDetailClient({
                   peg:         pick(/peg/i),
                 }
 
-                // ->"â‚¬->"â‚¬ Fundamentals rows (from snapshot fetch) ->"â‚¬->"â‚¬
+                // ->"-->"- Fundamentals rows (from snapshot fetch) ->"-->"-
                 const fundRows: { label: string; key: keyof typeof snap; value: string }[] = [
                   { label: 'Market Cap',         key: 'mktCap',       value: fmtSnap('mktCap',       snap.mktCap)       },
                   { label: 'Shares Outstanding', key: 'sharesOut',    value: fmtSnap('sharesOut',    snap.sharesOut)    },
@@ -781,7 +781,7 @@ export default function StockDetailClient({
               })()}
             </div>
 
-            {/* ->"�‚¬->"�‚¬ Index vs Stock chart ->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬ */}
+            {/* ->"-->"- Index vs Stock chart ->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"- */}
             <div className="card">
               <SectionHeading>Index VS Stocks</SectionHeading>
               {vsLoad ? (
@@ -792,7 +792,7 @@ export default function StockDetailClient({
               }
             </div>
 
-            {/* ->"�‚¬->"�‚¬ Pros & Cons ->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬ */}
+            {/* ->"-->"- Pros & Cons ->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"- */}
             {snapFunds && overview && (() => {
               function pickF(pattern: RegExp): number | null {
                 return snapFunds!.fields.find(f => !f.is_heading && pattern.test(f.label.trim()))?.values[0] ?? null
@@ -900,7 +900,7 @@ export default function StockDetailClient({
               )
             })()}
 
-            {/* ->"�‚¬->"�‚¬ About / Brands ->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬ */}
+            {/* ->"-->"- About / Brands ->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"- */}
             <div className="card space-y-4">
               <SectionHeading>About the Company</SectionHeading>
 
@@ -963,7 +963,7 @@ export default function StockDetailClient({
               )}
             </div>
 
-            {/* ->"�‚¬->"�‚¬ Brands & Subsidiaries ->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬ */}
+            {/* ->"-->"- Brands & Subsidiaries ->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"-->"- */}
             {(() => {
               const brands = COMPANY_BRANDS[symbol] ?? []
               return (
