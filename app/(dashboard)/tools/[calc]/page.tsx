@@ -1,3 +1,8 @@
+// =============================================================================
+// FILE: app/(dashboard)/tools/[calc]/page.tsx
+// PURPOSE: Financial calculators page. Routes to the correct calculator component based
+//           on the [calc] slug (e.g. zakat, profit, brokerage, dividend).
+// =============================================================================
 import { notFound } from 'next/navigation'
 import CalculatorClient from '@/components/tools/CalculatorClient'
 

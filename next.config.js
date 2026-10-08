@@ -6,6 +6,8 @@
 // =============================================================================
 
 /** @type {import('next').NextConfig} */
+const isDev = process.env.NODE_ENV === 'development'
+
 const nextConfig = {
 
 
@@ -32,9 +34,24 @@ const nextConfig = {
         headers: [
           { key: 'X-Content-Type-Options',     value: 'nosniff' },
           { key: 'X-Frame-Options',             value: 'DENY' },
-          { key: 'Strict-Transport-Security',   value: 'max-age=31536000; includeSubDomains' },
+          { key: 'X-XSS-Protection',            value: '1; mode=block' },
+          { key: 'Strict-Transport-Security',   value: 'max-age=63072000; includeSubDomains; preload' },
           { key: 'Referrer-Policy',             value: 'strict-origin-when-cross-origin' },
-          { key: 'Permissions-Policy',          value: 'camera=(), microphone=(), geolocation=()' },
+          { key: 'Permissions-Policy',          value: 'camera=(), microphone=(), geolocation=(), payment=()' },
+          {
+            key: 'Content-Security-Policy',
+            value: [
+              "default-src 'self'",
+              isDev ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:" : "script-src 'self' 'unsafe-inline' blob:",
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+              "font-src 'self' https://fonts.gstatic.com",
+              "img-src 'self' data: blob: https://csapis.com https://*.supabase.co https://i.brecorder.com https://*.brecorder.com https://*.dawn.com https://arynews.tv https://*.arynews.tv https://*.geo.tv https://*.tribune.com.pk",
+              "connect-src 'self' https://*.supabase.co https://csapis.com wss://*.supabase.co https://*.ingest.sentry.io https://*.ingest.us.sentry.io",
+              "frame-ancestors 'none'",
+              "base-uri 'self'",
+              "form-action 'self'",
+            ].join('; '),
+          },
         ],
       },
     ]

@@ -1,4 +1,4 @@
-// Capital Stake API client.
+﻿﻿// Capital Stake API client.
 // Every request uses Bearer token + laravel_session cookie together.
 // Session is managed by session.ts (auto-refreshes every 90 min via Playwright).
 

@@ -1,6 +1,25 @@
 'use client'
 
+// =============================================================================
+// FILE: components/market/MorningBrief.tsx
+// PURPOSE: Dashboard summary card at the top of the main dashboard.
+//          Shows KSE100 level, sector performance, market breadth
+//          (gainers/losers count), total volume, top movers, and latest news.
+//          Fetches indices, heatmap, quotes, and news in parallel via cachedFetch.
+// =============================================================================
+
 import { useState, useEffect, useCallback } from 'react'
+import { cachedFetch } from '@/lib/utils/clientCache'
+
+type IndexRow   = { key: string; current: number; change: number; changePct: number }
+type SectorRow  = { name?: string; avgChangePct?: number | string }
+type NewsItem   = { id?: string; title?: string; source?: string; date?: string; link?: string; publishedAt?: string; url?: string }
+type Quote      = { symbol: string; name: string; price: number; changePct: number; volume: number }
+
+type IndicesResponse = { indices?: IndexRow[] }
+type HeatmapResponse = { sectors?: SectorRow[] }
+type QuotesResponse  = { quotes?: Quote[] }
+type NewsResponse    = { data?: News[] }
 import Link from 'next/link'
 import {
   Sun, Moon, Sunrise, Clock, TrendingUp, TrendingDown,
@@ -43,8 +62,6 @@ type KSE    = { current: number; change: number; changePct: number }
 type Sector = { name: string; avgPct: number }
 type Stock  = { symbol: string; name: string; price: number; changePct: number }
 type News   = { title: string; date: string; link: string; source: string }
-type Quote  = { symbol: string; name: string; price: number; changePct: number; volume: number }
-
 export default function MorningBrief({ userName }: { userName?: string }) {
   const [kse100,    setKse100]    = useState<KSE | null>(null)
   const [sectors,   setSectors]   = useState<Sector[]>([])
@@ -65,22 +82,22 @@ export default function MorningBrief({ userName }: { userName?: string }) {
     setLoading(true)
     try {
       const [idxRes, hmRes, qtRes, newsRes] = await Promise.allSettled([
-        fetch('/api/market/indices').then(r => r.json()),
-        fetch('/api/market/heatmap').then(r => r.json()),
-        fetch('/api/market/quotes').then(r => r.json()),
-        fetch('/api/market/news').then(r => r.json()),
+        cachedFetch<IndicesResponse>('/api/market/indices', 5 * 60_000),
+        cachedFetch<HeatmapResponse>('/api/market/heatmap',  5 * 60_000),
+        cachedFetch<QuotesResponse>('/api/market/quotes',   5 * 60_000),
+        cachedFetch<NewsResponse>('/api/market/news',     5 * 60_000),
       ])
 
       if (idxRes.status === 'fulfilled') {
-        const k = (idxRes.value.indices ?? []).find((i: any) => i.key === 'KSE100')
+        const k = (idxRes.value.indices ?? []).find(i => i.key === 'KSE100')
         if (k) setKse100({ current: k.current, change: k.change, changePct: k.changePct })
       }
 
       if (hmRes.status === 'fulfilled') {
-        const raw: any[] = hmRes.value.sectors ?? []
+        const raw: SectorRow[] = hmRes.value.sectors ?? []
         setSectors(
           raw
-            .map((s: any) => ({ name: s.name ?? '', avgPct: Number(s.avgChangePct ?? 0) }))
+            .map(s => ({ name: s.name ?? '', avgPct: Number(s.avgChangePct ?? 0) }))
             .filter(s => s.name)
             .sort((a, b) => b.avgPct - a.avgPct)
         )

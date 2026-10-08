@@ -1,4 +1,9 @@
-// Market status derived from PSX trading hours — no API call needed.
+// =============================================================================
+// FILE: app/api/market/status/route.ts
+// PURPOSE: Returns PSX market status (open/closed/pre-market) based on PKT time.
+//          No Capital Stake API call needed — derived purely from trading hours.
+//          PSX hours: Mon-Thu 09:30-15:30, Fri 09:00-12:00 & 14:30-15:30 (PKT).
+// =============================================================================
 // PSX hours (PKT = UTC+5): Mon–Thu 09:30–15:30, Fri 09:00–12:00 & 14:30–15:30
 // Statuses: pre_market (15 min before open), open, post_market (20 min after close),
 //           after_hours, friday_break, weekend

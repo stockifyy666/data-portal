@@ -1,3 +1,17 @@
+// =============================================================================
+// FILE: app/api/auth/delete-account/route.ts
+// PURPOSE: Permanently deletes the authenticated user's account and all their data.
+//          Uses Supabase Admin client (service role key) to bypass RLS and
+//          hard-delete the user from auth.users table.
+//
+//          ORDER MATTERS (S-03 race condition fix):
+//          1. First  → delete all user data from database
+//          2. Second → sign out the user
+//          If reversed, the session could expire mid-delete leaving orphaned data.
+//
+//          CALLED FROM: app/(dashboard)/settings/page.tsx after user confirms deletion.
+// =============================================================================
+
 import { NextResponse }    from 'next/server'
 import { createClient }    from '@/lib/supabase/server'
 import { createClient as createAdmin } from '@supabase/supabase-js'

@@ -459,12 +459,20 @@ interface ContribBar {
   pts: number
   pct: number
   sector: string
+  weight: number   // % weight in index (0-100)
+  mc: number       // market cap in PKR (000's)
 }
 
 function ContribHistogram({ bars }: { bars: ContribBar[] }) {
   const ref    = useRef<HTMLCanvasElement>(null)
-  const hitRef = useRef<{ x: number; w: number; bar: ContribBar }[]>([])
+  // Each hit area tracks its pixel bounds for precise hover detection
+  const hitRef = useRef<{ x: number; w: number; yTop: number; yBot: number; bar: ContribBar }[]>([])
   const [tip, setTip] = useState<(ContribBar & { x: number; y: number; flipLeft: boolean }) | null>(null)
+
+  // Split into mirrored gainers (above) and losers (below), each sorted descending
+  const gainers = useMemo(() => bars.filter(b => b.pts >= 0).sort((a, b) => b.pts - a.pts),  [bars])
+  const losers  = useMemo(() => bars.filter(b => b.pts <  0).sort((a, b) => a.pts - b.pts),  [bars])
+  const totalCols = Math.max(gainers.length, losers.length, 1)
 
   useEffect(() => {
     const canvas = ref.current
@@ -483,17 +491,19 @@ function ContribHistogram({ bars }: { bars: ContribBar[] }) {
     const cW = W - PAD.left - PAD.right
     const cH = H - PAD.top  - PAD.bottom
 
-    // Symmetric axis so zero line stays centred regardless of pos/neg imbalance
-    const absMax = Math.max(...bars.map(b => Math.abs(b.pts)), 1) * 1.15
-    const maxPts =  absMax
-    const minPts = -absMax
-    const range  = maxPts - minPts
-    const toY    = (v: number) => PAD.top + cH - ((v - minPts) / range) * cH
-    const z0     = toY(0)   // always exactly the vertical midpoint
+    // Symmetric axis — zero line stays exactly centred
+    const absMax = Math.max(
+      ...gainers.map(b => Math.abs(b.pts)),
+      ...losers.map(b => Math.abs(b.pts)),
+      1
+    ) * 1.15
+    const range = absMax * 2
+    const toY   = (v: number) => PAD.top + cH - ((v + absMax) / range) * cH
+    const z0    = toY(0)   // always exactly the vertical midpoint
 
-    // Grid
-    for (let i = 0; i <= 5; i++) {
-      const v = minPts + (range / 5) * i
+    // Grid lines (symmetric around zero)
+    for (let i = 0; i <= 4; i++) {
+      const v = -absMax + (absMax * 2 / 4) * i
       const y = toY(v)
       ctx.strokeStyle = border; ctx.lineWidth = 0.5; ctx.setLineDash([3, 4])
       ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(W - PAD.right, y); ctx.stroke()
@@ -502,27 +512,26 @@ function ContribHistogram({ bars }: { bars: ContribBar[] }) {
       ctx.fillText(v.toFixed(2), PAD.left - 6, y)
     }
 
-    // Zero line
-    ctx.strokeStyle = 'rgba(254,165,0,0.4)'; ctx.lineWidth = 1; ctx.setLineDash([5, 4])
+    // Zero line (gold, solid)
+    ctx.strokeStyle = 'rgba(254,165,0,0.55)'; ctx.lineWidth = 1.5; ctx.setLineDash([])
     ctx.beginPath(); ctx.moveTo(PAD.left, z0); ctx.lineTo(W - PAD.right, z0); ctx.stroke()
-    ctx.setLineDash([])
 
-    const gW = cW / bars.length
-    const bW = Math.max(Math.min(gW * 0.62, 38), 8)
+    const gW = cW / totalCols
+    const bW = Math.max(Math.min(gW * 0.78, 52), 10)
     hitRef.current = []
 
-    bars.forEach((b, i) => {
-      const cx2 = PAD.left + i * gW + gW / 2
-      const bx  = cx2 - bW / 2
-      const top = Math.min(toY(b.pts), z0)
-      const bh  = Math.max(Math.abs(toY(b.pts) - z0), 1)
+    const drawBar = (b: ContribBar, colIdx: number) => {
       const up  = b.pts >= 0
+      const cx2 = PAD.left + colIdx * gW + gW / 2
+      const bx  = cx2 - bW / 2
+      const barTop = Math.min(toY(b.pts), z0)
+      const bh     = Math.max(Math.abs(toY(b.pts) - z0), 1)
 
       ctx.save()
       ctx.shadowColor = up ? 'rgba(34,197,94,0.35)' : 'rgba(239,68,68,0.35)'
       ctx.shadowBlur  = 8
 
-      const grad = ctx.createLinearGradient(0, top, 0, top + bh)
+      const grad = ctx.createLinearGradient(0, barTop, 0, barTop + bh)
       if (up) { grad.addColorStop(0, '#4ade80'); grad.addColorStop(1, '#15803d') }
       else    { grad.addColorStop(0, '#f87171'); grad.addColorStop(1, '#991b1b') }
       ctx.fillStyle = grad
@@ -530,78 +539,79 @@ function ContribHistogram({ bars }: { bars: ContribBar[] }) {
       const r = Math.min(4, bW / 2)
       ctx.beginPath()
       if (up) {
-        ctx.moveTo(bx + r, top); ctx.lineTo(bx + bW - r, top)
-        ctx.quadraticCurveTo(bx + bW, top, bx + bW, top + r)
-        ctx.lineTo(bx + bW, top + bh); ctx.lineTo(bx, top + bh)
-        ctx.lineTo(bx, top + r); ctx.quadraticCurveTo(bx, top, bx + r, top)
+        ctx.moveTo(bx + r, barTop); ctx.lineTo(bx + bW - r, barTop)
+        ctx.quadraticCurveTo(bx + bW, barTop, bx + bW, barTop + r)
+        ctx.lineTo(bx + bW, barTop + bh); ctx.lineTo(bx, barTop + bh)
+        ctx.lineTo(bx, barTop + r); ctx.quadraticCurveTo(bx, barTop, bx + r, barTop)
       } else {
-        ctx.moveTo(bx, top); ctx.lineTo(bx + bW, top)
-        ctx.lineTo(bx + bW, top + bh - r); ctx.quadraticCurveTo(bx + bW, top + bh, bx + bW - r, top + bh)
-        ctx.lineTo(bx + r, top + bh); ctx.quadraticCurveTo(bx, top + bh, bx, top + bh - r)
-        ctx.lineTo(bx, top)
+        ctx.moveTo(bx, barTop); ctx.lineTo(bx + bW, barTop)
+        ctx.lineTo(bx + bW, barTop + bh - r); ctx.quadraticCurveTo(bx + bW, barTop + bh, bx + bW - r, barTop + bh)
+        ctx.lineTo(bx + r, barTop + bh); ctx.quadraticCurveTo(bx, barTop + bh, bx, barTop + bh - r)
+        ctx.lineTo(bx, barTop)
       }
       ctx.closePath(); ctx.fill()
       ctx.restore()
 
-      ctx.fillStyle = 'rgba(255,255,255,0.12)'
-      ctx.fillRect(bx + 1, top, bW - 2, 2)
+      // Sheen
+      ctx.fillStyle = 'rgba(255,255,255,0.10)'
+      ctx.fillRect(bx + 1, barTop, bW - 2, 2)
 
+      // Labels
       const fs = Math.min(10, Math.max(7, gW / 3.2))
+      const minBarForLabel = fs * 2.2
       ctx.textAlign = 'center'
       const ptsStr = `${b.pts >= 0 ? '+' : ''}${b.pts.toFixed(2)}`
       const pctStr = `${b.pct >= 0 ? '+' : ''}${b.pct.toFixed(2)}%`
 
-      const minBarForLabel = fs * 2.2  // bar must be taller than ~2 text lines to show symbol
       if (up) {
-        // pts value — above bar top
         ctx.fillStyle = '#4ade80'; ctx.font = `700 ${fs}px system-ui`
-        ctx.textBaseline = 'bottom'; ctx.fillText(ptsStr, cx2, top - 4)
-        // symbol name — just inside bar top (only if bar is tall enough)
+        ctx.textBaseline = 'bottom'; ctx.fillText(ptsStr, cx2, barTop - 4)
         if (bh >= minBarForLabel) {
           ctx.fillStyle = '#ffffff'; ctx.font = `600 ${Math.max(7, fs - 1)}px system-ui`
-          ctx.textBaseline = 'top'; ctx.fillText(b.symbol.slice(0, 6), cx2, top + 4)
+          ctx.textBaseline = 'top'; ctx.fillText(b.symbol.slice(0, 6), cx2, barTop + 4)
         }
-        // % change — just above zero line (bottom of positive bar)
         ctx.fillStyle = 'rgba(74,222,128,0.85)'; ctx.font = `600 ${Math.max(7, fs - 1)}px system-ui`
         ctx.textBaseline = 'bottom'; ctx.fillText(pctStr, cx2, z0 - 3)
       } else {
-        // pts value — below bar bottom
         ctx.fillStyle = '#f87171'; ctx.font = `700 ${fs}px system-ui`
-        ctx.textBaseline = 'top'; ctx.fillText(ptsStr, cx2, top + bh + 4)
-        // symbol name — just inside bar top (only if bar is tall enough)
+        ctx.textBaseline = 'top'; ctx.fillText(ptsStr, cx2, barTop + bh + 4)
         if (bh >= minBarForLabel) {
           ctx.fillStyle = '#ffffff'; ctx.font = `600 ${Math.max(7, fs - 1)}px system-ui`
-          ctx.textBaseline = 'bottom'; ctx.fillText(b.symbol.slice(0, 6), cx2, top + bh - 4)
+          ctx.textBaseline = 'bottom'; ctx.fillText(b.symbol.slice(0, 6), cx2, barTop + bh - 4)
         }
-        // % change — just below zero line (top of negative bar)
         ctx.fillStyle = 'rgba(248,113,113,0.85)'; ctx.font = `600 ${Math.max(7, fs - 1)}px system-ui`
         ctx.textBaseline = 'top'; ctx.fillText(pctStr, cx2, z0 + 3)
       }
 
-      hitRef.current.push({ x: bx - 4, w: bW + 8, bar: b })
-    })
+      hitRef.current.push({ x: bx - 4, w: bW + 8, yTop: barTop, yBot: barTop + bh, bar: b })
+    }
+
+    // Draw all gainers (above) then all losers (below) at paired column positions
+    gainers.forEach((b, i) => drawBar(b, i))
+    losers.forEach((b, i)  => drawBar(b, i))
 
     // Y-axis label
     ctx.save(); ctx.translate(12, PAD.top + cH / 2); ctx.rotate(-Math.PI / 2)
     ctx.fillStyle = textMut; ctx.font = '9px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
     ctx.fillText('Index Points', 0, 0); ctx.restore()
-  }, [bars])
+  }, [gainers, losers, totalCols, bars])
 
   function onMove(e: React.MouseEvent<HTMLCanvasElement>) {
     const rect = e.currentTarget.getBoundingClientRect()
-    const px = (e.clientX - rect.left) * (e.currentTarget.offsetWidth / rect.width)
-    const hit = hitRef.current.find(h => px >= h.x && px < h.x + h.w)
+    const px  = (e.clientX - rect.left) * (e.currentTarget.offsetWidth  / rect.width)
+    const py  = (e.clientY - rect.top)  * (e.currentTarget.offsetHeight / rect.height)
+    const hit = hitRef.current.find(h => px >= h.x && px < h.x + h.w && py >= h.yTop && py <= h.yBot)
     if (!hit) { setTip(null); e.currentTarget.style.cursor = 'default'; return }
     e.currentTarget.style.cursor = 'pointer'
     const relX = e.clientX - rect.left
-    const flipLeft = relX > rect.width * 0.6   // flip tooltip left when near right edge
+    const flipLeft = relX > rect.width * 0.6
     setTip({ ...hit.bar, x: relX, y: e.clientY - rect.top - 8, flipLeft })
   }
 
   return (
     <div style={{ position: 'relative' }}>
       <canvas ref={ref} onMouseMove={onMove} onMouseLeave={() => setTip(null)}
-        style={{ width: '100%', height: 320, display: 'block' }} />
+        style={{ width: '100%', height: 400, display: 'block' }} />
       {tip && (
         <div style={{
           position: 'absolute',
@@ -616,9 +626,11 @@ function ContribHistogram({ bars }: { bars: ContribBar[] }) {
             <span style={{ fontWeight: 400, fontSize: 10, color: 'var(--text-muted)', marginLeft: 8 }}>{tip.name}</span>
           </div>
           {[
-            ['Points',  `${tip.pts >= 0 ? '+' : ''}${tip.pts.toFixed(2)}`, tip.pts >= 0 ? '#4ade80' : '#f87171'],
-            ['Change',  `${tip.pct >= 0 ? '+' : ''}${tip.pct.toFixed(2)}%`, tip.pct >= 0 ? '#4ade80' : '#f87171'],
-            ['Sector',  tip.sector, 'var(--text-secondary)'],
+            ['Index Points', `${tip.pts >= 0 ? '+' : ''}${tip.pts.toFixed(2)}`,  tip.pts >= 0 ? '#4ade80' : '#f87171'],
+            ['% Px Chg',     `${tip.pct >= 0 ? '+' : ''}${tip.pct.toFixed(2)}%`, tip.pct >= 0 ? '#4ade80' : '#f87171'],
+            ['Weight',       `${tip.weight.toFixed(2)}%`,                          'var(--text-secondary)'],
+            ['Mkt Cap (000s)', `PKR ${tip.mc.toLocaleString('en-PK')}`,            'var(--text-secondary)'],
+            ['Sector',       tip.sector,                                            'var(--text-muted)'],
           ].map(([l, v, c]) => (
             <div key={l} style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
               <span style={{ color: 'var(--text-muted)', fontSize: 10 }}>{l}</span>
@@ -638,7 +650,6 @@ export default function IndicesPage() {
   const [loading,     setLoading]     = useState(true)
   const [indexKey,    setIndexKey]    = useState('KSE100')
   const [selected,    setSelected]    = useState<string | null>(null)
-  const [topN,        setTopN]        = useState(20)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -714,41 +725,45 @@ export default function IndicesPage() {
     return [...PSX_ALL_SECTORS, ...extra]
   }, [sectors])
 
-  // Top contributors (sorted by absolute points change, show top N)
-  const topContribs = useMemo((): ContribBar[] => {
+  // Top contributors: top 15 gainers + top 15 losers by absolute index point impact
+  const topContribsSplit = useMemo(() => {
     const prevIndexLevel = indexLevels[indexKey]?.prevClose ?? 0
-    // Total prev-close market cap of all index stocks
-    const totalPrevMC = indexStocks.reduce((s, q) => {
-      const pmc = (q.lastClose || 0) > 0 && (q.sharesOut || 0) > 0
-        ? q.lastClose * q.sharesOut : q.mc > 0 ? q.mc : 0
-      return s + pmc
-    }, 0)
+    // Total market cap of all index stocks (using API-provided mc)
+    const totalPrevMC = indexStocks.reduce((s, q) => s + (q.mc > 0 ? q.mc : 0), 0)
 
     return indexStocks
       .filter(q => (q.changePct ?? 0) !== 0)
       .map(q => {
-        const pmc = (q.lastClose || 0) > 0 && (q.sharesOut || 0) > 0
-          ? q.lastClose * q.sharesOut : q.mc > 0 ? q.mc : 0
-        // Index points contribution = weight × prevClose × pctChange/100
+        // Use API-provided market cap directly — same source as reference platform
+        const pmc = q.mc > 0 ? q.mc : 0
+        // Index points contribution = weight × index prevClose × pctChange/100
         const pts = totalPrevMC > 0 && prevIndexLevel > 0
           ? (pmc / totalPrevMC) * prevIndexLevel * ((q.changePct ?? 0) / 100)
           : (q.change ?? 0)
+        const weight = totalPrevMC > 0 ? (pmc / totalPrevMC) * 100 : 0
         return {
           symbol: q.symbol,
           name:   q.name ?? q.symbol,
           pts,
           pct:    q.changePct ?? 0,
           sector: normSector(q.sector ?? ''),
+          weight,
+          mc:     Math.round(pmc / 1000),   // API mc is in PKR → display in 000's
         }
       })
       .sort((a, b) => Math.abs(b.pts) - Math.abs(a.pts))
-      .slice(0, topN)
-      .sort((a, b) => {
-        if (a.pts >= 0 && b.pts >= 0) return b.pts - a.pts   // positives: largest first (left)
-        if (a.pts < 0  && b.pts < 0)  return a.pts - b.pts   // negatives: most negative first (left of negatives)
-        return b.pts - a.pts                                   // positives before negatives
-      })
-  }, [indexStocks, topN, indexLevels, indexKey])
+      .reduce<{ g: ContribBar[]; l: ContribBar[] }>((acc, b) => {
+        if (b.pts >= 0 && acc.g.length < 15) acc.g.push(b)
+        if (b.pts <  0 && acc.l.length < 15) acc.l.push(b)
+        return acc
+      }, { g: [], l: [] })
+  }, [indexStocks, indexLevels, indexKey])
+
+  // Flatten for histogram — top 15 gainers + top 15 losers
+  const topContribs = useMemo(
+    () => [...(topContribsSplit?.g ?? []), ...(topContribsSplit?.l ?? [])],
+    [topContribsSplit]
+  )
 
   // Index-level KPIs
   const kse = useMemo(() => {
@@ -993,22 +1008,6 @@ export default function IndicesPage() {
                 <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
                   Stocks ranked by absolute index point impact · hover for detail
                 </p>
-              </div>
-              <div style={{ display: 'flex', gap: 6 }}>
-                {[10, 20, 30].map(n => (
-                  <button
-                    key={n}
-                    onClick={() => setTopN(n)}
-                    style={{
-                      padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600,
-                      border: '1px solid var(--bg-border)', cursor: 'pointer',
-                      background: topN === n ? 'linear-gradient(135deg,#FEA500,#986300)' : 'var(--bg-card)',
-                      color: topN === n ? '#fff' : 'var(--text-secondary)',
-                    }}
-                  >
-                    Top {n}
-                  </button>
-                ))}
               </div>
             </div>
             <ContribHistogram bars={topContribs} />
