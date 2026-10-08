@@ -7,8 +7,8 @@ import { notFound }        from 'next/navigation'
 import { Suspense }         from 'react'
 import Link                 from 'next/link'
 import { ArrowLeft }        from 'lucide-react'
-import WatchlistButton      from '@/components/market/WatchlistButton'
-import StockDetailClient    from '@/components/stock/StockDetailClient'
+import WatchlistButton   from '@/components/market/WatchlistButton'
+import StockDetailClient from '@/components/stock/StockDetailClient'
 
 type Params = { symbol: string }
 

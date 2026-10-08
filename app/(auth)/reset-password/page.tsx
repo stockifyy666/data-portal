@@ -20,6 +20,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Eye, EyeOff, CheckCircle, AlertCircle } from 'lucide-react'
+import toast from 'react-hot-toast'
 
 export default function ResetPasswordPage() {
   const supabase = createClient()
@@ -58,7 +59,7 @@ export default function ResetPasswordPage() {
       const { error: updateError } = await supabase.auth.updateUser({ password })
       if (updateError) { setError(updateError.message); return }
       setDone(true)
-      // Sign out all other sessions, then redirect to login after 3s
+      toast.success('Password updated — redirecting to login…')
       await supabase.auth.signOut({ scope: 'others' })
       setTimeout(() => router.replace('/login'), 3000)
     } catch (err) {

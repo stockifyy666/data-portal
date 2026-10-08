@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { ArrowLeft, Mail, CheckCircle } from 'lucide-react'
+import toast from 'react-hot-toast'
 
 export default function ForgotPasswordPage() {
   const supabase = createClient()
@@ -21,6 +22,7 @@ export default function ForgotPasswordPage() {
       const { error: authError } = await supabase.auth.resetPasswordForEmail(email, { redirectTo })
       if (authError) { setError(authError.message); return }
       setSent(true)
+      toast.success('Reset link sent — check your inbox')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong.')
     } finally {

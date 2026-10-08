@@ -42,11 +42,11 @@ const nextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              isDev ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'" : "script-src 'self' 'unsafe-inline'",
+              isDev ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:" : "script-src 'self' 'unsafe-inline' blob:",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com",
               "img-src 'self' data: blob: https://csapis.com https://*.supabase.co https://i.brecorder.com https://*.brecorder.com https://*.dawn.com https://arynews.tv https://*.arynews.tv https://*.geo.tv https://*.tribune.com.pk",
-              "connect-src 'self' https://*.supabase.co https://csapis.com wss://*.supabase.co",
+              "connect-src 'self' https://*.supabase.co https://csapis.com wss://*.supabase.co https://*.ingest.sentry.io https://*.ingest.us.sentry.io",
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",

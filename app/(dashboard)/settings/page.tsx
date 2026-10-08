@@ -15,6 +15,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import toast from 'react-hot-toast'
 import {
   User, Mail, Shield, Bell, Palette, Link2, LogOut,
   ChevronRight, Check, Moon, Sun, Monitor, AlertTriangle,
@@ -160,7 +161,6 @@ export default function SettingsPage() {
   const [fullName,   setFullName]   = useState('')
   const [username,   setUsername]   = useState('')
   const [saving,     setSaving]     = useState(false)
-  const [saveMsg,    setSaveMsg]    = useState<{ ok: boolean; text: string } | null>(null)
 
   // Delete modal
   const [showDelete, setShowDelete] = useState(false)
@@ -207,12 +207,11 @@ export default function SettingsPage() {
       .eq('id', user.id)
     setSaving(false)
     if (error) {
-      setSaveMsg({ ok: false, text: error.message })
+      toast.error(error.message)
     } else {
       setProfile((p: any) => ({ ...p, full_name: trimName, username: trimUser }))
       setUsername(trimUser)
-      setSaveMsg({ ok: true, text: 'Profile saved.' })
-      setTimeout(() => setSaveMsg(null), 3000)
+      toast.success('Profile saved.')
     }
   }
 
@@ -220,13 +219,11 @@ export default function SettingsPage() {
     if (!user) return
     setDeleting(true)
     try {
-      // Delete account data first while session is still valid
       const res = await fetch('/api/auth/delete-account', { method: 'DELETE' })
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
-        console.error('[delete account]', body)
+        toast.error(body?.error ?? 'Failed to delete account.')
       }
-      // Sign out after deletion completes
       await supabase.auth.signOut()
     } catch { /* best effort */ }
     router.push('/login')
@@ -234,6 +231,7 @@ export default function SettingsPage() {
 
   async function handleSignOut() {
     setSigningOut(true)
+    toast('Signing out…', { icon: '👋' })
     await supabase.auth.signOut()
     router.push('/login')
   }
@@ -346,16 +344,6 @@ export default function SettingsPage() {
         </div>
 
         {/* Save button */}
-        {saveMsg && (
-          <div className="text-[11px] px-3 py-2 rounded-lg"
-               style={{
-                 backgroundColor: saveMsg.ok ? '#22c55e18' : '#ef444418',
-                 color: saveMsg.ok ? '#22c55e' : '#ef4444',
-                 border: `1px solid ${saveMsg.ok ? '#22c55e30' : '#ef444430'}`,
-               }}>
-            {saveMsg.text}
-          </div>
-        )}
         <button
           onClick={handleSaveProfile}
           disabled={!profileDirty || saving}

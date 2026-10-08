@@ -4,10 +4,10 @@
 // FILE: components/stock/StockDetailClient.tsx
 // PURPOSE: Stock detail page orchestrator for a single stock (e.g. /stocks/ENGRO).
 //          Manages all tab state and data fetching; delegates rendering to:
-//          - StockChartComponents  â†' MiniChart, TradingViewWidget, IndexVsStockChart
-//          - StockFundamentalsView â†' FundamentalsView (thematic metric cards + modal)
-//          - StockShareholdersView â†' ShareholdersView (progress bar breakdown)
-//          - StockStatementTable   â†' StatementTable (income/balance/cashflow)
+//          - StockChartComponents  ->€ ' MiniChart, TradingViewWidget, IndexVsStockChart
+//          - StockFundamentalsView ->€ ' FundamentalsView (thematic metric cards + modal)
+//          - StockShareholdersView ->€ ' ShareholdersView (progress bar breakdown)
+//          - StockStatementTable   ->€ ' StatementTable (income/balance/cashflow)
 //
 //          All market data fetched via cachedFetch (browser in-memory cache, 5min TTL).
 //          Search bar at top uses /api/market/quotes to power stock search.
@@ -29,43 +29,13 @@ import { formatPrice, formatChange, formatPercent, formatVolume } from '@/lib/ut
 import type { StockQuote } from '@/types/market'
 import { COMPANY_BRANDS } from '@/data/company-brands'
 import KMIBadge, { isKMI } from '@/components/ui/KMIBadge'
+import type { Overview, Candle, StatementData, ProfileData, NewsItem, Announcement } from './stock-detail-types'
+import { SectionHeading, LoadingRows } from './stock-detail-helpers'
+import { StockNewsTab } from './tabs/StockNewsTab'
+import { StockAnnouncementsTab } from './tabs/StockAnnouncementsTab'
+import { StockReportTab } from './tabs/StockReportTab'
+import { StockCompareTab } from './tabs/StockCompareTab'
 
-/* â"€â"€ Types â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */
-type Overview = Record<string, number | string>
-
-type Candle = {
-  date: string; open: number; high: number
-  low: number; close: number; volume: number
-}
-
-type StatementData = {
-  periods:  Array<{ year: string; quarter?: string; period_end: string }>
-  fields:   Array<{ label: string; values: (number | null)[]; is_heading?: boolean }>
-}
-
-type ProfileData = {
-  profile: { data: {
-    name: string; symbol: string; sector_name: string; description: string
-    people:   Array<{ position: string; name: string }>
-    auditors: string; offices: string[]
-  }}
-  org: { data: {
-    nm: string; per: Array<{ nm: string; des: string; pht: string; ed: string | null }>
-  }} | null
-}
-
-type NewsItem = {
-  title: string; date: string; description: string
-  link: string; image: string; source: string
-}
-
-type Announcement = {
-  id: number; title: string; date: string; announcementType: string
-  dividend: number | null; bonus: number | null; exDate: string | null
-  pdf_id: string | null; name: string
-}
-
-/* â"€â"€ Tabs â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */
 const TABS = [
   { id: 'overview',      label: 'Overview',        Icon: BarChart2  },
   { id: 'chart',         label: 'Chart',            Icon: TrendingUp },
@@ -81,7 +51,7 @@ const TABS = [
 
 type TabId = typeof TABS[number]['id']
 
-/* â"€â"€ Helpers â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */
+/* -"â‚¬-"â‚¬ Helpers -"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬ */
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div>
@@ -95,35 +65,13 @@ function Stat({ label, value }: { label: string; value: string }) {
   )
 }
 
-function SectionHeading({ children }: { children: React.ReactNode }) {
-  return (
-    <h3 className="text-xs font-bold uppercase tracking-wider mb-3"
-        style={{ color: 'var(--text-muted)' }}>
-      {children}
-    </h3>
-  )
-}
-
-function LoadingRows({ n = 6 }: { n?: number }) {
-  return (
-    <div className="space-y-3">
-      {Array.from({ length: n }).map((_, i) => (
-        <div key={i} className="flex gap-4">
-          <div className="h-3 w-40 rounded animate-pulse" style={{ backgroundColor: 'var(--bg-hover)' }} />
-          <div className="h-3 flex-1 rounded animate-pulse" style={{ backgroundColor: 'var(--bg-hover)' }} />
-        </div>
-      ))}
-    </div>
-  )
-}
-
 function fmtNum(v: number | null | undefined, decimals = 2): string {
   if (v == null || isNaN(v)) return '-'
   // Values that are ratios stored as decimals (< 10 and not currency) get %
   return v.toFixed(decimals)
 }
 
-/* â"€â"€ Main Component â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */
+/* -"â‚¬-"â‚¬ Main Component -"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬-"â‚¬ */
 export default function StockDetailClient({
   symbol,
   overview: overviewProp,
@@ -178,25 +126,6 @@ export default function StockDetailClient({
 
   const [peers,       setPeers]      = useState<StockQuote[]>([])
   const [peersLoad,   setPeersLoad]  = useState(false)
-
-  // Compare tab state
-  const [cmpSearch,        setCmpSearch]        = useState('')
-  const [cmpDropOpen,      setCmpDropOpen]      = useState(false)
-  const [cmpSelected,      setCmpSelected]      = useState<string[]>([])
-  const [cmpResults,       setCmpResults]       = useState<string[] | null>(null)
-  const [radarHover,       setRadarHover]       = useState<number | null>(null)
-  const [cmpMetricSelected,setCmpMetricSelected]= useState<string[]>([])   // multi-select
-  const [cmpMetricDropOpen,setCmpMetricDropOpen]= useState(false)
-  const [cmpMetricCustom,  setCmpMetricCustom]  = useState('')
-  const [cmpMetricLoading, setCmpMetricLoading] = useState(false)
-  // nested: metricLabel â†' symbol â†' yearly rows
-  const [cmpMetricData,    setCmpMetricData]    = useState<Record<string,Record<string,{year:string;value:number}[]>>>({})
-
-  function cmpToggle(sym: string) {
-    setCmpSelected(prev =>
-      prev.includes(sym) ? prev.filter(s => s !== sym) : prev.length < 3 ? [...prev, sym] : prev
-    )
-  }
 
   type PeerFunds = { roe: number|null; mktCap: number|null; de: number|null; pb: number|null }
   const [peerFunds, setPeerFunds] = useState<Record<string, PeerFunds>>({})
@@ -274,7 +203,7 @@ export default function StockDetailClient({
       const res  = await fetch(url)
       const json = await res.json()
       const raw  = Array.isArray(json.data) ? json.data : []
-      // intraday: reverse chronological â†' chronological; weekly: last 35 days (~5 weeks)
+      // intraday: reverse chronological ->€ ' chronological; weekly: last 35 days (~5 weeks)
       setCandles(chartMode === 'intraday' ? [...raw].reverse() : raw.slice(-35))
     } catch { setCandles([]) }
     setChartLoad(false)
@@ -438,7 +367,7 @@ export default function StockDetailClient({
   return (
     <div className="space-y-5 animate-data">
 
-      {/* â"€â"€ Stock Search â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */}
+      {/* ->"�‚¬->"�‚¬ Stock Search ->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬ */}
       <div ref={searchRef} style={{ position: 'relative', zIndex: 40 }}>
         <div className="flex items-center gap-2 px-3 rounded-xl"
           style={{ backgroundColor: 'var(--bg-hover)', border: '1px solid var(--bg-border)' }}>
@@ -500,7 +429,7 @@ export default function StockDetailClient({
         )}
       </div>
 
-      {/* â"€â"€ Tabs â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */}
+      {/* ->"�‚¬->"�‚¬ Tabs ->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬ */}
       <div className="overflow-x-auto hide-scrollbar -mx-1">
         <div className="flex gap-0.5 p-1 rounded-xl w-max min-w-full"
              style={{ backgroundColor: 'var(--bg-hover)' }}>
@@ -521,7 +450,7 @@ export default function StockDetailClient({
         </div>
       </div>
 
-      {/* â•â• OVERVIEW â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+      {/* -> OVERVIEW -> */}
       {tab === 'overview' && (
         overviewLoad ? (
           <div className="card space-y-4">
@@ -560,7 +489,7 @@ export default function StockDetailClient({
                 <Stat label="52W Low"   value={formatPrice(Number(overview.low52))} />
               </div>
             </div>
-            {/* â"€â"€ Score Cards â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */}
+            {/* ->"�‚¬->"�‚¬ Score Cards ->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬ */}
             {(() => {
               if (!snapFunds || !overview) return null
 
@@ -578,20 +507,20 @@ export default function StockDetailClient({
               const high52   = Number(overview.high52) || price
               const low52    = Number(overview.low52) || price
 
-              // â"€â"€ Intrinsic Score (0-100) â"€â"€
-              // Benjamin Graham formula: IV = âˆš(22.5 x EPS x BVPS), normalised
+              // ->"â‚¬->"â‚¬ Intrinsic Score (0-100) ->"â‚¬->"â‚¬
+              // Benjamin Graham formula: IV = ->†Å¡(22.5 x EPS x BVPS), normalised
               const grahamIV   = eps > 0 && bvps > 0 ? Math.sqrt(22.5 * eps * bvps) : 0
               const ivRatio    = grahamIV > 0 && price > 0 ? grahamIV / price : 0
               const intrinsicScore = grahamIV > 0
-                ? Math.min(100, Math.round(Math.min(ivRatio, 2) * 50))  // 100 when IV â‰¥ 2x price
+                ? Math.min(100, Math.round(Math.min(ivRatio, 2) * 50))  // 100 when IV ->€°-> 2x price
                 : null
 
-              // â"€â"€ Margin of Safety (%) â"€â"€
+              // ->"â‚¬->"â‚¬ Margin of Safety (%) ->"â‚¬->"â‚¬
               const mos = grahamIV > 0 && price > 0
                 ? Math.round(((grahamIV - price) / grahamIV) * 100)
                 : null
 
-              // â"€â"€ Stockifyy Score (0-100) - multi-factor â"€â"€
+              // ->"â‚¬->"â‚¬ Stockifyy Score (0-100) - multi-factor ->"â‚¬->"â‚¬
               let ss = 0, ssMax = 0
               // Valuation (25pts): P/E < 15 ideal
               if (pe > 0) {
@@ -725,7 +654,7 @@ export default function StockDetailClient({
                   {grahamWarning && (
                     <div className="mt-3 flex items-start gap-2 rounded-xl px-3 py-2.5 text-[11px]"
                       style={{ backgroundColor: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.25)', color: 'var(--text-secondary)' }}>
-                      <span className="shrink-0 mt-0.5">âš ï¸</span>
+                      <span className="shrink-0 mt-0.5 text-amber-500">&#9888;</span>
                       {grahamWarning}
                     </div>
                   )}
@@ -737,27 +666,27 @@ export default function StockDetailClient({
               )
             })()}
 
-            {/* â"€â"€ Company Snapshot â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */}
+            {/* ->"�‚¬->"�‚¬ Company Snapshot ->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬ */}
             <div className="card">
               <SectionHeading>Company Snapshot</SectionHeading>
 
               {(() => {
-                // â"€â"€ field extractor â"€â"€
+                // ->"â‚¬->"â‚¬ field extractor ->"â‚¬->"â‚¬
                 function pick(pattern: RegExp): number | null {
                   if (!snapFunds) return null
                   return snapFunds.fields.find(f => !f.is_heading && pattern.test(f.label.trim()))?.values[0] ?? null
                 }
 
-                // â"€â"€ formatter â"€â"€
+                // ->"â‚¬->"â‚¬ formatter ->"â‚¬->"â‚¬
                 function fmtSnap(key: string, raw: number | null): string {
                   if (raw == null || isNaN(raw)) return '-'
                   switch (key) {
-                    // Percentage fields (stored as decimal 0â€"1 in fundamentals)
+                    // Percentage fields (stored as decimal 0->‚¬"1 in fundamentals)
                     case 'divYield':
                     case 'netMargin':
                       return `${(raw * 100).toFixed(2)}%`
                     case 'freeFloatPct':
-                      // May be stored as 0â€"100 or 0â€"1; cap heuristic
+                      // May be stored as 0->‚¬"100 or 0->‚¬"1; cap heuristic
                       return `${raw > 1 ? raw.toFixed(2) : (raw * 100).toFixed(2)}%`
                     // Ratio / per-share fields - display as-is
                     case 'eps':
@@ -799,7 +728,7 @@ export default function StockDetailClient({
                   peg:         pick(/peg/i),
                 }
 
-                // â"€â"€ Fundamentals rows (from snapshot fetch) â"€â"€
+                // ->"â‚¬->"â‚¬ Fundamentals rows (from snapshot fetch) ->"â‚¬->"â‚¬
                 const fundRows: { label: string; key: keyof typeof snap; value: string }[] = [
                   { label: 'Market Cap',         key: 'mktCap',       value: fmtSnap('mktCap',       snap.mktCap)       },
                   { label: 'Shares Outstanding', key: 'sharesOut',    value: fmtSnap('sharesOut',    snap.sharesOut)    },
@@ -807,7 +736,7 @@ export default function StockDetailClient({
                   { label: 'Weekly Avg Volume',  key: 'weeklyVol',    value: fmtSnap('weeklyVol',    snap.weeklyVol)    },
                   { label: 'Free Float %',       key: 'freeFloatPct', value: fmtSnap('freeFloatPct', snap.freeFloatPct) },
                   { label: 'Dividend Yield',     key: 'divYield',     value: fmtSnap('divYield',     snap.divYield)     },
-                  { label: 'Earnings Per Share', key: 'eps',          value: fmtSnap('eps',          snap.eps ?? (overview.eps ? Number(overview.eps) : null)) },
+                  { label: 'Earnings Per Share', key: 'eps',          value: fmtSnap('eps',          snap.eps ?? (overview?.eps ? Number(overview.eps) : null)) },
                   { label: 'Net Income Margin',  key: 'netMargin',    value: fmtSnap('netMargin',    snap.netMargin)    },
                   { label: 'Price to Book',      key: 'pb',           value: fmtSnap('pb',           snap.pb)           },
                   { label: 'Price to Earnings',  key: 'pe',           value: fmtSnap('pe',           snap.pe)           },
@@ -852,7 +781,7 @@ export default function StockDetailClient({
               })()}
             </div>
 
-            {/* â"€â"€ Index vs Stock chart â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */}
+            {/* ->"�‚¬->"�‚¬ Index vs Stock chart ->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬ */}
             <div className="card">
               <SectionHeading>Index VS Stocks</SectionHeading>
               {vsLoad ? (
@@ -863,7 +792,7 @@ export default function StockDetailClient({
               }
             </div>
 
-            {/* â"€â"€ Pros & Cons â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */}
+            {/* ->"�‚¬->"�‚¬ Pros & Cons ->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬ */}
             {snapFunds && overview && (() => {
               function pickF(pattern: RegExp): number | null {
                 return snapFunds!.fields.find(f => !f.is_heading && pattern.test(f.label.trim()))?.values[0] ?? null
@@ -938,7 +867,7 @@ export default function StockDetailClient({
                     {/* Pros */}
                     <div className="rounded-xl p-4 space-y-2" style={{ backgroundColor: 'rgba(22,163,74,0.06)', border: '1px solid rgba(22,163,74,0.2)' }}>
                       <p className="text-[10px] font-bold uppercase tracking-wider mb-3" style={{ color: '#16a34a' }}>
-                        {'✓'} Strengths
+                        Strengths
                       </p>
                       {pros.length > 0 ? pros.map((p, i) => (
                         <div key={i} className="flex gap-2 items-start">
@@ -952,7 +881,7 @@ export default function StockDetailClient({
                     {/* Cons */}
                     <div className="rounded-xl p-4 space-y-2" style={{ backgroundColor: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.2)' }}>
                       <p className="text-[10px] font-bold uppercase tracking-wider mb-3" style={{ color: '#dc2626' }}>
-                        {'✗'} Concerns
+                        Concerns
                       </p>
                       {cons.length > 0 ? cons.map((c, i) => (
                         <div key={i} className="flex gap-2 items-start">
@@ -971,7 +900,7 @@ export default function StockDetailClient({
               )
             })()}
 
-            {/* â"€â"€ About / Brands â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */}
+            {/* ->"�‚¬->"�‚¬ About / Brands ->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬ */}
             <div className="card space-y-4">
               <SectionHeading>About the Company</SectionHeading>
 
@@ -1034,7 +963,7 @@ export default function StockDetailClient({
               )}
             </div>
 
-            {/* â"€â"€ Brands & Subsidiaries â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */}
+            {/* ->"�‚¬->"�‚¬ Brands & Subsidiaries ->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬->"�‚¬ */}
             {(() => {
               const brands = COMPANY_BRANDS[symbol] ?? []
               return (
@@ -1061,7 +990,7 @@ export default function StockDetailClient({
                           style={{ backgroundColor: 'var(--bg-hover)' }}>
                           <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 text-xl"
                             style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--bg-border)' }}>
-                            {brand.logo ?? 'ðŸ¢'}
+                            {brand.logo ?? '🏢'}
                           </div>
                           <div className="min-w-0">
                             <p className="text-xs font-bold leading-tight" style={{ color: 'var(--text-primary)' }}>
@@ -1085,7 +1014,7 @@ export default function StockDetailClient({
         )
       )}
 
-      {/* â•â• CHART â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+      {/* -> CHART -> */}
       {tab === 'chart' && (
         <div className="card space-y-4">
           <div className="flex items-center gap-2 flex-wrap">
@@ -1121,8 +1050,8 @@ export default function StockDetailClient({
         </div>
       )}
 
-      {/* â•â• INDEX VS STOCK â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
-      {/* â•â• SECTOR PEERS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+      {/* -> INDEX VS STOCK -> */}
+      {/* -> SECTOR PEERS -> */}
       {tab === 'peers' && (
         <div className="card space-y-3">
           <SectionHeading>Sector Peer Comparison</SectionHeading>
@@ -1226,697 +1155,19 @@ export default function StockDetailClient({
         </div>
       )}
 
-      {/* â•â• COMPARE SECTOR â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
-      {tab === 'compare' && (() => {
-        // Pool: self + all peers (peers loaded same time as 'peers' tab)
-        const selfQ    = allQuotes.find(q => q.symbol === symbol)
-        const allPool  = [
-          { symbol, name: String(overview?.name ?? symbol), q: selfQ },
-          ...peers.map(p => ({ symbol: p.symbol, name: p.name, q: p as StockQuote })),
-        ]
+      {/* -> COMPARE SECTOR -> */}
+      {tab === 'compare' && (
+        <StockCompareTab
+          symbol={symbol}
+          overview={overview}
+          peers={peers}
+          peersLoad={peersLoad}
+          allQuotes={allQuotes}
+        />
+      )}
 
-        const searchLow = cmpSearch.trim().toLowerCase()
-        const dropItems = allPool.filter(p =>
-          p.symbol !== symbol &&   // exclude self from dropdown (always included)
-          (searchLow === '' || p.symbol.toLowerCase().includes(searchLow) || p.name.toLowerCase().includes(searchLow))
-        )
 
-        type CmpStock = {
-          symbol: string; name: string; color: string
-          price: number; volume: number; eps: number; pe: number
-          dps: number; divY: number; mc: number; roe: number; pb: number
-        }
-        const COLORS = ['#FEA500','#3b82f6','#16a34a','#a855f7']
-
-        function buildStock(sym: string, color: string): CmpStock {
-          const q    = allPool.find(p => p.symbol === sym)?.q
-          const eps  = sym === symbol ? Number(overview?.eps ?? q?.eps ?? 0) : (q?.eps ?? 0)
-          const price= sym === symbol ? Number(overview?.price ?? q?.price ?? 0) : (q?.price ?? 0)
-          const pe   = eps > 0 ? price / eps : 0
-          const dps  = q?.dps ?? 0
-          const divY = dps > 0 && price > 0 ? (dps / price) * 100 : 0
-          return {
-            symbol: sym,
-            name: allPool.find(p => p.symbol === sym)?.name ?? sym,
-            color,
-            price, volume: q?.volume ?? 0, eps, pe, dps, divY,
-            mc: q?.mc ?? 0, roe: 0, pb: 0,
-          }
-        }
-
-        const compareStocks: CmpStock[] = cmpResults
-          ? [buildStock(symbol, COLORS[0]), ...cmpResults.map((s, i) => buildStock(s, COLORS[i+1]))]
-          : []
-
-        // All selected metrics (presets + optional custom entry)
-        const customTrimmed = cmpMetricCustom.trim()
-        const effectiveMetrics: string[] = [
-          ...cmpMetricSelected,
-          ...(customTrimmed && !cmpMetricSelected.includes(customTrimmed) ? [customTrimmed] : []),
-        ]
-        const hasCustomMetric = effectiveMetrics.length > 0
-
-        // Radar axes (only used when no custom metric selected)
-        type AxisKey = keyof Pick<CmpStock,'volume'|'eps'|'pe'|'dps'|'mc'|'roe'|'pb'>
-        const AXES: { label: string; key: AxisKey }[] = [
-          { label: 'Volume',  key: 'volume' },
-          { label: 'EPS',     key: 'eps'    },
-          { label: 'P/E',     key: 'pe'     },
-          { label: 'DPS',     key: 'dps'    },
-          { label: 'Mkt Cap', key: 'mc'     },
-          { label: 'ROE',     key: 'roe'    },
-          { label: 'P/B',     key: 'pb'     },
-        ]
-        const CX=170, CY=170, R=120, N=AXES.length
-        function axPt(ai: number, r: number) {
-          const a = (Math.PI*2*ai)/N - Math.PI/2
-          return { x: CX+r*Math.cos(a), y: CY+r*Math.sin(a) }
-        }
-        function normVals(key: AxisKey) {
-          const vals = compareStocks.map(s => Math.max(0, s[key] as number))
-          const max  = Math.max(...vals, 0.0001)
-          return vals.map(v => v/max)
-        }
-        const normalized = AXES.map(a => normVals(a.key))
-        function polygon(si: number) {
-          return AXES.map((_,ai) => { const v=normalized[ai][si]; const p=axPt(ai,v*R); return `${p.x},${p.y}` }).join(' ')
-        }
-        function fmtMC(mc: number) {
-          if (!mc) return '-'
-          if (mc>=1e12) return `${(mc/1e12).toFixed(2)}T`
-          if (mc>=1e9)  return `${(mc/1e9).toFixed(2)}B`
-          if (mc>=1e6)  return `${(mc/1e6).toFixed(1)}M`
-          return mc.toFixed(0)
-        }
-
-        return (
-          <div className="space-y-4">
-            {/* Selection card */}
-            <div className="card space-y-4">
-              <div>
-                <SectionHeading>Compare Sector</SectionHeading>
-                <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                  {symbol} is always included · select up to 3 sector peers to compare
-                </p>
-              </div>
-
-              {/* Always-selected chip */}
-              <div className="flex flex-wrap gap-2 items-center">
-                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold"
-                  style={{ background:'linear-gradient(135deg,#FEA500,#986300)', color:'white' }}>
-                  {symbol}
-                  <span className="text-[9px] opacity-80">You</span>
-                </div>
-                {cmpSelected.map((sym, idx) => (
-                  <div key={sym} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold"
-                    style={{ backgroundColor:`${COLORS[idx+1]}20`, color:COLORS[idx+1], border:`1px solid ${COLORS[idx+1]}40` }}>
-                    <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor:COLORS[idx+1] }} />
-                    {sym}
-                    <button onClick={() => setCmpSelected(p => p.filter(s=>s!==sym))}
-                      className="ml-0.5 opacity-60 hover:opacity-100 font-bold">x</button>
-                  </div>
-                ))}
-                {cmpSelected.length < 3 && (
-                  <span className="text-[11px]" style={{ color:'var(--text-muted)' }}>
-                    {3 - cmpSelected.length} more slot{3-cmpSelected.length!==1?'s':''}
-                  </span>
-                )}
-              </div>
-
-              {/* Search dropdown */}
-              <div className="relative">
-                {peersLoad ? (
-                  <div className="h-9 rounded-lg animate-pulse" style={{ backgroundColor:'var(--bg-hover)' }} />
-                ) : (
-                  <>
-                    <div className="relative">
-                      <svg className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" width="13" height="13" viewBox="0 0 13 13" fill="none">
-                        <circle cx="5.5" cy="5.5" r="4" stroke="var(--text-muted)" strokeWidth="1.5"/>
-                        <path d="M9 9L11.5 11.5" stroke="var(--text-muted)" strokeWidth="1.5" strokeLinecap="round"/>
-                      </svg>
-                      <input
-                        type="text"
-                        value={cmpSearch}
-                        onChange={e => { setCmpSearch(e.target.value); setCmpDropOpen(true) }}
-                        onFocus={() => setCmpDropOpen(true)}
-                        placeholder="Search companies in this sector..."
-                        className="w-full pl-9 pr-4 py-2 rounded-lg border text-xs focus:outline-none"
-                        style={{ backgroundColor:'var(--bg-hover)', borderColor:'var(--bg-border)', color:'var(--text-primary)' }}
-                      />
-                      {cmpSearch && (
-                        <button onClick={() => { setCmpSearch(''); setCmpDropOpen(false) }}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-xs opacity-50 hover:opacity-100"
-                          style={{ color:'var(--text-muted)' }}>{'✕'}</button>
-                      )}
-                    </div>
-
-                    {cmpDropOpen && (
-                      <>
-                        <div className="fixed inset-0 z-10" onMouseDown={() => setCmpDropOpen(false)} />
-                        <div className="absolute z-20 top-full mt-1 w-full rounded-xl overflow-hidden shadow-xl max-h-56 overflow-y-auto"
-                          style={{ backgroundColor:'var(--bg-card)', border:'1px solid var(--bg-border)' }}>
-                          {dropItems.length === 0 ? (
-                            <p className="px-4 py-3 text-xs" style={{ color:'var(--text-muted)' }}>No matches</p>
-                          ) : dropItems.map(item => {
-                            const isSel = cmpSelected.includes(item.symbol)
-                            const isFull = !isSel && cmpSelected.length >= 3
-                            const selIdx = cmpSelected.indexOf(item.symbol)
-                            return (
-                              <button key={item.symbol}
-                                disabled={isFull}
-                                onMouseDown={e => e.preventDefault()}
-                                onClick={() => { cmpToggle(item.symbol); setCmpSearch(''); setCmpDropOpen(false) }}
-                                className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors"
-                                style={{
-                                  backgroundColor: isSel ? 'rgba(254,165,0,0.06)' : 'transparent',
-                                  opacity: isFull ? 0.4 : 1,
-                                  cursor: isFull ? 'not-allowed' : 'pointer',
-                                }}
-                                onMouseEnter={e => !isFull && ((e.currentTarget as HTMLElement).style.backgroundColor = 'var(--bg-hover)')}
-                                onMouseLeave={e => (e.currentTarget as HTMLElement).style.backgroundColor = isSel ? 'rgba(254,165,0,0.06)' : 'transparent'}
-                              >
-                                <div className="w-5 h-5 rounded border flex items-center justify-center shrink-0 transition-colors"
-                                  style={{
-                                    borderColor: isSel ? COLORS[selIdx+1] : 'var(--bg-border)',
-                                    backgroundColor: isSel ? COLORS[selIdx+1] : 'transparent',
-                                  }}>
-                                  {isSel && <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1.5 4L3 5.5L6.5 2" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-                                </div>
-                                <div className="flex items-center gap-2 flex-1 min-w-0">
-                                  <div className="w-6 h-6 rounded flex items-center justify-center text-white text-[9px] font-bold shrink-0"
-                                    style={{ background:'linear-gradient(135deg,#FEA500,#986300)' }}>
-                                    {item.symbol.charAt(0)}
-                                  </div>
-                                  <div className="min-w-0">
-                                    <p className="text-xs font-bold" style={{ color:'var(--text-primary)' }}>{item.symbol}</p>
-                                    <p className="text-[10px] truncate" style={{ color:'var(--text-muted)' }}>{item.name}</p>
-                                  </div>
-                                </div>
-                                {item.q && (
-                                  <span className="text-[10px] font-semibold tabular-nums shrink-0" style={{ color:'var(--text-secondary)' }}>
-                                    Rs {item.q.price.toFixed(2)}
-                                  </span>
-                                )}
-                              </button>
-                            )
-                          })}
-                        </div>
-                      </>
-                    )}
-                  </>
-                )}
-              </div>
-
-              {/* Metric selector - dropdown with checkboxes */}
-              {(() => {
-                const METRIC_GROUPS = [
-                  { label: 'General',      items: ['Revenue','Net Revenue','Gross Profit','Operating Profit','EBITDA','Net Profit','Total Assets','Total Equity','Total Debt','Cash & Equivalents'] },
-                  { label: 'Banking',      items: ['Advances','Deposits','Net Interest Income','Investments','Markup Income','NPL'] },
-                  { label: 'Cement / Mfg',items: ['Cost of Sales','Depreciation','Capital Expenditure','Inventory'] },
-                  { label: 'Energy',       items: ['Other Income','Finance Cost','Tax Expense','Retained Earnings'] },
-                ]
-                const toggle = (m: string) => {
-                  setCmpMetricSelected(prev =>
-                    prev.includes(m) ? prev.filter(x => x !== m) : [...prev, m]
-                  )
-                  setCmpMetricData({})
-                  setCmpResults(null)
-                }
-                const addCustom = () => {
-                  const t = cmpMetricCustom.trim()
-                  if (t && !cmpMetricSelected.includes(t)) {
-                    setCmpMetricSelected(prev => [...prev, t])
-                    setCmpMetricCustom('')
-                    setCmpMetricData({})
-                    setCmpResults(null)
-                  }
-                }
-                return (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-bold" style={{ color:'var(--text-secondary)' }}>
-                        Compare by Metrics
-                        <span className="font-normal opacity-60 ml-1">(optional - replaces default)</span>
-                      </span>
-                      {cmpMetricSelected.length > 0 && (
-                        <button onMouseDown={e => e.preventDefault()}
-                          onClick={() => { setCmpMetricSelected([]); setCmpMetricCustom(''); setCmpMetricData({}); setCmpResults(null) }}
-                          className="text-[10px] opacity-50 hover:opacity-100" style={{ color:'var(--text-muted)' }}>
-                          Clear all
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Dropdown trigger */}
-                    <div className="relative">
-                      <button
-                        onClick={() => setCmpMetricDropOpen(p => !p)}
-                        className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg border text-xs font-medium transition-colors"
-                        style={{
-                          backgroundColor: 'var(--bg-hover)',
-                          borderColor: cmpMetricSelected.length > 0 ? '#FEA500' : 'var(--bg-border)',
-                          color: 'var(--text-primary)',
-                        }}>
-                        <span style={{ color: cmpMetricSelected.length === 0 ? 'var(--text-muted)' : 'var(--text-primary)' }}>
-                          {cmpMetricSelected.length === 0
-                            ? 'Select metrics to compare...'
-                            : `${cmpMetricSelected.length} metric${cmpMetricSelected.length > 1 ? 's' : ''} selected`}
-                        </span>
-                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"
-                          style={{ transform: cmpMetricDropOpen ? 'rotate(180deg)' : 'none', transition:'transform 0.15s', flexShrink:0 }}>
-                          <path d="M2 4L6 8L10 4" stroke="var(--text-muted)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      </button>
-
-                      {cmpMetricDropOpen && (
-                        <>
-                          <div className="fixed inset-0 z-10" onMouseDown={() => setCmpMetricDropOpen(false)} />
-                          <div className="absolute z-20 top-full mt-1 w-full rounded-xl shadow-xl overflow-hidden"
-                            style={{ backgroundColor:'var(--bg-card)', border:'1px solid var(--bg-border)', maxHeight:320, overflowY:'auto' }}>
-
-                            {/* Groups with checkboxes */}
-                            {METRIC_GROUPS.map(g => (
-                              <div key={g.label}>
-                                <div className="px-3 pt-3 pb-1">
-                                  <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color:'var(--text-muted)' }}>{g.label}</p>
-                                </div>
-                                {g.items.map(m => {
-                                  const sel = cmpMetricSelected.includes(m)
-                                  return (
-                                    <button key={m}
-                                      onMouseDown={e => e.preventDefault()}
-                                      onClick={() => toggle(m)}
-                                      className="w-full flex items-center gap-3 px-3 py-2 text-left text-xs transition-colors"
-                                      style={{ color:'var(--text-primary)' }}
-                                      onMouseEnter={e => (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--bg-hover)'}
-                                      onMouseLeave={e => (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'}>
-                                      {/* Checkbox */}
-                                      <div className="w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors"
-                                        style={{
-                                          borderColor: sel ? '#FEA500' : 'var(--bg-border)',
-                                          backgroundColor: sel ? '#FEA500' : 'transparent',
-                                        }}>
-                                        {sel && (
-                                          <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-                                            <path d="M1.5 4L3 5.5L6.5 2" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                                          </svg>
-                                        )}
-                                      </div>
-                                      <span className="font-medium" style={{ color: sel ? '#FEA500' : 'var(--text-primary)' }}>{m}</span>
-                                    </button>
-                                  )
-                                })}
-                              </div>
-                            ))}
-
-                            {/* Custom field */}
-                            <div className="px-3 pt-3 pb-3 border-t mt-1" style={{ borderColor:'var(--bg-border)' }}>
-                              <p className="text-[9px] font-bold uppercase tracking-wider mb-2" style={{ color:'var(--text-muted)' }}>Custom Field</p>
-                              <div className="flex gap-2">
-                                <input
-                                  type="text"
-                                  value={cmpMetricCustom}
-                                  onChange={e => setCmpMetricCustom(e.target.value)}
-                                  onKeyDown={e => { if (e.key === 'Enter') addCustom() }}
-                                  placeholder="Type field name..."
-                                  className="flex-1 px-2.5 py-1.5 rounded-lg border text-xs focus:outline-none"
-                                  style={{ backgroundColor:'var(--bg-hover)', borderColor:'var(--bg-border)', color:'var(--text-primary)' }}
-                                />
-                                <button
-                                  onMouseDown={e => e.preventDefault()}
-                                  onClick={addCustom}
-                                  className="px-3 py-1.5 rounded-lg text-[10px] font-bold"
-                                  style={{ background:'linear-gradient(135deg,#FEA500,#986300)', color:'white' }}>
-                                  Add
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        </>
-                      )}
-                    </div>
-
-                    {/* Selected chips */}
-                    {cmpMetricSelected.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 pt-1">
-                        {cmpMetricSelected.map(m => (
-                          <div key={m} className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold"
-                            style={{ backgroundColor:'rgba(254,165,0,0.12)', color:'#FEA500', border:'1px solid rgba(254,165,0,0.35)' }}>
-                            {m}
-                            <button onMouseDown={e => e.preventDefault()} onClick={() => toggle(m)}
-                              className="opacity-60 hover:opacity-100 ml-0.5">x</button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )
-              })()}
-
-              {/* Compare button */}
-              <button
-                disabled={cmpSelected.length === 0}
-                onClick={async () => {
-                  const selected = [...cmpSelected]
-                  setCmpResults(selected)
-                  if (effectiveMetrics.length === 0) return
-                  setCmpMetricLoading(true)
-                  setCmpMetricData({})
-                  // Fetch each company's fundamentals once
-                  const allSyms = [symbol, ...selected]
-                  const fetches = allSyms.map(sym =>
-                    fetch(`/api/stock/${sym}/statement?type=fundamentals&interval=annual`)
-                      .then(r => r.json())
-                      .then(j => ({ sym, data: (j?.data ?? null) as StatementData | null }))
-                      .catch(() => ({ sym, data: null as StatementData | null }))
-                  )
-                  const raw = await Promise.all(fetches)
-                  // Build nested: metricLabel â†' symbol â†' rows
-                  const nested: Record<string,Record<string,{year:string;value:number}[]>> = {}
-                  for (const metric of effectiveMetrics) {
-                    nested[metric] = {}
-                    for (const { sym, data } of raw) {
-                      if (!data) continue
-                      const field = data.fields.find(f =>
-                        !f.is_heading &&
-                        f.label.toLowerCase().includes(metric.toLowerCase())
-                      )
-                      if (field) {
-                        nested[metric][sym] = data.periods
-                          .map((p, i) => ({ year: String(p.year), value: (field.values[i] ?? 0) as number }))
-                          .filter(r => r.value != null && r.value !== 0)
-                          .slice(0, 5)
-                      }
-                    }
-                  }
-                  setCmpMetricData(nested)
-                  setCmpMetricLoading(false)
-                }}
-                className="w-full py-2.5 rounded-xl text-sm font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                style={{ background:'linear-gradient(135deg,#FEA500,#986300)', color:'white' }}>
-                Compare Sector {cmpSelected.length > 0 ? `(${cmpSelected.length+1} companies)` : ''}
-                {effectiveMetrics.length > 0 ? ` · ${effectiveMetrics.length} metric${effectiveMetrics.length>1?'s':''}` : ''}
-              </button>
-            </div>
-
-            {/* Results */}
-            {cmpResults && cmpResults.length > 0 && (() => {
-              // â"€â"€ METRIC MODE: API-fetched single metric â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
-              if (hasCustomMetric) {
-                if (cmpMetricLoading) return (
-                  <div className="card space-y-3">
-                    <div className="h-4 w-40 rounded animate-pulse" style={{ backgroundColor:'var(--bg-hover)' }} />
-                    {[...Array(3)].map((_,i) => (
-                      <div key={i} className="h-20 rounded-lg animate-pulse" style={{ backgroundColor:'var(--bg-hover)' }} />
-                    ))}
-                  </div>
-                )
-
-                // API returns values already in millions (Rs Mn) for financial statements
-                // Detect scale from all values in all metrics to pick a consistent unit label
-                function detectUnit(vals: number[]): { divisor: number; label: string } {
-                  const max = Math.max(...vals.map(Math.abs).filter(Boolean), 0)
-                  if (max >= 1000) return { divisor: 1000, label: 'Rs Bn' }   // values in Mn, show as Bn
-                  if (max >= 1)    return { divisor: 1,    label: 'Rs Mn' }   // values in Mn, show as Mn
-                  return              { divisor: 0.001,    label: 'Rs Th' }   // very small â†' in thousands
-                }
-                function fmtMetricVal(v: number, divisor: number) {
-                  if (v == null || v === 0) return '-'
-                  const scaled = v / divisor
-                  return scaled >= 100 ? scaled.toFixed(0) : scaled >= 10 ? scaled.toFixed(1) : scaled.toFixed(2)
-                }
-
-                return (
-                  <div className="space-y-4">
-                    {/* Legend */}
-                    <div className="card flex flex-wrap gap-3 items-center py-3">
-                      <span className="text-[11px] font-bold mr-1" style={{ color:'var(--text-secondary)' }}>Companies:</span>
-                      {compareStocks.map(s => (
-                        <div key={s.symbol} className="flex items-center gap-1.5">
-                          <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor:s.color }} />
-                          <span className="text-[11px] font-semibold" style={{ color:'var(--text-secondary)' }}>{s.symbol}</span>
-                          {s.symbol === symbol && <span className="text-[8px] font-bold px-1 py-0.5 rounded" style={{ background:'linear-gradient(135deg,#FEA500,#986300)',color:'white' }}>You</span>}
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* One card per metric */}
-                    {effectiveMetrics.map(metric => {
-                      const mData = cmpMetricData[metric] ?? {}
-                      const allYears = [...new Set(
-                        Object.values(mData).flatMap(rows => rows.map(r => r.year))
-                      )].sort((a,b) => Number(b) - Number(a))
-
-                      const latestVals = compareStocks.map(s => ({
-                        ...s, val: mData[s.symbol]?.[0]?.value ?? 0,
-                      }))
-                      const maxVal = Math.max(...latestVals.map(s => Math.abs(s.val)), 0.0001)
-                      const noData = Object.keys(mData).length === 0
-
-                      // Detect a consistent unit for all values in this metric
-                      const allVals = Object.values(mData).flatMap(rows => rows.map(r => r.value))
-                      const unit = detectUnit(allVals)
-
-                      return (
-                        <div key={metric} className="card space-y-4">
-                          <div className="flex items-start justify-between gap-3 flex-wrap">
-                            <SectionHeading>{metric}</SectionHeading>
-                            {!noData && (
-                              <span className="text-[10px] font-semibold px-2 py-1 rounded-lg tabular-nums"
-                                style={{ backgroundColor:'var(--bg-hover)', color:'var(--text-muted)' }}>
-                                Figures in {unit.label}
-                              </span>
-                            )}
-                          </div>
-
-                          {noData ? (
-                            <div className="rounded-xl px-4 py-4 text-center text-xs" style={{ backgroundColor:'var(--bg-hover)', color:'var(--text-muted)' }}>
-                              No data found for &ldquo;{metric}&rdquo; in any company&apos;s statements.
-                            </div>
-                          ) : (
-                            <>
-                              {/* Bar chart - latest value */}
-                              <div className="space-y-2.5">
-                                <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color:'var(--text-muted)' }}>
-                                  Latest Year - {allYears[0] ?? ''}
-                                </p>
-                                {latestVals.map(s => (
-                                  <div key={s.symbol}>
-                                    <div className="flex items-center justify-between mb-1">
-                                      <div className="flex items-center gap-1.5">
-                                        <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor:s.color }} />
-                                        <span className="text-xs font-bold" style={{ color:'var(--text-primary)' }}>{s.symbol}</span>
-                                      </div>
-                                      <span className="text-xs font-bold tabular-nums" style={{ color: s.val ? s.color : 'var(--text-muted)' }}>
-                                        {s.val ? `${fmtMetricVal(s.val, unit.divisor)} ${unit.label}` : '-'}
-                                      </span>
-                                    </div>
-                                    <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor:'var(--bg-hover)' }}>
-                                      <div className="h-full rounded-full"
-                                        style={{ width: s.val ? `${(Math.abs(s.val)/maxVal)*100}%` : '0%', backgroundColor: s.color }} />
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-
-                              {/* Year-by-year table */}
-                              {allYears.length > 0 && (
-                                <div className="overflow-x-auto">
-                                  <table className="w-full text-xs">
-                                    <thead>
-                                      <tr style={{ borderBottom:'1px solid var(--bg-border)' }}>
-                                        <th className="py-2 px-3 text-left font-semibold" style={{ color:'var(--text-muted)' }}>Year</th>
-                                        {compareStocks.map(s => (
-                                          <th key={s.symbol} className="py-2 px-3 text-right font-bold" style={{ color: s.color }}>{s.symbol}</th>
-                                        ))}
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      {allYears.map((yr, ri) => (
-                                        <tr key={yr} style={{ borderBottom: ri < allYears.length-1 ? '1px solid var(--bg-border)' : 'none' }}>
-                                          <td className="py-2 px-3 font-semibold" style={{ color:'var(--text-secondary)' }}>{yr}</td>
-                                          {compareStocks.map(s => {
-                                            const row = mData[s.symbol]?.find(r => r.year === yr)
-                                            return (
-                                              <td key={s.symbol} className="py-2 px-3 text-right font-bold tabular-nums"
-                                                style={{ color: row ? 'var(--text-primary)' : 'var(--text-muted)' }}>
-                                                {row ? fmtMetricVal(row.value, unit.divisor) : '-'}
-                                              </td>
-                                            )
-                                          })}
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
-                                </div>
-                              )}
-                            </>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                )
-              }
-
-              // â"€â"€ DEFAULT MODE: radar + individual tables â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
-              return (
-              <div className="card space-y-6">
-                {/* Legend */}
-                <div className="flex items-center justify-between flex-wrap gap-3">
-                  <SectionHeading>Comparison Results</SectionHeading>
-                  <div className="flex flex-wrap gap-3">
-                    {compareStocks.map(s => (
-                      <div key={s.symbol} className="flex items-center gap-1.5">
-                        <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor:s.color }} />
-                        <span className="text-[11px] font-semibold" style={{ color:'var(--text-secondary)' }}>{s.symbol}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Spider / radar chart */}
-                <div className="flex justify-center">
-                  <div className="relative" style={{ width:340, maxWidth:'100%' }}>
-                    <svg width="340" height="340" viewBox="0 0 340 340" style={{ maxWidth:'100%', display:'block' }}
-                      onMouseLeave={() => setRadarHover(null)}>
-                      {[0.25,0.5,0.75,1].map(lvl => (
-                        <polygon key={lvl}
-                          points={AXES.map((_,ai)=>{ const p=axPt(ai,lvl*R); return `${p.x},${p.y}` }).join(' ')}
-                          fill="none" stroke="var(--bg-border)" strokeWidth="1"/>
-                      ))}
-                      {AXES.map((_,ai) => {
-                        const p = axPt(ai,R)
-                        const isHov = radarHover === ai
-                        return <line key={ai} x1={CX} y1={CY} x2={p.x} y2={p.y}
-                          stroke={isHov ? '#FEA500' : 'var(--bg-border)'} strokeWidth={isHov ? 2 : 1}/>
-                      })}
-                      {AXES.map((ax,ai) => {
-                        const p = axPt(ai,R+20)
-                        const anchor = p.x < CX-4 ? 'end' : p.x > CX+4 ? 'start' : 'middle'
-                        const isHov  = radarHover === ai
-                        return (
-                          <text key={ai} x={p.x} y={p.y} textAnchor={anchor} dominantBaseline="middle"
-                            style={{ fontSize:10, fill: isHov ? '#FEA500' : 'var(--text-secondary)', fontWeight:700, fontFamily:'inherit' }}>
-                            {ax.label}
-                          </text>
-                        )
-                      })}
-                      {[...compareStocks].reverse().map((s,ri) => {
-                        const si = compareStocks.length-1-ri
-                        return (
-                          <polygon key={s.symbol} points={polygon(si)}
-                            fill={s.color} fillOpacity="0.15"
-                            stroke={s.color} strokeWidth="2.5" strokeLinejoin="round"/>
-                        )
-                      })}
-                      {compareStocks.map((s,si) =>
-                        AXES.map((_,ai) => {
-                          const v    = normalized[ai][si]
-                          const p    = axPt(ai, v*R)
-                          const isHov = radarHover === ai
-                          return <circle key={`${si}-${ai}`} cx={p.x} cy={p.y} r={isHov ? 5 : 3.5} fill={s.color}
-                            style={{ transition:'r 0.15s' }}/>
-                        })
-                      )}
-                      {AXES.map((_,ai) => {
-                        const p = axPt(ai, R)
-                        return (
-                          <line key={`hz-${ai}`} x1={CX} y1={CY} x2={p.x} y2={p.y}
-                            stroke="transparent" strokeWidth="24"
-                            style={{ cursor:'crosshair' }}
-                            onMouseEnter={() => setRadarHover(ai)}/>
-                        )
-                      })}
-                    </svg>
-
-                    {radarHover !== null && (() => {
-                      const ax   = AXES[radarHover]
-                      const tip  = axPt(radarHover, R + 20)
-                      const svgW = 340
-                      const rawLeft = (tip.x / svgW) * 100
-                      const left    = Math.min(Math.max(rawLeft, 5), 75)
-                      const above   = tip.y < CY
-
-                      function fmtVal(key: AxisKey, s: CmpStock): string {
-                        const v = s[key] as number
-                        if (key === 'volume') return v > 0 ? v.toLocaleString() : '-'
-                        if (key === 'mc')     return fmtMC(v)
-                        if (key === 'roe' || key === 'pb') return '-'
-                        return v !== 0 ? v.toFixed(2) : '-'
-                      }
-
-                      return (
-                        <div className="absolute pointer-events-none z-30 rounded-xl shadow-2xl px-3 py-2.5 min-w-[160px]"
-                          style={{
-                            left: `${left}%`,
-                            [above ? 'bottom' : 'top']: '55%',
-                            backgroundColor: 'var(--bg-card)',
-                            border: '1px solid var(--bg-border)',
-                          }}>
-                          <p className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color:'#FEA500' }}>
-                            {ax.label}
-                          </p>
-                          {compareStocks.map(s => (
-                            <div key={s.symbol} className="flex items-center justify-between gap-4 py-0.5">
-                              <div className="flex items-center gap-1.5">
-                                <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor:s.color }}/>
-                                <span className="text-[11px] font-semibold" style={{ color:'var(--text-secondary)' }}>{s.symbol}</span>
-                              </div>
-                              <span className="text-[11px] font-bold tabular-nums" style={{ color:'var(--text-primary)' }}>
-                                {fmtVal(ax.key, s)}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      )
-                    })()}
-                  </div>
-                </div>
-
-                {/* Individual tables */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {compareStocks.map(s => (
-                    <div key={s.symbol} className="rounded-xl overflow-hidden"
-                      style={{ border:`1px solid ${s.color}50` }}>
-                      <div className="px-3 py-2.5 flex items-center gap-2"
-                        style={{ backgroundColor:`${s.color}15`, borderBottom:`1px solid ${s.color}30` }}>
-                        <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor:s.color }}/>
-                        <span className="text-xs font-bold" style={{ color:'var(--text-primary)' }}>{s.symbol}</span>
-                        {s.symbol === symbol && <span className="text-[8px] font-bold px-1 py-0.5 rounded" style={{ background:'linear-gradient(135deg,#FEA500,#986300)',color:'white' }}>You</span>}
-                        <span className="text-[10px] truncate" style={{ color:'var(--text-muted)' }}>{s.name}</span>
-                      </div>
-                      <table className="w-full text-xs">
-                        <tbody>
-                          {[
-                            { label:'Price',     value: s.price>0 ? `Rs ${s.price.toFixed(2)}` : '-' },
-                            { label:'Volume',    value: s.volume>0 ? s.volume.toLocaleString() : '-' },
-                            { label:'EPS',       value: s.eps!==0 ? s.eps.toFixed(2) : '-' },
-                            { label:'P/E',       value: s.pe>0 ? s.pe.toFixed(1) : '-' },
-                            { label:'DPS',       value: s.dps>0 ? s.dps.toFixed(2) : '-' },
-                            { label:'Div Yield', value: s.divY>0 ? `${s.divY.toFixed(2)}%` : '-' },
-                            { label:'Mkt Cap',   value: fmtMC(s.mc) },
-                            { label:'ROE',       value: '-' },
-                            { label:'P/B',       value: '-' },
-                          ].map((row,ri,arr) => (
-                            <tr key={row.label} style={{ borderBottom: ri<arr.length-1 ? '1px solid var(--bg-border)' : 'none' }}>
-                              <td className="py-2 px-3 font-medium" style={{ color:'var(--text-muted)' }}>{row.label}</td>
-                              <td className="py-2 px-3 text-right font-bold tabular-nums" style={{ color:'var(--text-primary)' }}>{row.value}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              )
-            })()}
-          </div>
-        )
-      })()}
-
-      {/* â•â• FINANCIALS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+      {/* -> FINANCIALS -> */}
       {tab === 'financials' && (
         <div className="card space-y-4">
           {/* Filter row */}
@@ -1981,7 +1232,7 @@ export default function StockDetailClient({
         </div>
       )}
 
-      {/* â•â• FUNDAMENTALS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+      {/* -> FUNDAMENTALS -> */}
       {tab === 'fundamentals' && (
         <div className="card space-y-4">
           <SectionHeading>Financial Ratios &amp; Metrics</SectionHeading>
@@ -1992,7 +1243,7 @@ export default function StockDetailClient({
         </div>
       )}
 
-      {/* â•â• SHAREHOLDERS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+      {/* -> SHAREHOLDERS -> */}
       {tab === 'shareholders' && (
         <div className="card">
           <SectionHeading>Shareholder Pattern</SectionHeading>
@@ -2003,275 +1254,19 @@ export default function StockDetailClient({
         </div>
       )}
 
-      {/* â•â• NEWS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
-      {tab === 'news' && (
-        <div className="space-y-3">
-          {newsLoad ? (
-            <div className="card"><LoadingRows n={5} /></div>
-          ) : news.length ? (
-            news.map((item, i) => (
-              <a key={i} href={item.link} target="_blank" rel="noopener noreferrer"
-                 className="card flex gap-4 items-start hover:opacity-90 transition-opacity">
-                {item.image && (
-                  <img src={item.image} alt="" className="w-20 h-14 object-cover rounded shrink-0"
-                       onError={e => (e.currentTarget.style.display = 'none')} />
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold leading-snug mb-1" style={{ color: 'var(--text-primary)' }}>
-                    {item.title}
-                  </p>
-                  <p className="text-xs leading-relaxed line-clamp-2" style={{ color: 'var(--text-secondary)' }}>
-                    {item.description}
-                  </p>
-                  <div className="flex items-center gap-2 mt-1.5">
-                    <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
-                      {item.source}
-                    </span>
-                    <span style={{ color: 'var(--text-muted)' }}>·</span>
-                    <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
-                      {new Date(item.date).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' })}
-                    </span>
-                  </div>
-                </div>
-              </a>
-            ))
-          ) : (
-            <div className="card text-center py-10">
-              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No news found.</p>
-            </div>
-          )}
-        </div>
+      {tab === 'news' && <StockNewsTab news={news} newsLoad={newsLoad} />}
+
+      {tab === 'announcements' && <StockAnnouncementsTab anns={anns} annLoad={annLoad} />}
+
+      {tab === 'report' && (
+        <StockReportTab
+          symbol={symbol}
+          overview={overview}
+          snapFunds={snapFunds}
+          profile={profile}
+          anns={anns}
+        />
       )}
-
-      {/* â•â• ANNOUNCEMENTS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
-      {tab === 'announcements' && (
-        <div className="card">
-          <SectionHeading>Corporate Announcements (Last 12 Months)</SectionHeading>
-          {annLoad ? <LoadingRows n={6} /> : anns.length ? (
-            <div className="space-y-0">
-              {anns.map((ann, i) => (
-                <div key={i} className="flex items-start gap-4 py-3 transition-colors"
-                     style={{ borderBottom: '1px solid var(--bg-border)' }}
-                     onMouseEnter={e => (e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--bg-hover)'}
-                     onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.backgroundColor = 'transparent'}>
-                  <div className="shrink-0 w-16 text-center">
-                    <p className="text-[10px] font-bold" style={{ color: 'var(--text-muted)' }}>
-                      {new Date(ann.date).toLocaleDateString('en-PK', { day: '2-digit', month: 'short' })}
-                    </p>
-                    <p className="text-[9px]" style={{ color: 'var(--text-muted)' }}>
-                      {new Date(ann.date).getFullYear()}
-                    </p>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium leading-snug" style={{ color: 'var(--text-primary)' }}>
-                      {ann.title}
-                    </p>
-                    <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-                      <span className="text-[10px] px-1.5 py-0.5 rounded"
-                            style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-muted)' }}>
-                        {ann.announcementType}
-                      </span>
-                      {ann.dividend != null && (
-                        <span className="text-[10px] text-amber-600 font-semibold">
-                          Dividend: Rs {ann.dividend}
-                        </span>
-                      )}
-                      {ann.bonus != null && (
-                        <span className="text-[10px] text-blue-600 font-semibold">
-                          Bonus: {ann.bonus}%
-                        </span>
-                      )}
-                      {ann.exDate && (
-                        <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
-                          Ex-date: {ann.exDate}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  {ann.pdf_id && (
-                    <a href={ann.pdf_id} target="_blank" rel="noopener noreferrer"
-                       className="text-[10px] shrink-0 px-2 py-1 rounded border transition-colors hover:opacity-80"
-                       style={{ borderColor: 'var(--bg-border)', color: 'var(--text-secondary)' }}>
-                      PDF
-                    </a>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="py-10 text-center text-sm" style={{ color: 'var(--text-muted)' }}>
-              No announcements found.
-            </p>
-          )}
-        </div>
-      )}
-
-      {/* â•â• COMPANY REPORT â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
-      {tab === 'report' && (() => {
-        function pickR(pattern: RegExp): number | null {
-          return snapFunds?.fields.find(f => !f.is_heading && pattern.test(f.label.trim()))?.values[0] ?? null
-        }
-        const eps    = pickR(/earnings per share|eps/i)    ?? Number(overview?.eps) ?? 0
-        const bvps   = pickR(/book value per share|bvps/i) ?? 0
-        const roe    = pickR(/return on equity|roe/i)      ?? 0
-        const npm    = pickR(/net profit margin/i)         ?? 0
-        const dps    = pickR(/dividend per share|dps/i)    ?? 0
-        const pe     = pickR(/price.*earning|p\/e/i)       ?? 0
-        const price  = Number(overview?.price)   || 0
-        const high52 = Number(overview?.high52)  || 0
-        const low52  = Number(overview?.low52)   || 0
-        const vol    = Number(overview?.volume)  || 0
-        const mc     = Number((overview as any)?.mc) || 0
-        const npmPct = npm !== 0 ? (Math.abs(npm) > 1 ? npm : npm * 100) : 0
-        const roePct = roe !== 0 ? (Math.abs(roe) > 1 ? roe : roe * 100) : 0
-        const divYld = dps > 0 && price > 0 ? (dps / price) * 100 : 0
-        const pb     = bvps > 0 && price > 0 ? price / bvps : 0
-        const sectorCodeR = String(overview?.sector ?? '')
-        const isFinancialR = ['0807','0812','0813','0815','0819','0836'].includes(sectorCodeR)
-        const grahamIV = eps > 0 && bvps > 0 ? Math.sqrt(22.5 * eps * bvps) : 0
-        const mos = grahamIV > 0 && price > 0 ? Math.round(((grahamIV - price) / grahamIV) * 100) : null
-
-        function Row({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
-          return (
-            <div className="flex items-center justify-between py-2"
-              style={{ borderBottom: '1px solid var(--bg-border)' }}>
-              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{label}</span>
-              <span className="text-xs font-semibold tabular-nums"
-                style={{ color: highlight ? '#FEA500' : 'var(--text-primary)' }}>{value}</span>
-            </div>
-          )
-        }
-
-        function Section({ title, children }: { title: string; children: React.ReactNode }) {
-          return (
-            <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--bg-border)' }}>
-              <div className="px-4 py-2.5" style={{ backgroundColor: 'var(--bg-hover)' }}>
-                <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>{title}</p>
-              </div>
-              <div className="px-4 pb-1">{children}</div>
-            </div>
-          )
-        }
-
-        const handlePrint = () => window.print()
-
-        return (
-          <div className="space-y-5">
-            {/* Header bar */}
-            <div className="flex items-center justify-between flex-wrap gap-3">
-              <div>
-                <h2 className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>
-                  {symbol} - Company Report
-                </h2>
-                <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                  Generated {new Date().toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })} · Data sourced from PSX
-                </p>
-              </div>
-              <button
-                onClick={handlePrint}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition-colors"
-                style={{ background: 'linear-gradient(135deg,#FEA500,#986300)', color: 'white' }}>
-                <FileText size={13} />
-                Print / Save PDF
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {/* Market Data */}
-              <Section title="Market Data">
-                <Row label="Current Price"   value={price ? `Rs ${price.toFixed(2)}` : '-'} highlight />
-                <Row label="Change Today"    value={overview ? `${Number(overview.changePct) >= 0 ? '+' : ''}${(Number(overview.changePct)).toFixed(2)}%` : '-'} />
-                <Row label="52-Week High"    value={high52 ? `Rs ${high52.toFixed(2)}` : '-'} />
-                <Row label="52-Week Low"     value={low52  ? `Rs ${low52.toFixed(2)}`  : '-'} />
-                <Row label="Volume"          value={vol ? vol.toLocaleString() : '-'} />
-                <Row label="Market Cap"      value={mc ? (mc >= 1e9 ? `Rs ${(mc/1e9).toFixed(2)}B` : `Rs ${(mc/1e6).toFixed(0)}M`) : '-'} />
-                <Row label="Open"            value={overview?.open  ? `Rs ${Number(overview.open).toFixed(2)}`  : '-'} />
-                <Row label="Prev Close"      value={overview?.lastClose ? `Rs ${Number(overview.lastClose).toFixed(2)}` : '-'} />
-              </Section>
-
-              {/* Valuation */}
-              <Section title="Valuation">
-                <Row label="P/E Ratio"         value={pe   > 0 ? `${pe.toFixed(1)}x`   : '-'} />
-                <Row label="EPS"               value={eps  ? `Rs ${eps.toFixed(2)}`    : '-'} />
-                <Row label="Book Value / Share" value={bvps ? `Rs ${bvps.toFixed(2)}`  : '-'} />
-                <Row label="P/B Ratio"          value={pb   > 0 ? `${pb.toFixed(2)}x`  : '-'} />
-                <Row label="Graham Intr. Value" value={!isFinancialR && grahamIV > 0 ? `Rs ${grahamIV.toFixed(2)}` : 'N/A'} />
-                <Row label="Margin of Safety"   value={!isFinancialR && mos !== null ? `${mos >= 0 ? '+' : ''}${mos}%` : 'N/A'} highlight={!isFinancialR && mos !== null && mos >= 20} />
-              </Section>
-
-              {/* Profitability */}
-              <Section title="Profitability">
-                <Row label="Net Profit Margin" value={npmPct ? `${npmPct.toFixed(2)}%` : '-'} />
-                <Row label="Return on Equity"  value={roePct ? `${roePct.toFixed(2)}%` : '-'} />
-                <Row label="Dividend / Share"  value={dps  ? `Rs ${dps.toFixed(2)}`   : '-'} />
-                <Row label="Dividend Yield"    value={divYld > 0 ? `${divYld.toFixed(2)}%` : '-'} />
-              </Section>
-
-              {/* Scores */}
-              <Section title="Stockifyy Scores">
-                {(() => {
-                  let ss = 0, ssMax = 0
-                  if (pe > 0) { ssMax += 25; ss += pe <= 10 ? 25 : pe <= 15 ? 20 : pe <= 20 ? 12 : pe <= 30 ? 6 : 0 }
-                  if (npmPct) { ssMax += 25; ss += npmPct >= 20 ? 25 : npmPct >= 12 ? 18 : npmPct >= 6 ? 12 : npmPct >= 0 ? 5 : 0 }
-                  if (roePct) { ssMax += 20; ss += roePct >= 20 ? 20 : roePct >= 12 ? 14 : roePct >= 6 ? 8 : roePct >= 0 ? 3 : 0 }
-                  ssMax += 10; ss += dps > 0 ? (dps / Math.max(price, 1) >= 0.05 ? 10 : 6) : 0
-                  const pos52 = high52 > low52 ? (price - low52) / (high52 - low52) : 0.5
-                  ssMax += 20; ss += pos52 <= 0.25 ? 20 : pos52 <= 0.45 ? 15 : pos52 <= 0.65 ? 10 : pos52 <= 0.85 ? 5 : 2
-                  const score = ssMax > 0 ? Math.round((ss / ssMax) * 100) : null
-                  const grade = score !== null ? (score >= 75 ? 'Excellent' : score >= 55 ? 'Good' : score >= 35 ? 'Fair' : 'Weak') : '-'
-                  const iScore = !isFinancialR && grahamIV > 0 ? Math.min(100, Math.round(Math.min(grahamIV / Math.max(price, 1), 2) * 50)) : null
-                  return (
-                    <>
-                      <Row label="Intrinsic Score (0-100)"  value={iScore !== null ? `${iScore} / 100` : 'N/A'} />
-                      <Row label="Margin of Safety"          value={!isFinancialR && mos !== null ? `${mos >= 0 ? '+' : ''}${mos}%` : 'N/A'} />
-                      <Row label="Stockifyy Score (0-100)"  value={score !== null ? `${score} / 100` : '-'} highlight />
-                      <Row label="Overall Grade"             value={grade} />
-                    </>
-                  )
-                })()}
-              </Section>
-            </div>
-
-            {/* Company profile */}
-            {profile?.profile?.data?.description && (
-              <Section title="Business Description">
-                <p className="text-xs leading-relaxed py-3" style={{ color: 'var(--text-secondary)' }}>
-                  {profile.profile.data.description}
-                </p>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pb-3">
-                  {profile.profile.data.sector_name && <Row label="Sector"   value={profile.profile.data.sector_name} />}
-                  {profile.profile.data.auditors     && <Row label="Auditors" value={profile.profile.data.auditors} />}
-                  {profile.profile.data.offices?.[0] && <Row label="Office"   value={profile.profile.data.offices[0]} />}
-                </div>
-              </Section>
-            )}
-
-            {/* Recent announcements */}
-            {anns.length > 0 && (
-              <Section title="Recent Corporate Announcements">
-                <div className="py-1">
-                  {anns.slice(0, 5).map((ann, i) => (
-                    <div key={i} className="flex items-start gap-3 py-2.5"
-                      style={{ borderBottom: i < 4 ? '1px solid var(--bg-border)' : 'none' }}>
-                      <span className="text-[10px] shrink-0 w-14 pt-0.5" style={{ color: 'var(--text-muted)' }}>
-                        {new Date(ann.date).toLocaleDateString('en-PK', { day: '2-digit', month: 'short' })}
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium truncate" style={{ color: 'var(--text-primary)' }}>{ann.title}</p>
-                        <span className="text-[9px]" style={{ color: 'var(--text-muted)' }}>{ann.announcementType}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </Section>
-            )}
-
-            <p className="text-[10px] text-center pb-2" style={{ color: 'var(--text-muted)' }}>
-              This report is auto-generated from PSX public data. Scores are algorithmic estimates. Not financial advice.
-            </p>
-          </div>
-        )
-      })()}
     </div>
   )
 }

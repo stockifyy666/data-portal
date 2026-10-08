@@ -12,6 +12,7 @@ import { useState, useEffect } from 'react'
 import { Star, LogIn }         from 'lucide-react'
 import { useRouter }           from 'next/navigation'
 import { cachedFetch }         from '@/lib/utils/clientCache'
+import toast                   from 'react-hot-toast'
 
 type Props = { symbol: string; currentPrice?: number }
 
@@ -58,16 +59,18 @@ export default function WatchlistButton({ symbol, currentPrice = 0 }: Props) {
     try {
       if (watched) {
         const res = await fetch(`/api/watchlist?symbol=${symbol}`, { method: 'DELETE' })
-        if (res.ok) setWatched(false)
+        if (res.ok) { setWatched(false); toast.success(`${symbol} removed from watchlist`) }
+        else toast.error('Failed to remove from watchlist')
       } else {
         const res = await fetch('/api/watchlist', {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
           body:    JSON.stringify({ symbol, addedPrice: livePrice }),
         })
-        if (res.ok) setWatched(true)
+        if (res.ok) { setWatched(true); toast.success(`${symbol} added to watchlist`) }
+        else toast.error('Failed to add to watchlist')
       }
-    } catch {}
+    } catch { toast.error('Something went wrong') }
     setWorking(false)
   }
 
