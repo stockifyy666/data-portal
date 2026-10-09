@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import Link from 'next/link'
 import { TrendingUp, TrendingDown, Activity, RefreshCw } from 'lucide-react'
 import { cachedFetch } from '@/lib/utils/clientCache'
+import { useTheme } from '@/components/providers/ThemeProvider'
 import type { StockQuote } from '@/types/market'
 
 // ─── Sector palette — Gold & Amber brand tones (31 colors) ──────────────────
@@ -468,6 +469,7 @@ function ContribHistogram({ bars }: { bars: ContribBar[] }) {
   // Each hit area tracks its pixel bounds for precise hover detection
   const hitRef = useRef<{ x: number; w: number; yTop: number; yBot: number; bar: ContribBar }[]>([])
   const [tip, setTip] = useState<(ContribBar & { x: number; y: number; flipLeft: boolean }) | null>(null)
+  const { theme } = useTheme()  // re-draw whenever dark/light toggles
 
   // Split into mirrored gainers (above) and losers (below), each sorted descending
   const gainers = useMemo(() => bars.filter(b => b.pts >= 0).sort((a, b) => b.pts - a.pts),  [bars])
@@ -483,11 +485,13 @@ function ContribHistogram({ bars }: { bars: ContribBar[] }) {
     canvas.width = W * dpr; canvas.height = H * dpr; ctx.scale(dpr, dpr)
     ctx.clearRect(0, 0, W, H)
 
-    const css = getComputedStyle(document.documentElement)
-    const textMut = css.getPropertyValue('--text-muted').trim() || '#7a839e'
-    const border  = css.getPropertyValue('--bg-border').trim()  || '#1e2232'
+    const css     = getComputedStyle(document.documentElement)
+    const isDark  = document.documentElement.classList.contains('dark')
+    const textMut = css.getPropertyValue('--text-muted').trim() || (isDark ? '#7a839e' : '#64748b')
+    const textPri = css.getPropertyValue('--text-primary').trim() || (isDark ? '#f1f5f9' : '#0f172a')
+    const border  = css.getPropertyValue('--bg-border').trim()  || (isDark ? '#1e2232' : '#e2e8f0')
 
-    const PAD = { top: 40, right: 20, bottom: 40, left: 72 }
+    const PAD = { top: 52, right: 20, bottom: 60, left: 72 }
     const cW = W - PAD.left - PAD.right
     const cH = H - PAD.top  - PAD.bottom
 
@@ -496,21 +500,27 @@ function ContribHistogram({ bars }: { bars: ContribBar[] }) {
       ...gainers.map(b => Math.abs(b.pts)),
       ...losers.map(b => Math.abs(b.pts)),
       1
-    ) * 1.15
-    const range = absMax * 2
-    const toY   = (v: number) => PAD.top + cH - ((v + absMax) / range) * cH
-    const z0    = toY(0)   // always exactly the vertical midpoint
-
-    // Grid lines (symmetric around zero)
-    for (let i = 0; i <= 4; i++) {
-      const v = -absMax + (absMax * 2 / 4) * i
-      const y = toY(v)
-      ctx.strokeStyle = border; ctx.lineWidth = 0.5; ctx.setLineDash([3, 4])
-      ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(W - PAD.right, y); ctx.stroke()
-      ctx.setLineDash([])
-      ctx.fillStyle = textMut; ctx.font = '9px system-ui'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle'
-      ctx.fillText(v.toFixed(2), PAD.left - 6, y)
+    )
+    // sqrt scale: compresses the huge range so small bars are still distinctly taller
+    // than the next tier. min 5% of half-chart height, max 95% of half-chart height.
+    const halfH  = cH / 2
+    const minBh  = halfH * 0.10   // 10% of half = 5% of total — always visible
+    const maxBh  = halfH * 0.95
+    const toBarH = (v: number) => {
+      const fraction = Math.abs(v) / absMax           // 0→1 linear
+      const scaled   = Math.pow(fraction, 0.45)       // sqrt-ish compression
+      return Math.max(scaled * maxBh, minBh)
     }
+    const z0 = PAD.top + halfH   // zero line at exact vertical midpoint
+
+    // Grid: just the zero reference + two symmetric tick labels (max gain / max loss)
+    ctx.strokeStyle = border; ctx.lineWidth = 0.5; ctx.setLineDash([3, 4])
+    ctx.beginPath(); ctx.moveTo(PAD.left, PAD.top); ctx.lineTo(W - PAD.right, PAD.top); ctx.stroke()
+    ctx.beginPath(); ctx.moveTo(PAD.left, PAD.top + cH); ctx.lineTo(W - PAD.right, PAD.top + cH); ctx.stroke()
+    ctx.setLineDash([])
+    ctx.fillStyle = textMut; ctx.font = '9px system-ui'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle'
+    ctx.fillText(`+${absMax.toFixed(2)}`, PAD.left - 6, PAD.top)
+    ctx.fillText(`-${absMax.toFixed(2)}`, PAD.left - 6, PAD.top + cH)
 
     // Zero line (gold, solid)
     ctx.strokeStyle = 'rgba(254,165,0,0.55)'; ctx.lineWidth = 1.5; ctx.setLineDash([])
@@ -521,19 +531,16 @@ function ContribHistogram({ bars }: { bars: ContribBar[] }) {
     hitRef.current = []
 
     const drawBar = (b: ContribBar, colIdx: number) => {
-      const up  = b.pts >= 0
-      const cx2 = PAD.left + colIdx * gW + gW / 2
-      const bx  = cx2 - bW / 2
-      const barTop = Math.min(toY(b.pts), z0)
-      const bh     = Math.max(Math.abs(toY(b.pts) - z0), 1)
+      const up     = b.pts >= 0
+      const cx2    = PAD.left + colIdx * gW + gW / 2
+      const bx     = cx2 - bW / 2
+      const bh     = toBarH(b.pts)
+      const barTop = up ? z0 - bh : z0
 
-      ctx.save()
-      ctx.shadowColor = up ? 'rgba(34,197,94,0.35)' : 'rgba(239,68,68,0.35)'
-      ctx.shadowBlur  = 8
-
+      // No shadow blur — keeps bars sharp and crisp
       const grad = ctx.createLinearGradient(0, barTop, 0, barTop + bh)
-      if (up) { grad.addColorStop(0, '#4ade80'); grad.addColorStop(1, '#15803d') }
-      else    { grad.addColorStop(0, '#f87171'); grad.addColorStop(1, '#991b1b') }
+      if (up) { grad.addColorStop(0, '#22c55e'); grad.addColorStop(1, '#166534') }
+      else    { grad.addColorStop(0, '#ef4444'); grad.addColorStop(1, '#7f1d1d') }
       ctx.fillStyle = grad
 
       const r = Math.min(4, bW / 2)
@@ -550,37 +557,30 @@ function ContribHistogram({ bars }: { bars: ContribBar[] }) {
         ctx.lineTo(bx, barTop)
       }
       ctx.closePath(); ctx.fill()
-      ctx.restore()
 
       // Sheen
-      ctx.fillStyle = 'rgba(255,255,255,0.10)'
+      ctx.fillStyle = 'rgba(255,255,255,0.12)'
       ctx.fillRect(bx + 1, barTop, bW - 2, 2)
 
-      // Labels
+      // Labels — all outside the bar, symbol uses theme primary color so it's always readable
       const fs = Math.min(10, Math.max(7, gW / 3.2))
-      const minBarForLabel = fs * 2.2
+      const sf = Math.max(7, fs - 1)
       ctx.textAlign = 'center'
       const ptsStr = `${b.pts >= 0 ? '+' : ''}${b.pts.toFixed(2)}`
       const pctStr = `${b.pct >= 0 ? '+' : ''}${b.pct.toFixed(2)}%`
 
       if (up) {
-        ctx.fillStyle = '#4ade80'; ctx.font = `700 ${fs}px system-ui`
-        ctx.textBaseline = 'bottom'; ctx.fillText(ptsStr, cx2, barTop - 4)
-        if (bh >= minBarForLabel) {
-          ctx.fillStyle = '#ffffff'; ctx.font = `600 ${Math.max(7, fs - 1)}px system-ui`
-          ctx.textBaseline = 'top'; ctx.fillText(b.symbol.slice(0, 6), cx2, barTop + 4)
-        }
-        ctx.fillStyle = 'rgba(74,222,128,0.85)'; ctx.font = `600 ${Math.max(7, fs - 1)}px system-ui`
-        ctx.textBaseline = 'bottom'; ctx.fillText(pctStr, cx2, z0 - 3)
+        // Green bars: symbol just above bar top, pts above symbol
+        ctx.fillStyle = textPri; ctx.font = `700 ${sf}px system-ui`
+        ctx.textBaseline = 'bottom'; ctx.fillText(b.symbol.slice(0, 6), cx2, barTop - 1)
+        ctx.fillStyle = '#16a34a'; ctx.font = `700 ${fs}px system-ui`
+        ctx.textBaseline = 'bottom'; ctx.fillText(ptsStr, cx2, barTop - 1 - sf - 1)
       } else {
-        ctx.fillStyle = '#f87171'; ctx.font = `700 ${fs}px system-ui`
-        ctx.textBaseline = 'top'; ctx.fillText(ptsStr, cx2, barTop + bh + 4)
-        if (bh >= minBarForLabel) {
-          ctx.fillStyle = '#ffffff'; ctx.font = `600 ${Math.max(7, fs - 1)}px system-ui`
-          ctx.textBaseline = 'bottom'; ctx.fillText(b.symbol.slice(0, 6), cx2, barTop + bh - 4)
-        }
-        ctx.fillStyle = 'rgba(248,113,113,0.85)'; ctx.font = `600 ${Math.max(7, fs - 1)}px system-ui`
-        ctx.textBaseline = 'top'; ctx.fillText(pctStr, cx2, z0 + 3)
+        // Red bars: pts just below bar (1px gap), symbol below pts
+        ctx.fillStyle = '#dc2626'; ctx.font = `700 ${fs}px system-ui`
+        ctx.textBaseline = 'top'; ctx.fillText(ptsStr, cx2, barTop + bh + 1)
+        ctx.fillStyle = textPri; ctx.font = `700 ${sf}px system-ui`
+        ctx.textBaseline = 'top'; ctx.fillText(b.symbol.slice(0, 6), cx2, barTop + bh + 1 + fs + 2)
       }
 
       hitRef.current.push({ x: bx - 4, w: bW + 8, yTop: barTop, yBot: barTop + bh, bar: b })
@@ -594,7 +594,7 @@ function ContribHistogram({ bars }: { bars: ContribBar[] }) {
     ctx.save(); ctx.translate(12, PAD.top + cH / 2); ctx.rotate(-Math.PI / 2)
     ctx.fillStyle = textMut; ctx.font = '9px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
     ctx.fillText('Index Points', 0, 0); ctx.restore()
-  }, [gainers, losers, totalCols, bars])
+  }, [gainers, losers, totalCols, bars, theme])  // theme from useTheme() triggers redraw on dark/light switch
 
   function onMove(e: React.MouseEvent<HTMLCanvasElement>) {
     const rect = e.currentTarget.getBoundingClientRect()
@@ -611,7 +611,7 @@ function ContribHistogram({ bars }: { bars: ContribBar[] }) {
   return (
     <div style={{ position: 'relative' }}>
       <canvas ref={ref} onMouseMove={onMove} onMouseLeave={() => setTip(null)}
-        style={{ width: '100%', height: 400, display: 'block' }} />
+        style={{ width: '100%', height: 420, display: 'block' }} />
       {tip && (
         <div style={{
           position: 'absolute',
