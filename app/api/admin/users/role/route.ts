@@ -13,10 +13,10 @@ export async function PATCH(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     { cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} } }
   )
-  const { data: { session } } = await supabase.auth.getSession()
-  const callerRole = session?.user?.app_metadata?.role as string | undefined
+  const { data: { user } } = await supabase.auth.getUser()
+  const callerRole = user?.app_metadata?.role as string | undefined
 
-  if (!session || (callerRole !== 'admin' && callerRole !== 'superadmin')) {
+  if (!user || (callerRole !== 'admin' && callerRole !== 'superadmin')) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

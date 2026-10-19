@@ -10,9 +10,9 @@ export async function POST(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     { cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} } }
   )
-  const { data: { session } } = await supabase.auth.getSession()
-  const viewerRole = session?.user?.app_metadata?.role as string | undefined
-  if (!session || (viewerRole !== 'admin' && viewerRole !== 'superadmin')) {
+  const { data: { user } } = await supabase.auth.getUser()
+  const viewerRole = user?.app_metadata?.role as string | undefined
+  if (!user || (viewerRole !== 'admin' && viewerRole !== 'superadmin')) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
   }
 

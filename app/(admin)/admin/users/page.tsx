@@ -12,9 +12,9 @@ export default async function UsersPage() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     { cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} } }
   )
-  const { data: { session } } = await supabase.auth.getSession()
-  const currentRole = session?.user?.app_metadata?.role as string | undefined
-  if (!session || (currentRole !== 'admin' && currentRole !== 'superadmin')) redirect('/dashboard')
+  const { data: { user } } = await supabase.auth.getUser()
+  const currentRole = user?.app_metadata?.role as string | undefined
+  if (!user || (currentRole !== 'admin' && currentRole !== 'superadmin')) redirect('/dashboard')
 
   const service = createServiceClient()
   const [{ data: profiles }, { data: authData }] = await Promise.all([

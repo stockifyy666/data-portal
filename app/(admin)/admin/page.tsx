@@ -11,9 +11,9 @@ export default async function AdminDashboardPage() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     { cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} } }
   )
-  const { data: { session } } = await supabase.auth.getSession()
-  const role = session?.user?.app_metadata?.role as string | undefined
-  if (!session || (role !== 'admin' && role !== 'superadmin')) redirect('/dashboard')
+  const { data: { user } } = await supabase.auth.getUser()
+  const role = user?.app_metadata?.role as string | undefined
+  if (!user || (role !== 'admin' && role !== 'superadmin')) redirect('/dashboard')
 
   const service = createServiceClient()
   const { data: authData } = await service.auth.admin.listUsers({ perPage: 1000 })
