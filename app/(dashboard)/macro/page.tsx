@@ -440,7 +440,7 @@ export default function MacroDashboard() {
                   <g key={i} opacity={isFuture ? 0.4 : 1}>
                     {/* Amount above */}
                     <text x={x} y="12" fontSize="10" fontWeight="700" fill={textColor}
-                      textAnchor="middle" fontVariantNumeric="tabular-nums">{t.amount}</text>
+                      textAnchor="middle">{t.amount}</text>
                     {/* Node */}
                     <circle cx={x} cy="28" r={isNext ? 7 : 5}
                       fill={received ? '#16a34a' : isNext ? '#d97706' : 'var(--bg-card)'}
