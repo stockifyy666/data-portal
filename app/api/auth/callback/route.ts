@@ -29,7 +29,10 @@ export async function GET(request: NextRequest) {
 
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
-      return NextResponse.redirect(`${origin}${next}`)
+      const { data: { session } } = await supabase.auth.getSession()
+      const role = session?.user?.app_metadata?.role
+      const dest = (role === 'admin' || role === 'superadmin') ? '/admin' : next
+      return NextResponse.redirect(`${origin}${dest}`)
     }
   }
 

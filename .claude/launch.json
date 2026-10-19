@@ -5,6 +5,7 @@
       "name": "stockifyy-app",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
+      "cwd": "C:\\Stockifyy\\stockifyy-app",
       "port": 3000,
       "autoPort": true
     }

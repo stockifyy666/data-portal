@@ -50,6 +50,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="flex-1 max-w-screen-2xl mx-auto w-full px-1 md:px-2 lg:px-2 py-5">
           {children}
         </div>
+
+        {/* Capital Stake attribution — required by data agreement */}
+        <div className="max-w-screen-2xl mx-auto w-full px-4 py-2 flex items-center gap-2"
+             style={{ borderTop: '1px solid var(--bg-border)' }}>
+          <span style={{ fontSize: 11, color: 'var(--text-muted)', letterSpacing: '0.01em' }}>
+            Market data provided by{' '}
+            <a
+              href="https://capitalstake.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: 'var(--text-muted)', textDecoration: 'underline', textUnderlineOffset: 2 }}
+            >
+              Capital Stake
+            </a>
+            . Data is for informational purposes only.
+          </span>
+        </div>
       </main>
     </div>
   )

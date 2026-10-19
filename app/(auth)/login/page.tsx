@@ -26,9 +26,14 @@ export default function LoginPage() {
     e.preventDefault()
     setLoading(true); setError(null)
     try {
-      const { error: authError } = await supabase.auth.signInWithPassword({ email, password })
+      const { data: { session }, error: authError } = await supabase.auth.signInWithPassword({ email, password })
       if (authError) { setError(authError.message); return }
-      safeRedirect()
+      const role = session?.user?.app_metadata?.role
+      if (role === 'admin' || role === 'superadmin') {
+        window.location.replace('/admin')
+      } else {
+        safeRedirect('/dashboard')
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong.')
     } finally { setLoading(false) }
