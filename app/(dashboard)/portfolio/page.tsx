@@ -115,9 +115,9 @@ function AddModal({ quotes, onClose, onAdd }: AddModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
          style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-      <div className="rounded-xl shadow-2xl w-full max-w-md"
-           style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--bg-border)' }}>
-        <div className="flex items-center justify-between px-5 py-4"
+      <div className="rounded-xl shadow-2xl w-full max-w-md flex flex-col"
+           style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--bg-border)', maxHeight: '90vh' }}>
+        <div className="flex items-center justify-between px-5 py-4 shrink-0"
              style={{ borderBottom: '1px solid var(--bg-border)' }}>
           <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Add Stock to Portfolio</h2>
           <button onClick={onClose} className="p-1 rounded hover:opacity-70">
@@ -125,7 +125,8 @@ function AddModal({ quotes, onClose, onAdd }: AddModalProps) {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+          <div className="p-5 space-y-4 overflow-y-auto flex-1">
           {/* Stock search */}
           <div className="relative">
             <label className="block text-[10px] uppercase tracking-wider mb-1.5 font-semibold"
@@ -162,7 +163,7 @@ function AddModal({ quotes, onClose, onAdd }: AddModalProps) {
           </div>
 
           {/* Qty + Price */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 xs:grid-cols-2 gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))' }}>
             <div>
               <label className="block text-[10px] uppercase tracking-wider mb-1.5 font-semibold"
                      style={{ color: 'var(--text-muted)' }}>Quantity (shares)</label>
@@ -231,17 +232,23 @@ function AddModal({ quotes, onClose, onAdd }: AddModalProps) {
             </div>
           )}
 
-          <div className="flex gap-3 pt-1">
+          </div>
+          {/* Sticky footer buttons — outside scroll area */}
+          <div className="flex gap-3 px-5 py-4 shrink-0" style={{ borderTop: '1px solid var(--bg-border)' }}>
             <button type="button" onClick={onClose}
               className="flex-1 py-2 text-sm rounded-lg font-medium"
               style={{ backgroundColor: 'var(--bg-page)', border: '1px solid var(--bg-border)', color: 'var(--text-secondary)' }}>
               Cancel
             </button>
             <button type="submit" disabled={saving}
-              className="flex-1 py-2 text-sm rounded-lg font-semibold flex items-center justify-center gap-2"
+              className="flex-1 py-2 text-sm rounded-lg font-semibold flex items-center justify-center gap-1.5"
               style={{ backgroundColor: '#FEA500', color: '#000' }}>
-              {saving ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}
-              {saving ? 'Adding…' : 'Add to Portfolio'}
+              {saving
+                ? <><Loader2 size={13} className="animate-spin shrink-0" /> Adding…</>
+                : <><Plus size={13} className="shrink-0" />
+                    <span className="sm:hidden">Add Stock</span>
+                    <span className="hidden sm:inline">Add to Portfolio</span>
+                  </>}
             </button>
           </div>
         </form>
@@ -294,9 +301,9 @@ function SellModal({ holding, onClose, onSell }: SellModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
          style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-      <div className="rounded-xl shadow-2xl w-full max-w-md"
-           style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--bg-border)' }}>
-        <div className="flex items-center justify-between px-5 py-4"
+      <div className="rounded-xl shadow-2xl w-full max-w-md flex flex-col"
+           style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--bg-border)', maxHeight: '90vh' }}>
+        <div className="flex items-center justify-between px-5 py-4 shrink-0"
              style={{ borderBottom: '1px solid var(--bg-border)' }}>
           <div>
             <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
@@ -311,9 +318,10 @@ function SellModal({ holding, onClose, onSell }: SellModalProps) {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+          <div className="p-5 space-y-4 overflow-y-auto flex-1">
           {/* Qty + Sell Price */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))' }}>
             <div>
               <label className="block text-[10px] uppercase tracking-wider mb-1.5 font-semibold"
                      style={{ color: 'var(--text-muted)' }}>
@@ -388,16 +396,18 @@ function SellModal({ holding, onClose, onSell }: SellModalProps) {
             </div>
           )}
 
-          <div className="flex gap-3 pt-1">
+          </div>
+          {/* Sticky footer buttons — outside scroll area */}
+          <div className="flex gap-3 px-5 py-4 shrink-0" style={{ borderTop: '1px solid var(--bg-border)' }}>
             <button type="button" onClick={onClose}
               className="flex-1 py-2 text-sm rounded-lg font-medium"
               style={{ backgroundColor: 'var(--bg-page)', border: '1px solid var(--bg-border)', color: 'var(--text-secondary)' }}>
               Cancel
             </button>
             <button type="submit" disabled={saving}
-              className="flex-1 py-2 text-sm rounded-lg font-semibold flex items-center justify-center gap-2 text-white"
+              className="flex-1 py-2 text-sm rounded-lg font-semibold flex items-center justify-center gap-1.5 text-white"
               style={{ backgroundColor: saving ? '#6b7280' : '#dc2626' }}>
-              {saving ? <Loader2 size={13} className="animate-spin" /> : <ArrowDownRight size={13} />}
+              {saving ? <Loader2 size={13} className="animate-spin" /> : <ArrowDownRight size={13} className="shrink-0" />}
               {saving ? 'Recording…' : 'Confirm Sale'}
             </button>
           </div>
@@ -852,7 +862,7 @@ function PSXSectorWheel({ holdings }: { holdings: EnrichedHolding[] }) {
   const selectedSec = selected ? portfolioMap.get(selected) : null
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '520px 1fr', gap: 24, alignItems: 'start' }}>
+    <div className="flex flex-col sm:grid gap-6" style={{ gridTemplateColumns: '520px 1fr', alignItems: 'start' }}>
       {/* Wheel */}
       <canvas ref={canvasRef} onMouseMove={onMove} onMouseLeave={() => setHovered(null)} onClick={onClick}
         style={{ width: '100%', height: 480, display: 'block', cursor: 'default' }} />
@@ -1208,9 +1218,9 @@ function HoldingsSunburst({ holdings }: { holdings: EnrichedHolding[] }) {
         }}>← All Sectors</button>
       )}
 
-      <div style={{ display:'flex', gap:16, alignItems:'flex-start' }}>
+      <div className="flex flex-col sm:flex-row gap-4" style={{ alignItems: 'flex-start' }}>
         {/* Canvas */}
-        <div style={{ position:'relative', flex:'0 0 58%', minWidth:0 }}>
+        <div style={{ position:'relative', width:'100%' }} className="sm:flex-none sm:w-[58%]">
           <canvas ref={canvasRef}
             onClick={onClick} onMouseMove={onMove} onMouseLeave={()=>setTip(null)}
             style={{ width:'100%', height:340, display:'block' }}
@@ -1571,102 +1581,185 @@ export default function PortfolioPage() {
               </button>
             </div>
           ) : (
-            <table className="w-full text-xs">
-              <thead>
-                <tr style={{ borderBottom: '1px solid var(--bg-border)' }}>
-                  {['Symbol','Company','Qty','Avg Price','Investment','LTP','Mkt Value','P&L','Today P&L','vs KSE100','Return','Added',''].map(col => (
-                    <th key={col}
-                        className="text-left py-2 px-2 text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap"
-                        style={{ color: 'var(--text-muted)' }}>{col}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
+            <>
+              {/* Mobile card view */}
+              <div className="sm:hidden space-y-2">
                 {holdings.map(h => {
                   const cost     = h.quantity * h.average_price
                   const mktVal   = h.quantity * h.ltp
                   const pnl      = mktVal - cost
                   const pnlPct   = cost > 0 ? (pnl / cost) * 100 : 0
                   const todayPnl = h.quantity * (h.ltp - h.prevClose)
-                  const clr      = getChangeColor(pnl)
-                  const up       = pnl >= 0, todayUp = todayPnl >= 0
+                  const up       = pnl >= 0
+                  const todayUp  = todayPnl >= 0
                   const isDel    = deleting === h.id
-
                   return (
-                    <tr key={h.id}
-                        style={{ borderBottom: '1px solid var(--bg-border)' }}
-                        onMouseEnter={e => (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--bg-hover)'}
-                        onMouseLeave={e => (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'}>
-                      <td className="py-2.5 px-2">
-                        <div className="flex items-center gap-1">
-                          <Link href={`/stocks/${h.symbol}`} className="font-bold hover:underline" style={{ color: '#FEA500' }}>
-                            {h.symbol}
-                          </Link>
-                          {isKMI(h.indexKeys, h.symbol) && <KMIBadge />}
+                    <div key={h.id} className="rounded-xl p-3" style={{ border: '1px solid var(--bg-border)', backgroundColor: 'var(--bg-hover)' }}>
+                      {/* Row 1: symbol + actions */}
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <Link href={`/stocks/${h.symbol}`} className="font-bold text-sm" style={{ color: '#FEA500' }}>{h.symbol}</Link>
+                            {isKMI(h.indexKeys, h.symbol) && <KMIBadge />}
+                          </div>
+                          <p className="text-[11px] truncate mt-0.5" style={{ color: 'var(--text-secondary)' }}>{h.name}</p>
                         </div>
-                      </td>
-                      <td className="py-2.5 px-2 max-w-[120px] truncate"><Link href={`/stocks/${h.symbol}`} className="hover:underline" style={{ color: 'var(--text-secondary)' }}>{h.name}</Link></td>
-                      <td className="py-2.5 px-2 font-number" style={{ color: 'var(--text-secondary)' }}>{h.quantity.toLocaleString()}</td>
-                      <td className="py-2.5 px-2 font-number" style={{ color: 'var(--text-secondary)' }}>{formatPrice(h.average_price)}</td>
-                      <td className="py-2.5 px-2 font-number font-semibold" style={{ color: 'var(--text-primary)' }}>{fmtPKR(cost)}</td>
-                      <td className="py-2.5 px-2 font-number font-semibold" style={{ color: 'var(--text-primary)' }}>{h.ltp > 0 ? formatPrice(h.ltp) : '—'}</td>
-                      <td className="py-2.5 px-2 font-number" style={{ color: 'var(--text-primary)' }}>{h.ltp > 0 ? fmtPKR(mktVal) : '—'}</td>
-                      <td className={`py-2.5 px-2 font-number font-semibold ${clr}`}>
-                        {h.ltp > 0 ? `${up?'+':''}${fmtPKR(pnl)}` : '—'}
-                      </td>
-                      <td className={`py-2.5 px-2 font-number font-semibold ${todayUp ? 'text-green-600' : 'text-red-500'}`}>
-                        {h.ltp > 0 && h.prevClose > 0 ? `${todayUp?'+':''}${fmtPKR(todayPnl)}` : '—'}
-                      </td>
-                      <td className="py-2.5 px-2 font-number text-xs">
-                        {h.ltp > 0 && h.prevClose > 0 && kse100Chg !== null ? (() => {
-                          const stockChgPct = ((h.ltp - h.prevClose) / h.prevClose) * 100
-                          const diff = stockChgPct - kse100Chg
-                          const better = diff >= 0
-                          return (
-                            <span className="flex items-center gap-0.5 font-semibold"
-                                  style={{ color: better ? '#16a34a' : '#dc2626' }}>
-                              {better ? <TrendingUp size={10}/> : <TrendingDown size={10}/>}
-                              {better?'+':''}{diff.toFixed(2)}%
-                            </span>
-                          )
-                        })() : <span style={{ color: 'var(--text-muted)' }}>—</span>}
-                      </td>
-                      <td className={`py-2.5 px-2 font-number ${clr}`}>
-                        {h.ltp > 0
-                          ? <span className="flex items-center gap-1">
-                              {up ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
-                              {up?'+':''}{pnlPct.toFixed(2)}%
-                            </span>
-                          : '—'}
-                      </td>
-                      <td className="py-2.5 px-2 whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>
-                        <span className="flex items-center gap-1">
-                          <Calendar size={10} /> {fmtDate(h.updated_at)}
-                        </span>
-                      </td>
-                      <td className="py-2.5 px-2">
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => setSellHolding(h)}
-                            className="px-2 py-0.5 rounded text-[10px] font-semibold transition-colors"
-                            style={{ backgroundColor: 'rgba(220,38,38,0.1)', color: '#dc2626' }}
-                            title="Sell">
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button onClick={() => setSellHolding(h)}
+                            className="px-2 py-1 rounded text-[10px] font-semibold"
+                            style={{ backgroundColor: 'rgba(220,38,38,0.1)', color: '#dc2626' }}>
                             Sell
                           </button>
                           <button onClick={() => handleDelete(h.id)} disabled={isDel}
-                            className="p-1 rounded hover:opacity-70 disabled:opacity-30"
-                            title="Remove holding">
-                            {isDel
-                              ? <Loader2 size={13} className="animate-spin" style={{ color: 'var(--text-muted)' }} />
-                              : <Trash2 size={13} style={{ color: 'var(--text-muted)' }} />}
+                            className="p-1 rounded hover:opacity-70 disabled:opacity-30">
+                            {isDel ? <Loader2 size={13} className="animate-spin" style={{ color: 'var(--text-muted)' }} />
+                                   : <Trash2 size={13} style={{ color: 'var(--text-muted)' }} />}
                           </button>
                         </div>
-                      </td>
-                    </tr>
+                      </div>
+                      {/* Row 2: key metrics grid */}
+                      <div className="grid grid-cols-3 gap-x-3 gap-y-2 text-[11px]">
+                        <div>
+                          <div style={{ color: 'var(--text-muted)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Qty</div>
+                          <div className="font-number font-semibold" style={{ color: 'var(--text-secondary)' }}>{h.quantity.toLocaleString()}</div>
+                        </div>
+                        <div>
+                          <div style={{ color: 'var(--text-muted)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Avg</div>
+                          <div className="font-number" style={{ color: 'var(--text-secondary)' }}>{formatPrice(h.average_price)}</div>
+                        </div>
+                        <div>
+                          <div style={{ color: 'var(--text-muted)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.05em' }}>LTP</div>
+                          <div className="font-number font-semibold" style={{ color: 'var(--text-primary)' }}>{h.ltp > 0 ? formatPrice(h.ltp) : '—'}</div>
+                        </div>
+                        <div>
+                          <div style={{ color: 'var(--text-muted)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Mkt Val</div>
+                          <div className="font-number" style={{ color: 'var(--text-primary)' }}>{h.ltp > 0 ? fmtPKR(mktVal) : '—'}</div>
+                        </div>
+                        <div>
+                          <div style={{ color: 'var(--text-muted)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.05em' }}>P&L</div>
+                          <div className="font-number font-semibold" style={{ color: up ? '#16a34a' : '#dc2626' }}>
+                            {h.ltp > 0 ? `${up?'+':''}${fmtPKR(pnl)}` : '—'}
+                          </div>
+                        </div>
+                        <div>
+                          <div style={{ color: 'var(--text-muted)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Return</div>
+                          <div className="font-number font-semibold flex items-center gap-0.5" style={{ color: up ? '#16a34a' : '#dc2626' }}>
+                            {h.ltp > 0 ? <>{up ? <TrendingUp size={10}/> : <TrendingDown size={10}/>}{up?'+':''}{pnlPct.toFixed(2)}%</> : '—'}
+                          </div>
+                        </div>
+                      </div>
+                      {/* Today P&L */}
+                      {h.ltp > 0 && h.prevClose > 0 && (
+                        <div className="mt-2 pt-2 flex items-center justify-between text-[10px]" style={{ borderTop: '1px solid var(--bg-border)' }}>
+                          <span style={{ color: 'var(--text-muted)' }}>Today</span>
+                          <span className="font-number font-semibold" style={{ color: todayUp ? '#16a34a' : '#dc2626' }}>
+                            {todayUp?'+':''}{fmtPKR(todayPnl)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   )
                 })}
-              </tbody>
-            </table>
+              </div>
+
+              {/* Desktop table */}
+              <table className="hidden sm:table w-full text-xs">
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--bg-border)' }}>
+                    {['Symbol','Company','Qty','Avg Price','Investment','LTP','Mkt Value','P&L','Today P&L','vs KSE100','Return','Added',''].map(col => (
+                      <th key={col}
+                          className="text-left py-2 px-2 text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap"
+                          style={{ color: 'var(--text-muted)' }}>{col}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {holdings.map(h => {
+                    const cost     = h.quantity * h.average_price
+                    const mktVal   = h.quantity * h.ltp
+                    const pnl      = mktVal - cost
+                    const pnlPct   = cost > 0 ? (pnl / cost) * 100 : 0
+                    const todayPnl = h.quantity * (h.ltp - h.prevClose)
+                    const clr      = getChangeColor(pnl)
+                    const up       = pnl >= 0, todayUp = todayPnl >= 0
+                    const isDel    = deleting === h.id
+
+                    return (
+                      <tr key={h.id}
+                          style={{ borderBottom: '1px solid var(--bg-border)' }}
+                          onMouseEnter={e => (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--bg-hover)'}
+                          onMouseLeave={e => (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'}>
+                        <td className="py-2.5 px-2">
+                          <div className="flex items-center gap-1">
+                            <Link href={`/stocks/${h.symbol}`} className="font-bold hover:underline" style={{ color: '#FEA500' }}>
+                              {h.symbol}
+                            </Link>
+                            {isKMI(h.indexKeys, h.symbol) && <KMIBadge />}
+                          </div>
+                        </td>
+                        <td className="py-2.5 px-2 max-w-[120px] truncate"><Link href={`/stocks/${h.symbol}`} className="hover:underline" style={{ color: 'var(--text-secondary)' }}>{h.name}</Link></td>
+                        <td className="py-2.5 px-2 font-number" style={{ color: 'var(--text-secondary)' }}>{h.quantity.toLocaleString()}</td>
+                        <td className="py-2.5 px-2 font-number" style={{ color: 'var(--text-secondary)' }}>{formatPrice(h.average_price)}</td>
+                        <td className="py-2.5 px-2 font-number font-semibold" style={{ color: 'var(--text-primary)' }}>{fmtPKR(cost)}</td>
+                        <td className="py-2.5 px-2 font-number font-semibold" style={{ color: 'var(--text-primary)' }}>{h.ltp > 0 ? formatPrice(h.ltp) : '—'}</td>
+                        <td className="py-2.5 px-2 font-number" style={{ color: 'var(--text-primary)' }}>{h.ltp > 0 ? fmtPKR(mktVal) : '—'}</td>
+                        <td className={`py-2.5 px-2 font-number font-semibold ${clr}`}>
+                          {h.ltp > 0 ? `${up?'+':''}${fmtPKR(pnl)}` : '—'}
+                        </td>
+                        <td className={`py-2.5 px-2 font-number font-semibold ${todayUp ? 'text-green-600' : 'text-red-500'}`}>
+                          {h.ltp > 0 && h.prevClose > 0 ? `${todayUp?'+':''}${fmtPKR(todayPnl)}` : '—'}
+                        </td>
+                        <td className="py-2.5 px-2 font-number text-xs">
+                          {h.ltp > 0 && h.prevClose > 0 && kse100Chg !== null ? (() => {
+                            const stockChgPct = ((h.ltp - h.prevClose) / h.prevClose) * 100
+                            const diff = stockChgPct - kse100Chg
+                            const better = diff >= 0
+                            return (
+                              <span className="flex items-center gap-0.5 font-semibold"
+                                    style={{ color: better ? '#16a34a' : '#dc2626' }}>
+                                {better ? <TrendingUp size={10}/> : <TrendingDown size={10}/>}
+                                {better?'+':''}{diff.toFixed(2)}%
+                              </span>
+                            )
+                          })() : <span style={{ color: 'var(--text-muted)' }}>—</span>}
+                        </td>
+                        <td className={`py-2.5 px-2 font-number ${clr}`}>
+                          {h.ltp > 0
+                            ? <span className="flex items-center gap-1">
+                                {up ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
+                                {up?'+':''}{pnlPct.toFixed(2)}%
+                              </span>
+                            : '—'}
+                        </td>
+                        <td className="py-2.5 px-2 whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>
+                          <span className="flex items-center gap-1">
+                            <Calendar size={10} /> {fmtDate(h.updated_at)}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-2">
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => setSellHolding(h)}
+                              className="px-2 py-0.5 rounded text-[10px] font-semibold transition-colors"
+                              style={{ backgroundColor: 'rgba(220,38,38,0.1)', color: '#dc2626' }}
+                              title="Sell">
+                              Sell
+                            </button>
+                            <button onClick={() => handleDelete(h.id)} disabled={isDel}
+                              className="p-1 rounded hover:opacity-70 disabled:opacity-30"
+                              title="Remove holding">
+                              {isDel
+                                ? <Loader2 size={13} className="animate-spin" style={{ color: 'var(--text-muted)' }} />
+                                : <Trash2 size={13} style={{ color: 'var(--text-muted)' }} />}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </>
           )}
         </div>
       )}
@@ -1715,9 +1808,9 @@ export default function PortfolioPage() {
           ) : (
             <>
               {/* Realized P&L summary */}
-              <div className="flex items-center justify-between mb-4 pb-3"
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-4 pb-3"
                    style={{ borderBottom: '1px solid var(--bg-border)' }}>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 flex-wrap">
                   <p className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
                     {transactions.length} trade{transactions.length !== 1 ? 's' : ''} recorded
                   </p>
@@ -1787,7 +1880,51 @@ export default function PortfolioPage() {
                 </div>
               </div>
 
-              <table className="w-full text-xs">
+              {/* Mobile history cards */}
+              <div className="sm:hidden space-y-2">
+                {transactions.map(t => {
+                  const realized  = (t.quantity * t.sell_price - t.commission) - (t.quantity * t.buy_price)
+                  const returnPct = t.quantity * t.buy_price > 0 ? (realized / (t.quantity * t.buy_price)) * 100 : 0
+                  const isProfit  = realized >= 0
+                  return (
+                    <div key={t.id} className="rounded-xl p-3" style={{ border: '1px solid var(--bg-border)', backgroundColor: 'var(--bg-hover)' }}>
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div>
+                          <Link href={`/stocks/${t.symbol}`} className="font-bold text-sm" style={{ color: '#FEA500' }}>{t.symbol}</Link>
+                          <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                            <Calendar size={9} className="inline mr-0.5" />{fmtDate(t.sold_at)}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <div className={`font-number font-bold text-sm ${isProfit ? 'text-green-600' : 'text-red-500'}`}>
+                            {isProfit?'+':''}{fmtPKR(realized)}
+                          </div>
+                          <div className={`font-number text-[10px] flex items-center justify-end gap-0.5 ${isProfit ? 'text-green-600' : 'text-red-500'}`}>
+                            {isProfit ? <TrendingUp size={9}/> : <TrendingDown size={9}/>}
+                            {isProfit?'+':''}{returnPct.toFixed(2)}%
+                          </div>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-4 gap-2 text-[11px]">
+                        {[
+                          ['Qty', t.quantity.toLocaleString()],
+                          ['Buy', formatPrice(t.buy_price)],
+                          ['Sell', formatPrice(t.sell_price)],
+                          ['Comm.', t.commission > 0 ? fmtPKR(t.commission) : '—'],
+                        ].map(([lbl, val]) => (
+                          <div key={lbl}>
+                            <div style={{ color: 'var(--text-muted)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{lbl}</div>
+                            <div className="font-number" style={{ color: 'var(--text-secondary)' }}>{val}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Desktop history table */}
+              <table className="hidden sm:table w-full text-xs">
                 <thead>
                   <tr style={{ borderBottom: '1px solid var(--bg-border)' }}>
                     {['Symbol','Qty Sold','Buy Price','Sell Price','Commission','Realized P&L','Return','Sold On'].map(col => (

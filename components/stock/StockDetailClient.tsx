@@ -71,6 +71,116 @@ function fmtNum(v: number | null | undefined, decimals = 2): string {
   return v.toFixed(decimals)
 }
 
+/* ── GaugeMeter: top-level so React never remounts it on parent re-render ── */
+function GaugeMeter({ score, label, sub, color, displayValue, badge }: {
+  score: number | null; label: string; sub: string; color: string
+  displayValue?: string; badge?: string
+}) {
+  const W = 260, H = 158
+  const cx = W / 2, cy = 138
+  const Ro = 108, Ri = 70
+  const toRad = (d: number) => (d * Math.PI) / 180
+
+  const pt = (deg: number, r: number) => ({
+    x: cx + r * Math.cos(toRad(deg)),
+    y: cy - r * Math.sin(toRad(deg)),
+  })
+
+  function bandPath(fromDeg: number, toDeg: number) {
+    const o1 = pt(fromDeg, Ro), o2 = pt(toDeg, Ro)
+    const i1 = pt(fromDeg, Ri), i2 = pt(toDeg, Ri)
+    const lg = (fromDeg - toDeg) > 180 ? 1 : 0
+    return [
+      `M ${o1.x.toFixed(1)} ${o1.y.toFixed(1)}`,
+      `A ${Ro} ${Ro} 0 ${lg} 0 ${o2.x.toFixed(1)} ${o2.y.toFixed(1)}`,
+      `L ${i2.x.toFixed(1)} ${i2.y.toFixed(1)}`,
+      `A ${Ri} ${Ri} 0 ${lg} 1 ${i1.x.toFixed(1)} ${i1.y.toFixed(1)}`,
+      'Z',
+    ].join(' ')
+  }
+
+  const zones = [
+    { from: 180, to: 135, col: '#dc2626' },
+    { from: 135, to:  90, col: '#f97316' },
+    { from:  90, to:  45, col: '#eab308' },
+    { from:  45, to:   0, col: '#16a34a' },
+  ]
+
+  const pct = score !== null ? Math.min(1, Math.max(0, score / 100)) : null
+  const targetRotation = pct !== null ? pct * 180 : 0
+
+  // Animate on mount: cssRotation starts at 0, RAF sets it to target → CSS transition plays.
+  // No cleanup/guard: in StrictMode both RAFs fire on the same frame with the same value,
+  // React batches them into one update, so the transition fires exactly once.
+  const [cssRotation, setCssRotation] = useState(0)
+  useEffect(() => {
+    requestAnimationFrame(() => setCssRotation(targetRotation))
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Update smoothly when score changes after mount
+  const prevTarget = useRef(targetRotation)
+  useEffect(() => {
+    if (prevTarget.current === targetRotation) return
+    prevTarget.current = targetRotation
+    setCssRotation(targetRotation)
+  }, [targetRotation])
+
+  const activeZone = score !== null
+    ? zones.find(z => targetRotation >= 180 - z.from && targetRotation <= 180 - z.to) ?? zones[0]
+    : null
+  const activeCol = activeZone?.col ?? '#94a3b8'
+
+  const nLen = Ri - 6
+  const nTip = pt(180, nLen)
+  const nL   = pt(270, 6)
+  const nR   = pt(90,  6)
+
+  const innerCover = [
+    `M ${pt(180, Ri).x.toFixed(1)} ${pt(180, Ri).y.toFixed(1)}`,
+    `A ${Ri} ${Ri} 0 0 0 ${pt(0, Ri).x.toFixed(1)} ${pt(0, Ri).y.toFixed(1)}`,
+    `L ${cx} ${cy} Z`,
+  ].join(' ')
+
+  const displayVal = displayValue ?? (score !== null ? String(score) : '—')
+
+  return (
+    <div style={{
+      backgroundColor: 'var(--bg-card)', border: '1px solid var(--bg-border)',
+      borderRadius: 18, padding: '10px 8px 14px',
+      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
+    }}>
+      <div style={{ position: 'relative', width: '100%', maxWidth: W }}>
+        <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ display: 'block' }}>
+          {zones.map((z, i) => (
+            <path key={i} d={bandPath(z.from, z.to)} fill={z.col} opacity={0.92} />
+          ))}
+          <path d={innerCover} fill="var(--bg-card)" />
+          <g style={{
+            transformOrigin: `${cx}px ${cy}px`,
+            transform: `rotate(${cssRotation}deg)`,
+            transition: 'transform 1.1s cubic-bezier(0.34, 1.2, 0.64, 1)',
+          }}>
+            <polygon
+              points={`${nTip.x.toFixed(1)},${nTip.y.toFixed(1)} ${nL.x.toFixed(1)},${nL.y.toFixed(1)} ${nR.x.toFixed(1)},${nR.y.toFixed(1)}`}
+              fill="#1e293b"
+            />
+          </g>
+          <circle cx={cx} cy={cy} r={9} fill="#1e293b" />
+          <circle cx={cx} cy={cy} r={4.5} fill="#94a3b8" />
+          {/* Value label inside SVG so it scales with the gauge */}
+          <text x={W - 12} y={22} textAnchor="end"
+            fontSize="26" fontWeight="900"
+            fill={activeCol} fontFamily="inherit">
+            {displayVal}
+          </text>
+        </svg>
+      </div>
+      <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginTop: 1, textAlign: 'center' }}>{label}</p>
+      <p style={{ fontSize: 10, color: 'var(--text-muted)', textAlign: 'center' }}>{sub}</p>
+    </div>
+  )
+}
+
 /* -"--"- Main Component -"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"--"- */
 export default function StockDetailClient({
   symbol,
@@ -113,6 +223,7 @@ export default function StockDetailClient({
   const [fundData,     setFundData]     = useState<StatementData | null>(null)
   const [fundLoad,     setFundLoad]     = useState(false)
   const [fundInterval, setFundInterval] = useState<'annual' | 'quarterly'>('annual')
+
 
   // Snapshot fundamentals - loaded on overview tab so Company Snapshot shows immediately
   const [snapFunds,    setSnapFunds]    = useState<StatementData | null>(null)
@@ -377,7 +488,7 @@ export default function StockDetailClient({
           </svg>
           <input
             type="text"
-            placeholder="Search another stock by symbol or name..."
+            placeholder="Search stock by symbol or name..."
             value={searchQuery}
             onChange={e => { setSearchQuery(e.target.value); setSearchOpen(true) }}
             onFocus={() => setSearchOpen(true)}
@@ -468,12 +579,12 @@ export default function StockDetailClient({
           <div className="space-y-4">
             {/* Price card */}
             <div className="card">
-              <div className="flex items-end gap-6 mb-5">
+              <div className="flex items-end gap-4 mb-4">
                 <div>
-                  <p className="text-4xl font-black font-number" style={{ color: 'var(--text-primary)' }}>
+                  <p className="text-3xl sm:text-4xl font-black font-number" style={{ color: 'var(--text-primary)' }}>
                     {formatPrice(Number(overview.price))}
                   </p>
-                  <p className={`text-base font-semibold font-number mt-1 ${isUp ? 'text-green-600' : 'text-red-500'}`}>
+                  <p className={`text-sm sm:text-base font-semibold font-number mt-1 ${isUp ? 'text-green-600' : 'text-red-500'}`}>
                     {isUp ? <TrendingUp size={14} className="inline mr-1" /> : <TrendingDown size={14} className="inline mr-1" />}
                     {formatChange(Number(overview.change))} ({formatPercent(Number(overview.changePct) / 100)})
                   </p>
@@ -550,45 +661,6 @@ export default function StockDetailClient({
               }
               const stockifyyScore = ssMax > 0 ? Math.round((ss / ssMax) * 100) : null
 
-              function ScoreRing({ score, label, sub, color }: {
-                score: number | null; label: string; sub: string; color: string
-              }) {
-                const s = score ?? 0
-                const circumference = 2 * Math.PI * 26
-                const dash = (s / 100) * circumference
-                const grade = s >= 75 ? 'Excellent' : s >= 55 ? 'Good' : s >= 35 ? 'Fair' : 'Weak'
-                const gradeColor = s >= 75 ? '#16a34a' : s >= 55 ? '#FEA500' : s >= 35 ? '#f97316' : '#dc2626'
-                return (
-                  <div className="rounded-2xl p-4 flex flex-col items-center gap-2 text-center"
-                    style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--bg-border)' }}>
-                    <div className="relative w-16 h-16">
-                      <svg width="64" height="64" viewBox="0 0 64 64">
-                        <circle cx="32" cy="32" r="26" fill="none" stroke="var(--bg-hover)" strokeWidth="6" />
-                        {score !== null && (
-                          <circle cx="32" cy="32" r="26" fill="none" stroke={color} strokeWidth="6"
-                            strokeDasharray={`${dash} ${circumference}`}
-                            strokeLinecap="round"
-                            transform="rotate(-90 32 32)" />
-                        )}
-                      </svg>
-                      <span className="absolute inset-0 flex items-center justify-center text-base font-black"
-                        style={{ color: score !== null ? color : 'var(--text-muted)' }}>
-                        {score !== null ? score : '-'}
-                      </span>
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>{label}</p>
-                      <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{sub}</p>
-                      {score !== null && (
-                        <span className="inline-block mt-1 px-2 py-0.5 rounded-full text-[9px] font-bold"
-                          style={{ backgroundColor: gradeColor + '20', color: gradeColor }}>
-                          {grade}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )
-              }
 
               const mosDisplay = mos !== null
                 ? `${mos >= 0 ? '+' : ''}${mos}%`
@@ -621,33 +693,22 @@ export default function StockDetailClient({
                       Based on fundamentals
                     </span>
                   </div>
-                  <div className="grid grid-cols-3 gap-3">
-                    <ScoreRing
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <GaugeMeter
                       score={isFinancial ? null : intrinsicScore}
                       label="Intrinsic Score"
                       sub={isFinancial ? 'N/A for financials' : 'Graham IV vs Price'}
                       color="#3b82f6"
                     />
-                    <div className="rounded-2xl p-4 flex flex-col items-center gap-2 text-center"
-                      style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--bg-border)' }}>
-                      <div className="w-16 h-16 flex items-center justify-center rounded-full text-xl font-black"
-                        style={{ backgroundColor: (isFinancial ? '#94a3b8' : mosColor) + '20', color: isFinancial ? '#94a3b8' : mosColor }}>
-                        {isFinancial ? 'N/A' : mosDisplay}
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>Margin of Safety</p>
-                        <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                          {isFinancial ? 'N/A for financials' : 'IV vs Current Price'}
-                        </p>
-                        {!isFinancial && mos !== null && (
-                          <span className="inline-block mt-1 px-2 py-0.5 rounded-full text-[9px] font-bold"
-                            style={{ backgroundColor: mosColor + '20', color: mosColor }}>
-                            {mosSub}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <ScoreRing score={stockifyyScore} label="Stockifyy Score" sub="Multi-factor rating" color="#FEA500" />
+                    <GaugeMeter
+                      score={isFinancial ? null : (mos !== null ? Math.min(100, Math.max(0, 50 + mos / 2)) : null)}
+                      label="Margin of Safety"
+                      sub={isFinancial ? 'N/A for financials' : 'IV vs Current Price'}
+                      color={isFinancial ? '#94a3b8' : mosColor}
+                      displayValue={isFinancial ? 'N/A' : mosDisplay}
+                      badge={!isFinancial && mos !== null ? mosSub : undefined}
+                    />
+                    <GaugeMeter score={stockifyyScore} label="Stockifyy Score" sub="Multi-factor rating" color="#FEA500" />
                   </div>
 
                   {/* Sector warning */}
@@ -1171,23 +1232,23 @@ export default function StockDetailClient({
       {tab === 'financials' && (
         <div className="card space-y-4">
           {/* Filter row */}
-          <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex flex-wrap items-center gap-2">
             <div className="flex gap-1">
               {(['income', 'balance'] as const).map(t => (
                 <button key={t} onClick={() => setStmtType(t)}
-                  className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+                  className="px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap"
                   style={stmtType === t
                     ? { background: 'linear-gradient(135deg, #FEA500, #986300)', color: 'white' }
                     : { backgroundColor: 'var(--bg-hover)', color: 'var(--text-secondary)' }}
                 >
-                  {t === 'income' ? 'Income Statement' : 'Balance Sheet'}
+                  {t === 'income' ? 'Income' : 'Balance Sheet'}
                 </button>
               ))}
             </div>
-            <div className="flex gap-1 ml-auto">
+            <div className="flex gap-1 sm:ml-auto">
               {(['annual', 'quarterly'] as const).map(i => (
                 <button key={i} onClick={() => setStmtInt(i)}
-                  className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+                  className="px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors"
                   style={stmtInt === i
                     ? { backgroundColor: 'var(--bg-border)', color: 'var(--text-primary)' }
                     : { backgroundColor: 'transparent', color: 'var(--text-muted)' }}
@@ -1234,7 +1295,13 @@ export default function StockDetailClient({
 
       {/* -> FUNDAMENTALS -> */}
       {tab === 'fundamentals' && (
-        <div className="card space-y-4">
+        <div className="space-y-4" style={{
+          backgroundColor: 'var(--bg-card)',
+          border: '1px solid var(--bg-border)',
+          borderRadius: '0.75rem',
+          padding: '1rem',
+          boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)',
+        }}>
           <SectionHeading>Financial Ratios &amp; Metrics</SectionHeading>
           {fundLoad ? <LoadingRows /> : fundData
             ? <FundamentalsView data={fundData} overview={overview} symbol={symbol} />

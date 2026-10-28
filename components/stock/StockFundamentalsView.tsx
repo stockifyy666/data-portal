@@ -203,37 +203,41 @@ function MetricModal({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ backgroundColor: 'rgba(0,0,0,0.55)' }}
+      style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}
       onClick={onBackdrop}
     >
       <div
+        onClick={e => e.stopPropagation()}
         className="rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col overflow-hidden"
-        style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--bg-border)', maxHeight: '90vh' }}
+        style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--bg-border)', maxHeight: '88vh' }}
       >
-        <div className="flex items-center justify-between px-5 py-3.5"
-          style={{ borderBottom: '1px solid var(--bg-border)' }}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4"
+          style={{ borderBottom: '1px solid var(--bg-border)', flexShrink: 0 }}>
           <div>
-            <h2 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{row.label}</h2>
-            <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
+            <h2 className="text-[15px] font-bold" style={{ color: 'var(--text-primary)' }}>{row.label}</h2>
+            <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
               Annual &amp; Quarterly history
             </p>
           </div>
-          <button onClick={onClose}
-            className="rounded-lg px-2 py-1 text-xs font-bold"
+          <button
+            onClick={onClose}
+            className="w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold hover:brightness-95"
             style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-secondary)' }}>
             ✕
           </button>
         </div>
 
+        {/* Scrollable body */}
         <div className="overflow-auto p-5 flex-1 space-y-6">
           {renderSection('Annual — Year by Year', periods, row.values)}
           <div style={{ borderTop: '1px solid var(--bg-border)' }} />
           {qLoading ? (
             <div>
               <p className="text-[11px] font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--text-muted)' }}>Quarterly</p>
-              <div className="flex gap-1">
+              <div className="flex gap-1.5">
                 {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="flex-1 h-20 rounded animate-pulse" style={{ backgroundColor: 'var(--bg-hover)' }} />
+                  <div key={i} className="flex-1 h-20 rounded-lg animate-pulse" style={{ backgroundColor: 'var(--bg-hover)' }} />
                 ))}
               </div>
             </div>
@@ -311,7 +315,7 @@ export function FundamentalsView({ data, overview, symbol }: {
                 </h3>
                 <span className="text-[9px]" style={{ color: 'var(--text-muted)' }}>Click card for history</span>
               </div>
-              <div className="p-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <div className="p-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                 {group.rows.map(row => {
                   const ttm        = row.values[ttmIdx]
                   const prev       = row.values[1] ?? null
@@ -322,24 +326,45 @@ export function FundamentalsView({ data, overview, symbol }: {
                     <button
                       key={row.label}
                       onClick={() => setActiveRow(row)}
-                      className="rounded-xl p-3 flex flex-col gap-2 text-left transition-all hover:brightness-110 active:scale-95"
+                      className="rounded-xl p-3 text-left transition-all hover:brightness-110 active:scale-95"
                       style={{ backgroundColor: 'var(--bg-hover)', cursor: 'pointer', width: '100%' }}>
-                      <div className="flex items-start justify-between gap-1">
-                        <span className="text-[10px] font-medium leading-snug break-words min-w-0 flex-1" style={{ color: 'var(--text-secondary)' }}>
+                      {/* Mobile: horizontal layout */}
+                      <div className="flex sm:hidden items-center justify-between gap-2">
+                        <span className="text-[10px] font-medium leading-snug min-w-0 flex-1" style={{ color: 'var(--text-secondary)' }}>
                           {row.label}
                         </span>
-                        <div className="shrink-0 ml-1"><TrendBar values={row.values} /></div>
-                      </div>
-                      <div className="flex items-end justify-between gap-1">
-                        <span className="text-sm font-bold font-number leading-none truncate"
-                          style={{ color: (ttm ?? 0) < 0 ? '#dc2626' : 'var(--text-primary)' }}>
-                          {formatted}
-                        </span>
-                        {trend && trend !== 'flat' && (
-                          <span className="text-[9px] font-semibold leading-none shrink-0" style={{ color: trendColor }}>
-                            {trend === 'up' ? '▲' : '▼'}
+                        <div className="flex items-center gap-2 shrink-0">
+                          <TrendBar values={row.values} />
+                          <span className="text-sm font-bold font-number leading-none"
+                            style={{ color: (ttm ?? 0) < 0 ? '#dc2626' : 'var(--text-primary)' }}>
+                            {formatted}
                           </span>
-                        )}
+                          {trend && trend !== 'flat' && (
+                            <span className="text-[9px] font-semibold leading-none" style={{ color: trendColor }}>
+                              {trend === 'up' ? '▲' : '▼'}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      {/* Desktop: vertical layout */}
+                      <div className="hidden sm:flex flex-col gap-2">
+                        <div className="flex items-start justify-between gap-1">
+                          <span className="text-[10px] font-medium leading-snug break-words min-w-0 flex-1" style={{ color: 'var(--text-secondary)' }}>
+                            {row.label}
+                          </span>
+                          <div className="shrink-0 ml-1"><TrendBar values={row.values} /></div>
+                        </div>
+                        <div className="flex items-end justify-between gap-1">
+                          <span className="text-sm font-bold font-number leading-none truncate"
+                            style={{ color: (ttm ?? 0) < 0 ? '#dc2626' : 'var(--text-primary)' }}>
+                            {formatted}
+                          </span>
+                          {trend && trend !== 'flat' && (
+                            <span className="text-[9px] font-semibold leading-none shrink-0" style={{ color: trendColor }}>
+                              {trend === 'up' ? '▲' : '▼'}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </button>
                   )
@@ -348,48 +373,6 @@ export function FundamentalsView({ data, overview, symbol }: {
             </div>
           ))}
 
-          {overview && (() => {
-            const fmt  = (v: number | undefined | null) =>
-              v && Number(v) ? Number(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'
-            const fmtV = (v: number | undefined | null) =>
-              v && Number(v) >= 1_000_000 ? `${(Number(v) / 1_000_000).toFixed(2)}M`
-                : v && Number(v) >= 1_000 ? `${(Number(v) / 1_000).toFixed(1)}K`
-                : v ? String(v) : '—'
-
-            const stats: { label: string; value: string }[] = [
-              { label: 'Prev Close (LDCP)', value: fmt(Number(overview.lastClose)) },
-              { label: 'Volume',            value: fmtV(Number(overview.volume))   },
-              { label: '52W High',          value: fmt(Number(overview.high52))    },
-              { label: '52W Low',           value: fmt(Number(overview.low52))     },
-              { label: '50D MA',            value: fmt(Number((overview as any).ma50))  },
-              { label: '200D MA',           value: fmt(Number((overview as any).ma200)) },
-              { label: 'Idx Weight',        value: (overview as any).idxWeight ? String((overview as any).idxWeight) : '—' },
-            ]
-            return (
-              <div className="rounded-2xl overflow-hidden"
-                style={{ border: '1px solid var(--bg-border)', backgroundColor: 'var(--bg-card)' }}>
-                <div className="px-4 py-2.5 flex items-center justify-between"
-                  style={{ borderBottom: '1px solid var(--bg-border)', backgroundColor: 'var(--bg-hover)' }}>
-                  <h3 className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
-                    Market Stats (PSX)
-                  </h3>
-                </div>
-                <div className="p-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {stats.map(s => (
-                    <div key={s.label} className="rounded-xl p-3 flex flex-col gap-2"
-                      style={{ backgroundColor: 'var(--bg-hover)' }}>
-                      <span className="text-[10px] font-medium leading-snug break-words min-w-0" style={{ color: 'var(--text-secondary)' }}>
-                        {s.label}
-                      </span>
-                      <span className="text-sm font-bold font-number leading-none truncate" style={{ color: 'var(--text-primary)' }}>
-                        {s.value}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )
-          })()}
         </div>
       </div>
     </>

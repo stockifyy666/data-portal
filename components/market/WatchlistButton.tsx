@@ -75,28 +75,28 @@ export default function WatchlistButton({ symbol, currentPrice = 0 }: Props) {
   }
 
   if (loading) {
-    return <div className="w-36 h-9 rounded-lg animate-pulse" style={{ backgroundColor: 'var(--bg-hover)' }} />
+    return <div className="w-9 h-9 sm:w-36 rounded-lg animate-pulse shrink-0" style={{ backgroundColor: 'var(--bg-hover)' }} />
   }
 
   if (!loggedIn) {
     return (
       <button onClick={() => router.push('/login')}
-        className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border transition-colors"
+        className="flex items-center gap-2 px-2 sm:px-4 py-2 rounded-lg text-sm font-medium border transition-colors shrink-0"
         style={{ borderColor: 'var(--bg-border)', color: 'var(--text-muted)', backgroundColor: 'var(--bg-card)' }}>
         <LogIn size={14} />
-        Login to Watch
+        <span className="hidden sm:inline">Login to Watch</span>
       </button>
     )
   }
 
   return (
     <button onClick={toggle} disabled={working}
-      className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border transition-colors disabled:opacity-50"
+      className="flex items-center gap-2 px-2 sm:px-4 py-2 rounded-lg text-sm font-medium border transition-colors disabled:opacity-50 shrink-0"
       style={watched
         ? { backgroundColor: '#fefce8', color: '#b45309', borderColor: '#fde68a' }
         : { backgroundColor: 'var(--bg-card)', color: 'var(--text-secondary)', borderColor: 'var(--bg-border)' }}>
       <Star size={14} className={watched ? 'fill-amber-500 text-amber-500' : ''} />
-      {watched ? 'Watching' : 'Add to Watchlist'}
+      <span className="hidden sm:inline">{watched ? 'Watching' : 'Add to Watchlist'}</span>
     </button>
   )
 }

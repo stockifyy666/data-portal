@@ -39,43 +39,43 @@ export default function MarketStatusBanner() {
   const style = status ? (CODE_STYLES[status.code] ?? CODE_STYLES.after_hours) : null
 
   return (
-    <div className="flex items-center justify-between">
-      <div>
-        <h1 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>
+    <div className="flex items-center justify-between gap-3">
+      <div className="min-w-0">
+        <h1 className="text-base sm:text-xl font-bold truncate" style={{ color: 'var(--text-primary)' }}>
           Market Overview
         </h1>
-        <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+        <p className="text-[10px] sm:text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
           Pakistan Stock Exchange · Live Data
         </p>
       </div>
 
       {status && style ? (
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 shrink-0">
           {timeStr && (
             <span className="text-xs hidden sm:block" style={{ color: 'var(--text-muted)' }}>
               {timeStr}
             </span>
           )}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
+          <div className="flex flex-col items-end gap-0.5">
             <div
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold border"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] sm:text-xs font-bold border"
               style={{ background: style.bg, color: style.text, borderColor: style.border, borderRadius: '9999px' }}
             >
               <span
                 className={status.isOpen ? 'animate-pulse' : ''}
-                style={{ width: 8, height: 8, borderRadius: '50%', background: style.dot, display: 'inline-block', flexShrink: 0 }}
+                style={{ width: 7, height: 7, borderRadius: '50%', background: style.dot, display: 'inline-block', flexShrink: 0 }}
               />
               {status.label.toUpperCase()}
             </div>
             {status.nextOpen && (
-              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              <span className="text-[10px] sm:text-xs text-right" style={{ color: 'var(--text-muted)' }}>
                 Opens {status.nextOpen}
               </span>
             )}
           </div>
         </div>
       ) : (
-        <div className="h-8 w-40 rounded-full animate-pulse" style={{ backgroundColor: 'var(--bg-hover)' }} />
+        <div className="h-7 w-32 rounded-full animate-pulse shrink-0" style={{ backgroundColor: 'var(--bg-hover)' }} />
       )}
     </div>
   )
