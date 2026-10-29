@@ -81,6 +81,14 @@ export default function FIPIPage() {
   const [period,    setPeriod]    = useState<Period>('10d')
   const [invType,   setInvType]   = useState<InvType>('lipi')
   const [breakMode, setBreakMode] = useState<BreakMode>('client')
+  const [isMobile,  setIsMobile]  = useState(false)
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 480)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
 
   const load = useCallback(async (p: Period) => {
     setLoading(true); setError(null)
@@ -122,8 +130,8 @@ export default function FIPIPage() {
     <div className=" space-y-4" style={{ color: 'var(--text-primary)' }}>
 
       {/* Header row */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-xl font-bold">Portfolio Investments</h1>
           <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
             Foreign &amp; Local Institutional Portfolio Investment — PSX · Source: NCCPL
@@ -183,14 +191,15 @@ export default function FIPIPage() {
                 Net {invType.toUpperCase()} (in $USD)
               </p>
             </div>
-            <ResponsiveContainer width="100%" height={320}>
-              <ComposedChart data={chartData} margin={{ top: 8, right: 48, left: 8, bottom: 4 }}>
+            <ResponsiveContainer width="100%" height={isMobile ? 240 : 300}>
+              <ComposedChart data={chartData} margin={{ top: 8, right: isMobile ? 28 : 40, left: isMobile ? -8 : 0, bottom: 4 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--bg-border)" vertical={false} />
-                <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
-                <YAxis yAxisId="bar" tick={{ fontSize: 10, fill: 'var(--text-muted)' }}
-                  tickFormatter={v => `${fmtK(v)}K`} axisLine={false} tickLine={false} />
-                <YAxis yAxisId="line" orientation="right" tick={{ fontSize: 10, fill: 'var(--text-muted)' }}
-                  tickFormatter={v => `${v}m`} axisLine={false} tickLine={false} />
+                <XAxis dataKey="label" tick={{ fontSize: isMobile ? 9 : 10, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false}
+                  tickFormatter={(v: string) => isMobile && v.length === 10 ? v.slice(5) : v} />
+                <YAxis yAxisId="bar" tick={{ fontSize: isMobile ? 9 : 10, fill: 'var(--text-muted)' }}
+                  tickFormatter={v => `${fmtK(v)}K`} axisLine={false} tickLine={false} width={isMobile ? 42 : 50} />
+                <YAxis yAxisId="line" orientation="right" tick={{ fontSize: isMobile ? 9 : 10, fill: 'var(--text-muted)' }}
+                  tickFormatter={v => `${v}m`} axisLine={false} tickLine={false} width={isMobile ? 26 : 32} />
                 <Tooltip content={<CustomTooltip days={sorted} breakMode={breakMode} />} />
                 <ReferenceLine yAxisId="bar" y={0} stroke="var(--text-muted)" strokeOpacity={0.4} />
                 <Bar yAxisId="bar" dataKey="net" radius={[3, 3, 0, 0]} maxBarSize={40}>
@@ -204,9 +213,9 @@ export default function FIPIPage() {
             </ResponsiveContainer>
 
             {/* Bottom controls */}
-            <div className="flex items-center justify-between px-4 py-3 border-t" style={{ borderColor: 'var(--bg-border)' }}>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between px-4 py-3 border-t gap-2" style={{ borderColor: 'var(--bg-border)' }}>
               {/* Period */}
-              <div className="flex gap-1">
+              <div className="flex gap-1 flex-wrap">
                 {(['10d', '3m', '1y'] as Period[]).map(p => (
                   <button key={p} onClick={() => { setPeriod(p); load(p) }}
                     className="px-3 py-1 rounded-lg text-xs font-semibold transition-colors"
@@ -240,7 +249,8 @@ export default function FIPIPage() {
                     {invType.toUpperCase()} Breakdown — {latest.date} · By {breakMode.charAt(0).toUpperCase() + breakMode.slice(1)}
                   </span>
                 </div>
-                <table className="w-full text-sm">
+                <div className="overflow-x-auto">
+                <table className="w-full text-sm min-w-[280px]">
                   <thead>
                     <tr style={{ background: 'var(--bg-hover)' }}>
                       <th className="px-4 py-2 text-left font-medium" style={{ color: 'var(--text-muted)' }}>
@@ -274,6 +284,7 @@ export default function FIPIPage() {
                     </tr>
                   </tbody>
                 </table>
+                </div>
               </div>
             )
           })()}

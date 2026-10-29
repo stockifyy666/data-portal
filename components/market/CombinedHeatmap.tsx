@@ -29,7 +29,8 @@ const SECTOR_NAMES: Record<string, string> = {
 }
 
 
-const CONTAINER_H = 540   // px height of the heatmap canvas
+const CONTAINER_H_DESKTOP = 540
+const CONTAINER_H_MOBILE  = 380
 
 /* ── Helpers ──────────────────────────────────────────────────────── */
 function heatColor(pct: number): string {
@@ -103,10 +104,18 @@ const INDICES = [
 
 /* ── Main Component ───────────────────────────────────────────────── */
 export default function CombinedHeatmap() {
-  const [quotes,  setQuotes]  = useState<StockQuote[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error,   setError]   = useState('')
-  const [index,   setIndex]   = useState('ALLSHR')
+  const [quotes,     setQuotes]     = useState<StockQuote[]>([])
+  const [loading,    setLoading]    = useState(true)
+  const [error,      setError]      = useState('')
+  const [index,      setIndex]      = useState('ALLSHR')
+  const [containerW, setContainerW] = useState(800)
+
+  useEffect(() => {
+    const update = () => setContainerW(window.innerWidth)
+    update()
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [])
 
   useEffect(() => {
     cachedFetch<{ quotes: StockQuote[] }>('/api/market/quotes', 5 * 60_000)
@@ -159,8 +168,10 @@ export default function CombinedHeatmap() {
   }, [sectors, sectorRects])
 
   /* ── Render ── */
+  const containerH = containerW < 480 ? CONTAINER_H_MOBILE : CONTAINER_H_DESKTOP
+
   if (loading) return (
-    <div className="rounded-lg animate-pulse mt-4" style={{ height: CONTAINER_H, backgroundColor: 'var(--bg-hover)' }} />
+    <div className="rounded-lg animate-pulse mt-4" style={{ height: containerH, backgroundColor: 'var(--bg-hover)' }} />
   )
   if (error) return <p className="text-sm py-6 text-center" style={{ color: 'var(--text-muted)' }}>{error}</p>
 
@@ -198,7 +209,7 @@ export default function CombinedHeatmap() {
       </div>
 
       {/* Treemap canvas */}
-      <div style={{ position: 'relative', width: '100%', height: CONTAINER_H, borderRadius: 6, overflow: 'hidden' }}>
+      <div style={{ position: 'relative', width: '100%', height: containerH, borderRadius: 6, overflow: 'hidden' }}>
         {sectorRects.map(sr => {
           const sec   = sectors.find(s => s.code === sr.id)
           if (!sec) return null
@@ -235,8 +246,8 @@ export default function CombinedHeatmap() {
                 if (!stock) return null
 
                 // Approximate pixel dimensions to decide what text to show
-                const approxPxW = (rect.w / 100) * (sr.w / 100) * 1400
-                const approxPxH = (rect.h / 100) * CONTAINER_H * (sr.h / 100)
+                const approxPxW = (rect.w / 100) * (sr.w / 100) * containerW
+                const approxPxH = (rect.h / 100) * containerH * (sr.h / 100)
                 const showSym = approxPxW > 24 && approxPxH > 18
                 const showPct = approxPxW > 34 && approxPxH > 34
                 const fs      = Math.min(14, Math.max(7, Math.min(approxPxW / 5.5, approxPxH / 3.5)))

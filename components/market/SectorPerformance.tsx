@@ -62,7 +62,8 @@ function SectorStocksModal({ sector, onClose }: { sector: ActiveSector; onClose:
         </div>
         {/* Table */}
         <div className="overflow-y-auto flex-1">
-          <table className="w-full text-xs">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[420px] text-xs">
             <thead className="sticky top-0" style={{ backgroundColor: 'var(--bg-card)' }}>
               <tr style={{ borderBottom: '1px solid var(--bg-border)' }}>
                 <th className="text-left py-2.5 px-4 text-[10px] font-semibold uppercase tracking-wider"
@@ -120,6 +121,7 @@ function SectorStocksModal({ sector, onClose }: { sector: ActiveSector; onClose:
               })}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
     </div>
@@ -240,7 +242,7 @@ export default function SectorPerformance({ indexFilter }: { indexFilter?: strin
   return (
     <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--bg-border)', backgroundColor: 'var(--bg-card)' }}>
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-4 flex-wrap gap-3"
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between px-5 py-4 gap-3"
            style={{ borderBottom: '1px solid var(--bg-border)' }}>
         <div>
           <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Sector Performance</p>
@@ -248,13 +250,13 @@ export default function SectorPerformance({ indexFilter }: { indexFilter?: strin
             Best & worst performing sectors
           </p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
           {/* Index filter — only show when not driven by parent */}
           {indexFilter === undefined && (
-            <div className="flex gap-1">
+            <div className="flex gap-1 overflow-x-auto pb-0.5" style={{ scrollbarWidth: 'none' }}>
               {INDEX_FILTER.map(f => (
                 <button key={f.value} onClick={() => setIdxFilt(f.value)}
-                  className="px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-all"
+                  className="px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-all shrink-0"
                   style={idxFilt === f.value
                     ? { background: 'linear-gradient(135deg,#FEA500,#986300)', color: 'white' }
                     : { backgroundColor: 'var(--bg-hover)', color: 'var(--text-secondary)', border: '1px solid var(--bg-border)' }}>
