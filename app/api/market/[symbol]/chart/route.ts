@@ -14,14 +14,39 @@
 
 import { NextRequest, NextResponse }         from 'next/server'
 import { createClient }                      from '@/lib/supabase/server'
-import { csGet }                             from '@/lib/capitalstake/client'
+import { csUatGet }                          from '@/lib/capitalstake/client'
 import { CS_ENDPOINTS }                      from '@/lib/capitalstake/endpoints'
 import { withCache, CACHE_KEYS, TTL_SECONDS } from '@/lib/redis/cache'
-import { trackCSAPICall }                    from '@/lib/utils/rateLimit'
+import { trackChartAPICall }                 from '@/lib/utils/rateLimit'
 import type { CSResponse, OHLCVCandle }      from '@/types/market'
 
 // Valid timeframe values the user can request
-const VALID_TIMEFRAMES = ['1min', '5min', '15min', 'eod'] as const
+const VALID_TIMEFRAMES = ['1min', '5min', '10min', '15min', '30min', '1h', 'eod'] as const
+
+// Normalize whatever the chart API returns into OHLCVCandle[]
+// The new uat.csapis.com API may return { data: [...] }, [...], or { status, data: [...] }
+function normalizeChartResponse(raw: unknown): OHLCVCandle[] {
+  if (!raw) return []
+
+  // Already an array
+  if (Array.isArray(raw)) return raw as OHLCVCandle[]
+
+  const obj = raw as Record<string, unknown>
+
+  // { status: 'ok', data: [...] }  ← old CS shape
+  if (Array.isArray(obj.data)) return obj.data as OHLCVCandle[]
+
+  // { candles: [...] } or { ohlcv: [...] } or { result: [...] }
+  for (const key of ['candles', 'ohlcv', 'result', 'bars', 'history']) {
+    if (Array.isArray(obj[key])) return obj[key] as OHLCVCandle[]
+  }
+
+  // Log the actual shape in dev so we can adapt
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('[chart route] Unknown chart API response shape:', JSON.stringify(raw).slice(0, 300))
+  }
+  return []
+}
 type Timeframe = typeof VALID_TIMEFRAMES[number]
 
 export async function GET(
@@ -59,35 +84,46 @@ export async function GET(
     const endpointMap: Record<Timeframe, string> = {
       '1min':  CS_ENDPOINTS.CHART_1MIN(symbol),
       '5min':  CS_ENDPOINTS.CHART_5MIN(symbol),
+      '10min': CS_ENDPOINTS.CHART_10MIN(symbol),
       '15min': CS_ENDPOINTS.CHART_15MIN(symbol),
+      '30min': CS_ENDPOINTS.CHART_30MIN(symbol),
+      '1h':    CS_ENDPOINTS.CHART_1H(symbol),
       'eod':   CS_ENDPOINTS.EOD_ADJUSTED(symbol),
     }
 
     const ttlMap: Record<Timeframe, number> = {
-      '1min':  TTL_SECONDS.INTRADAY_CHART,   // 1 hour
-      '5min':  TTL_SECONDS.INTRADAY_CHART,   // 1 hour
-      '15min': TTL_SECONDS.INTRADAY_CHART,   // 1 hour
-      'eod':   TTL_SECONDS.EOD_CHART,        // 24 hours
+      '1min':  TTL_SECONDS.INTRADAY_CHART,
+      '5min':  TTL_SECONDS.INTRADAY_CHART,
+      '10min': TTL_SECONDS.INTRADAY_CHART,
+      '15min': TTL_SECONDS.INTRADAY_CHART,
+      '30min': TTL_SECONDS.INTRADAY_CHART,
+      '1h':    TTL_SECONDS.INTRADAY_CHART,
+      'eod':   TTL_SECONDS.EOD_CHART,
     }
 
     const cacheKeyMap: Record<Timeframe, string> = {
       '1min':  `stock:chart:1min:${symbol}`,
       '5min':  `stock:chart:5min:${symbol}`,
+      '10min': `stock:chart:10min:${symbol}`,
       '15min': `stock:chart:15min:${symbol}`,
+      '30min': `stock:chart:30min:${symbol}`,
+      '1h':    `stock:chart:1h:${symbol}`,
       'eod':   CACHE_KEYS.chartEOD(symbol),
     }
 
-    const data = await withCache<CSResponse<OHLCVCandle[]>>(
+    const raw = await withCache<unknown>(
       cacheKeyMap[tf],
       ttlMap[tf],
       async () => {
         const endpoint = endpointMap[tf]
-        await trackCSAPICall(endpoint)
-        return csGet<CSResponse<OHLCVCandle[]>>(endpoint)
+        await trackChartAPICall(endpoint)
+        return csUatGet<unknown>(endpoint)
       }
     )
 
-    return NextResponse.json(data, { status: 200 })
+    // Normalize whatever shape the chart API returns into { status, data: OHLCVCandle[] }
+    const candles = normalizeChartResponse(raw)
+    return NextResponse.json({ status: 'ok', message: '', data: candles }, { status: 200 })
 
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'

@@ -7,6 +7,7 @@ import { formatPrice, formatPercent, formatVolume, getChangeColor } from '@/lib/
 import { cachedFetch } from '@/lib/utils/clientCache'
 import type { StockQuote }              from '@/types/market'
 import KMIBadge, { isKMI }             from '@/components/ui/KMIBadge'
+import SymbolLogo                        from '@/components/ui/SymbolLogo'
 
 type Filters = {
   minPrice:   string
@@ -201,12 +202,7 @@ export default function ScreenerPage() {
                   onMouseDown={e => e.preventDefault()}
                 >
                   <div className="flex items-center gap-3">
-                    <div
-                      className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-[10px] font-bold shrink-0"
-                      style={{ background: 'linear-gradient(135deg,#FEA500,#986300)' }}
-                    >
-                      {q.symbol.charAt(0)}
-                    </div>
+                    <SymbolLogo symbol={q.symbol} size={32} />
                     <div>
                       <div className="flex items-center gap-1">
                         <span className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{q.symbol}</span>
@@ -355,12 +351,15 @@ export default function ScreenerPage() {
                       onMouseEnter={e => (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--bg-hover)'}
                       onMouseLeave={e => (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'}>
                     <td className="py-2.5 px-2">
-                      <Link href={`/stocks/${q.symbol}`}
-                            prefetch={false}
-                            className="font-bold hover:underline"
-                            style={{ color: '#FEA500' }}>
-                        {q.symbol}
-                      </Link>
+                      <div className="flex items-center gap-2">
+                        <SymbolLogo symbol={q.symbol} size={24} />
+                        <Link href={`/stocks/${q.symbol}`}
+                              prefetch={false}
+                              className="font-bold hover:underline"
+                              style={{ color: '#FEA500' }}>
+                          {q.symbol}
+                        </Link>
+                      </div>
                     </td>
                     <td className="py-2.5 px-2 max-w-[120px] truncate">
                       <Link href={`/stocks/${q.symbol}`} prefetch={false} className="hover:underline" style={{ color: 'var(--text-secondary)' }}>{q.name}</Link>

@@ -33,8 +33,8 @@ import type { Overview, Candle, StatementData, ProfileData, NewsItem, Announceme
 import { SectionHeading, LoadingRows } from './stock-detail-helpers'
 import { StockNewsTab } from './tabs/StockNewsTab'
 import { StockAnnouncementsTab } from './tabs/StockAnnouncementsTab'
-import { StockReportTab } from './tabs/StockReportTab'
 import { StockCompareTab } from './tabs/StockCompareTab'
+import SymbolLogo from '@/components/ui/SymbolLogo'
 
 const TABS = [
   { id: 'overview',      label: 'Overview',        Icon: BarChart2  },
@@ -46,7 +46,6 @@ const TABS = [
   { id: 'shareholders',  label: 'Shareholders',     Icon: Users      },
   { id: 'news',          label: 'News',             Icon: Newspaper  },
   { id: 'announcements', label: 'Announcements',    Icon: Bell       },
-  { id: 'report',        label: 'Company Report',   Icon: FileText   },
 ] as const
 
 type TabId = typeof TABS[number]['id']
@@ -237,6 +236,7 @@ export default function StockDetailClient({
 
   const [peers,       setPeers]      = useState<StockQuote[]>([])
   const [peersLoad,   setPeersLoad]  = useState(false)
+  const [peerView,    setPeerView]   = useState<'ranked'|'range'>('ranked')
 
   type PeerFunds = { roe: number|null; mktCap: number|null; de: number|null; pb: number|null }
   const [peerFunds, setPeerFunds] = useState<Record<string, PeerFunds>>({})
@@ -513,10 +513,7 @@ export default function StockDetailClient({
                   style={{ borderBottom: '1px solid var(--bg-border)' }}
                   onClick={() => { setSearchQuery(''); setSearchOpen(false) }}>
                   <div className="flex items-center gap-3">
-                    <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-[10px] font-bold shrink-0"
-                      style={{ background: 'linear-gradient(135deg,#FEA500,#986300)' }}>
-                      {q.symbol.charAt(0)}
-                    </div>
+                    <SymbolLogo symbol={q.symbol} size={28} />
                     <div>
                       <div className="flex items-center gap-1">
                         <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{q.symbol}</p>
@@ -1114,105 +1111,418 @@ export default function StockDetailClient({
       {/* -> INDEX VS STOCK -> */}
       {/* -> SECTOR PEERS -> */}
       {tab === 'peers' && (
-        <div className="card space-y-3">
-          <SectionHeading>Sector Peer Comparison</SectionHeading>
-          <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-            All companies in the same sector · ranked by trading volume
-          </p>
+        <div className="space-y-4">
           {peersLoad ? (
-            <div className="space-y-2">
-              {Array.from({ length: 8 }).map((_, i) => (
+            <div className="card space-y-3">
+              {Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="h-10 rounded animate-pulse" style={{ backgroundColor: 'var(--bg-hover)' }} />
               ))}
             </div>
           ) : peers.length === 0 ? (
-            <p className="text-sm py-4 text-center" style={{ color: 'var(--text-muted)' }}>No peer data available.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr style={{ borderBottom: '2px solid var(--bg-border)' }}>
-                    {['Company','Price','Chg%','EPS','P/E','ROE','Mkt Cap','D/E','Div Yield','P/B'].map(h => (
-                      <th key={h}
-                        className={`py-2 text-[10px] font-bold uppercase tracking-wider ${h==='Company'?'text-left pr-3':'text-right px-2'}`}
-                        style={{ color: 'var(--text-muted)' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {(() => {
-                    const selfPrice     = Number(overview?.price ?? 0)
-                    const selfChangePct = Number(overview?.changePct ?? 0)
-                    const selfQ         = allQuotes.find(q => q.symbol === symbol)
-                    const selfEps       = Number(overview?.eps ?? selfQ?.eps ?? 0)
-                    const selfDps       = selfQ?.dps ?? 0
-                    const selfPe        = selfEps > 0 ? (selfPrice / selfEps).toFixed(1) : '-'
-                    const selfDivY      = selfDps > 0 && selfPrice > 0 ? `${((selfDps/selfPrice)*100).toFixed(2)}%` : '-'
-                    const selfChgColor  = selfChangePct >= 0 ? '#16a34a' : '#dc2626'
-                    function fmtMC(mc: number) {
-                      if (!mc) return '-'
-                      if (mc >= 1e12) return `${(mc/1e12).toFixed(2)}T`
-                      if (mc >= 1e9)  return `${(mc/1e9).toFixed(2)}B`
-                      if (mc >= 1e6)  return `${(mc/1e6).toFixed(1)}M`
-                      return `${(mc/1e3).toFixed(1)}K`
-                    }
-                    return [
-                      <tr key="__self__" style={{ borderBottom:'1px solid var(--bg-border)', backgroundColor:'rgba(254,165,0,0.08)' }}>
-                        <td className="py-2.5 pr-3">
-                          <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded flex items-center justify-center text-white text-[9px] font-bold shrink-0" style={{ background:'linear-gradient(135deg,#FEA500,#986300)' }}>{symbol.charAt(0)}</div>
-                            <div>
-                              <div className="flex items-center gap-1">
-                                <p className="text-xs font-bold" style={{ color:'var(--text-primary)' }}>{symbol}</p>
-                                <span className="text-[8px] font-bold px-1 py-0.5 rounded" style={{ background:'linear-gradient(135deg,#FEA500,#986300)',color:'white' }}>You</span>
-                              </div>
-                              <p className="text-[9px] truncate max-w-[100px]" style={{ color:'var(--text-muted)' }}>{String(overview?.name??'')}</p>
-                            </div>
+            <div className="card text-sm py-8 text-center" style={{ color: 'var(--text-muted)' }}>No peer data available.</div>
+          ) : (() => {
+            /* ── Build unified peer list (self + peers) ── */
+            const selfQ    = allQuotes.find(q => q.symbol === symbol)
+            const selfPrice = Number(overview?.price ?? 0)
+            const selfEps   = Number(overview?.eps ?? selfQ?.eps ?? 0)
+            const selfDps   = selfQ?.dps ?? 0
+            const selfPe    = selfEps > 0 ? selfPrice / selfEps : null
+            const selfDivY  = selfDps > 0 && selfPrice > 0 ? (selfDps / selfPrice) * 100 : null
+            const selfRoe   = peerFunds[symbol]?.roe ?? null
+            const selfDe    = peerFunds[symbol]?.de  ?? null
+            const selfPb    = peerFunds[symbol]?.pb  ?? null
+            const selfMc    = selfQ?.mc ?? 0
+            const selfChgPct = Number(overview?.changePct ?? 0)
+            const self52W   = selfQ?.high52 != null && selfQ?.low52 != null && selfQ.price > 0 && selfQ.high52 > selfQ.low52
+              ? ((selfQ.price - selfQ.low52) / (selfQ.high52 - selfQ.low52)) * 100 : null
+
+            type PeerEntry = {
+              symbol: string; name: string; isSelf: boolean
+              price: number; changePct: number; eps: number|null
+              pe: number|null; divY: number|null; roe: number|null
+              de: number|null; pb: number|null; mc: number|null
+              pos52w: number|null
+            }
+
+            const allEntries: PeerEntry[] = [
+              { symbol, name: String(overview?.name ?? symbol), isSelf: true,
+                price: selfPrice, changePct: selfChgPct, eps: selfEps || null,
+                pe: selfPe, divY: selfDivY, roe: selfRoe,
+                de: selfDe, pb: selfPb, mc: selfMc || null, pos52w: self52W },
+              ...peers.slice(0, 15).map(p => {
+                const pe   = p.eps > 0 ? p.price / p.eps : null
+                const divY = p.dps > 0 && p.price > 0 ? (p.dps / p.price) * 100 : null
+                const roe  = peerFunds[p.symbol]?.roe ?? null
+                const de   = peerFunds[p.symbol]?.de  ?? null
+                const pb   = peerFunds[p.symbol]?.pb  ?? null
+                const pos52w = p.high52 != null && p.low52 != null && p.price > 0 && p.high52 > p.low52
+                  ? ((p.price - p.low52) / (p.high52 - p.low52)) * 100 : null
+                return { symbol: p.symbol, name: p.name, isSelf: false,
+                  price: p.price, changePct: p.changePct, eps: p.eps || null,
+                  pe, divY, roe, de, pb, mc: p.mc || null, pos52w }
+              }),
+            ]
+
+            /* ── KPI summary cards ── */
+            const validPe   = allEntries.map(e => e.pe).filter((v): v is number => v != null && v > 0 && v < 200)
+            const validDivY = allEntries.map(e => e.divY).filter((v): v is number => v != null && v > 0)
+            const validRoe  = allEntries.map(e => e.roe).filter((v): v is number => v != null)
+            const validEps  = allEntries.map(e => e.eps).filter((v): v is number => v != null)
+            const avg = (arr: number[]) => arr.length ? arr.reduce((a,b) => a+b,0) / arr.length : null
+            const sectorPe   = avg(validPe)
+            const sectorDivY = avg(validDivY)
+            const sectorRoe  = avg(validRoe)
+            const sectorEps  = avg(validEps)
+
+            /* ── PREMIUM METRIC CARD ── */
+            const MEDALS = ['🥇','🥈','🥉']
+            function PremiumCard({ label, entries, getValue, fmt, lowerBetter = false }:
+              { label: string; entries: PeerEntry[]
+                getValue: (e: PeerEntry) => number|null
+                fmt: (v: number) => string; lowerBetter?: boolean }) {
+              const vals = entries.map(e => ({ ...e, v: getValue(e) })).filter(e => e.v != null) as (PeerEntry & { v: number })[]
+              if (!vals.length) return null
+              const selfEntry = vals.find(e => e.isSelf)
+              const selfVal = selfEntry?.v ?? null
+              const sorted = [...vals].sort((a, b) => lowerBetter ? a.v - b.v : b.v - a.v)
+              const rank = selfVal != null ? sorted.findIndex(e => e.isSelf) + 1 : null
+              const maxAbs = Math.max(...vals.map(e => Math.abs(e.v)), 1)
+              // progress fill pct — for lowerBetter, invert so rank-1 gets full bar
+              const fillPct = (e: { v: number }, i: number) =>
+                maxAbs > 0 ? Math.abs(e.v) / maxAbs * 100 : 0
+              // rank indicator bar width (selected stock position in leaderboard)
+              const rankBarW = rank != null ? ((vals.length - rank + 1) / vals.length) * 100 : 0
+
+              return (
+                <div style={{ border: '1px solid var(--bg-border)', borderRadius: 12, overflow: 'hidden' }}>
+                  {/* Header: metric name + value + rank badge */}
+                  <div className="flex items-center justify-between px-4 py-2.5"
+                    style={{ background: 'var(--bg-hover)', borderBottom: '1px solid var(--bg-border)' }}>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{label}</span>
+                      {selfVal != null && (
+                        <span className="text-xs font-bold" style={{ color: '#FEA500' }}>{fmt(selfVal)}</span>
+                      )}
+                    </div>
+                    {rank != null && (
+                      <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full"
+                        style={{ background: 'linear-gradient(135deg,rgba(254,165,0,0.15),rgba(152,99,0,0.15))', color: '#FEA500', border: '1px solid rgba(254,165,0,0.3)' }}>
+                        #{rank} / {vals.length}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Rank position bar */}
+                  {rank != null && (
+                    <div style={{ height: 3, background: 'var(--bg-border)' }}>
+                      <div style={{ height: '100%', width: `${rankBarW}%`, background: 'linear-gradient(90deg,#FEA500,#986300)', transition: 'width 0.4s ease' }} />
+                    </div>
+                  )}
+
+                  {/* Rows */}
+                  <div style={{ background: 'var(--bg-card)' }}>
+                    {sorted.map((e, i) => {
+                      const pct = fillPct(e, i)
+                      const isNeg = e.v < 0
+                      const rowBg = e.isSelf ? 'rgba(254,165,0,0.07)' : 'transparent'
+                      const fillColor = e.isSelf
+                        ? 'rgba(254,165,0,0.22)'
+                        : isNeg ? 'rgba(220,38,38,0.1)' : 'rgba(100,160,100,0.1)'
+                      const textColor = e.isSelf ? '#FEA500' : isNeg ? 'var(--color-down)' : 'var(--text-secondary)'
+                      return (
+                        <div key={e.symbol}
+                          className="relative flex items-center gap-2 px-3"
+                          style={{
+                            height: 32,
+                            borderBottom: i < sorted.length - 1 ? '1px solid var(--bg-border)' : 'none',
+                            background: rowBg,
+                            borderLeft: e.isSelf ? '3px solid #FEA500' : '3px solid transparent',
+                          }}>
+                          {/* subtle fill strip */}
+                          <div style={{
+                            position: 'absolute', inset: 0,
+                            width: `${pct}%`, background: fillColor,
+                            pointerEvents: 'none',
+                          }} />
+                          {/* medal or rank number */}
+                          <div style={{ width: 20, flexShrink: 0, textAlign: 'center', position: 'relative', zIndex: 1 }}>
+                            {i < 3
+                              ? <span style={{ fontSize: 11 }}>{MEDALS[i]}</span>
+                              : <span style={{ fontSize: 9, color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{i + 1}</span>
+                            }
                           </div>
-                        </td>
-                        <td className="py-2.5 px-2 text-right text-xs font-bold tabular-nums" style={{ color:'var(--text-primary)' }}>{selfPrice.toFixed(2)}</td>
-                        <td className="py-2.5 px-2 text-right text-xs font-semibold tabular-nums" style={{ color:selfChgColor }}>{selfChangePct>=0?'+':''}{selfChangePct.toFixed(2)}%</td>
-                        <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color:selfEps<0?'#dc2626':'var(--text-secondary)' }}>{selfEps?selfEps.toFixed(2):'-'}</td>
-                        <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color:'var(--text-secondary)' }}>{selfPe}</td>
-                        <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color:'var(--text-secondary)' }}>-</td>
-                        <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color:'var(--text-secondary)' }}>{fmtMC(selfQ?.mc??0)}</td>
-                        <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color:'var(--text-secondary)' }}>-</td>
-                        <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color:'var(--text-secondary)' }}>{selfDivY}</td>
-                        <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color:'var(--text-secondary)' }}>-</td>
-                      </tr>,
-                      ...peers.map((peer, i) => {
-                        const pe      = peer.eps > 0 ? (peer.price/peer.eps).toFixed(1) : '-'
-                        const divY    = peer.dps>0&&peer.price>0 ? `${((peer.dps/peer.price)*100).toFixed(2)}%` : '-'
-                        const chgClr  = peer.changePct>=0?'#16a34a':'#dc2626'
+                          {/* logo + symbol */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 5, width: 72, flexShrink: 0, position: 'relative', zIndex: 1 }}>
+                            <SymbolLogo symbol={e.symbol} size={20} isSelf={e.isSelf} />
+                            <span style={{ fontSize: 10, fontWeight: e.isSelf ? 700 : 500, color: e.isSelf ? '#FEA500' : 'var(--text-secondary)' }}>{e.symbol}</span>
+                          </div>
+                          {/* spacer */}
+                          <div style={{ flex: 1 }} />
+                          {/* value */}
+                          <span style={{
+                            fontSize: 11, fontWeight: e.isSelf ? 700 : 400,
+                            fontVariantNumeric: 'tabular-nums',
+                            color: textColor,
+                            position: 'relative', zIndex: 1,
+                          }}>{fmt(e.v)}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            }
+
+            /* ── Section group helper ── */
+            function SectionGroup({ title, children }: { title: string; children: React.ReactNode }) {
+              return (
+                <div>
+                  <div className="flex items-center gap-2 mb-2 px-1">
+                    <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>{title}</span>
+                    <div className="flex-1 h-px" style={{ background: 'var(--bg-border)' }} />
+                  </div>
+                  <div className="space-y-2">{children}</div>
+                </div>
+              )
+            }
+
+            /* ── Symbol colour for peer circles ── */
+            function symColor(s: string) {
+              const h = s.split('').reduce((a, c) => a + c.charCodeAt(0), 0)
+              const hues = [210, 160, 280, 30, 320, 180, 60, 240]
+              return `hsl(${hues[h % hues.length]},55%,52%)`
+            }
+
+            /* ── Range dot-plot row (reference-image style) ── */
+            function RangeRow({ label, entries, getValue, fmt, lowerBetter = false }:
+              { label: string; entries: PeerEntry[]; getValue: (e: PeerEntry) => number|null
+                fmt: (v: number) => string; lowerBetter?: boolean }) {
+              const vals = entries.map(e => ({ ...e, v: getValue(e) })).filter(e => e.v != null) as (PeerEntry & { v: number })[]
+              if (!vals.length) return null
+              const selfE = vals.find(e => e.isSelf)
+              const selfVal = selfE?.v ?? null
+              const sorted = [...vals].sort((a, b) => lowerBetter ? a.v - b.v : b.v - a.v)
+              const rank = selfVal != null ? sorted.findIndex(e => e.isSelf) + 1 : null
+              const minV = Math.min(...vals.map(e => e.v))
+              const maxV = Math.max(...vals.map(e => e.v))
+              const rangeV = maxV - minV || 1
+              // for lowerBetter: flip so low value = right (Stronger) side
+              const trkPct = (v: number) => {
+                const raw = ((v - minV) / rangeV) * 100
+                return Math.min(94, Math.max(4, lowerBetter ? 100 - raw : raw))
+              }
+              const sectorAvgV = avg(vals.map(e => e.v))
+              const TRACK_H = 90, D = 28, SELF_D = 34, GAP = 2
+
+              // cluster peers for stacking
+              const peers2 = vals.filter(e => !e.isSelf)
+                .map(e => ({ ...e, lp: trkPct(e.v) }))
+                .sort((a, b) => a.lp - b.lp)
+              const clusters: (typeof peers2)[] = []
+              for (const dot of peers2) {
+                const last = clusters[clusters.length - 1]
+                if (last && Math.abs(dot.lp - last[0].lp) < 5) last.push(dot)
+                else clusters.push([dot])
+              }
+
+              return (
+                <div className="flex items-center gap-3 py-3" style={{ borderBottom: '1px solid var(--bg-border)' }}>
+                  {/* Left label */}
+                  <div style={{ width: 120, flexShrink: 0 }}>
+                    <p className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>{label}</p>
+                    <p className="text-[11px] font-bold" style={{ color: '#FEA500' }}>
+                      {selfVal != null ? fmt(selfVal) : <span style={{ color: 'var(--text-muted)', fontSize: 10, fontWeight: 400 }}>No figure</span>}
+                    </p>
+                  </div>
+
+                  {/* Track */}
+                  <div className="relative flex-1" style={{ height: TRACK_H }}>
+                    {/* baseline */}
+                    <div className="absolute left-0 right-0 h-px" style={{ background: 'var(--bg-border)', top: '55%' }} />
+                    {/* sector avg dashed */}
+                    {sectorAvgV != null && (
+                      <div className="absolute top-0 bottom-0 w-px border-l border-dashed"
+                        style={{ left: `${trkPct(sectorAvgV)}%`, borderColor: 'var(--text-muted)', opacity: 0.45 }} />
+                    )}
+                    {/* peer circles */}
+                    {clusters.flatMap(cluster =>
+                      cluster.map((e, ci) => {
+                        const totalH = cluster.length * (D + GAP) - GAP
+                        const rawTop = TRACK_H * 0.55 - D / 2 + (-totalH / 2 + ci * (D + GAP))
+                        const top = Math.max(2, Math.min(TRACK_H - D - 2, rawTop))
                         return (
-                          <tr key={peer.symbol} style={{ borderBottom:'1px solid var(--bg-border)', backgroundColor:i%2===0?'transparent':'var(--bg-hover)' }}>
-                            <td className="py-2.5 pr-3">
-                              <a href={`/stocks/${peer.symbol}`} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-                                <div className="w-6 h-6 rounded flex items-center justify-center text-white text-[9px] font-bold shrink-0" style={{ background:'linear-gradient(135deg,#FEA500,#986300)' }}>{peer.symbol.charAt(0)}</div>
-                                <div>
-                                  <p className="text-xs font-bold" style={{ color:'var(--text-primary)' }}>{peer.symbol}</p>
-                                  <p className="text-[9px] truncate max-w-[100px]" style={{ color:'var(--text-muted)' }}>{peer.name}</p>
-                                </div>
-                              </a>
-                            </td>
-                            <td className="py-2.5 px-2 text-right text-xs font-bold tabular-nums" style={{ color:'var(--text-primary)' }}>{peer.price.toFixed(2)}</td>
-                            <td className="py-2.5 px-2 text-right text-xs font-semibold tabular-nums" style={{ color:chgClr }}>{peer.changePct>=0?'+':''}{peer.changePct.toFixed(2)}%</td>
-                            <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color:peer.eps<0?'#dc2626':'var(--text-secondary)' }}>{peer.eps?peer.eps.toFixed(2):'-'}</td>
-                            <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color:'var(--text-secondary)' }}>{pe}</td>
-                            <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color:'var(--text-secondary)' }}>-</td>
-                            <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color:'var(--text-secondary)' }}>{fmtMC(peer.mc)}</td>
-                            <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color:'var(--text-secondary)' }}>-</td>
-                            <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color:'var(--text-secondary)' }}>{divY}</td>
-                            <td className="py-2.5 px-2 text-right text-xs tabular-nums" style={{ color:'var(--text-secondary)' }}>-</td>
-                          </tr>
+                          <div key={e.symbol} title={`${e.symbol}: ${fmt(e.v)}`}
+                            className="absolute"
+                            style={{ left: `calc(${e.lp}% - ${D/2}px)`, top, zIndex: 1 }}>
+                            <SymbolLogo symbol={e.symbol} size={D} />
+                          </div>
                         )
-                      }),
-                    ]
-                  })()}
-                </tbody>
-              </table>
-            </div>
-          )}
+                      })
+                    )}
+                    {/* self circle + value bubble */}
+                    {selfVal != null && (() => {
+                      const lp = trkPct(selfVal)
+                      const dotTop = TRACK_H * 0.55 - SELF_D / 2
+                      const bubbleTop = Math.max(0, dotTop - 22)
+                      return (
+                        <>
+                          <div className="absolute text-[9px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap"
+                            style={{
+                              left: `calc(${lp}% - 24px)`, top: bubbleTop,
+                              background: 'linear-gradient(135deg,#FEA500,#986300)', color: 'white',
+                              zIndex: 12,
+                            }}>
+                            {fmt(selfVal)}
+                          </div>
+                          <div className="absolute"
+                            style={{ left: `calc(${lp}% - ${SELF_D/2}px)`, top: TRACK_H * 0.55 - SELF_D / 2, zIndex: 11 }}>
+                            <SymbolLogo symbol={symbol} size={SELF_D} isSelf />
+                          </div>
+                        </>
+                      )
+                    })()}
+                  </div>
+
+                  {/* Rank */}
+                  <div style={{ width: 68, flexShrink: 0, textAlign: 'right' }}>
+                    {rank != null && (
+                      <span className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>
+                        <span className="font-bold" style={{ color: 'var(--text-primary)' }}>
+                          {rank}{rank===1?'st':rank===2?'nd':rank===3?'rd':'th'}
+                        </span>
+                        {' '}<span style={{ color: 'var(--text-muted)' }}>of {vals.length}</span>
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )
+            }
+
+            const rangeMetrics = [
+              { label: 'Price',        getValue: (e: PeerEntry) => e.price,     fmt: (v: number) => `Rs ${v.toFixed(0)}`,                           section: 'Price & Market' },
+              { label: 'Chg %',        getValue: (e: PeerEntry) => e.changePct, fmt: (v: number) => `${v>=0?'+':''}${v.toFixed(2)}%`,               section: 'Price & Market' },
+              { label: 'Mkt Cap',      getValue: (e: PeerEntry) => e.mc,        fmt: (v: number) => v>=1e9?`${(v/1e9).toFixed(1)}B`:`${(v/1e6).toFixed(0)}M`, section: 'Price & Market' },
+              { label: '52W Position', getValue: (e: PeerEntry) => e.pos52w,    fmt: (v: number) => `${v.toFixed(0)}% range`,                       section: 'Price & Market' },
+              { label: 'P / E',        getValue: (e: PeerEntry) => e.pe != null && e.pe > 0 && e.pe < 500 ? e.pe : null, fmt: (v: number) => v.toFixed(1), lowerBetter: true, section: 'Valuation' },
+              { label: 'P / B',        getValue: (e: PeerEntry) => e.pb,        fmt: (v: number) => `${v.toFixed(2)}x`, lowerBetter: true,          section: 'Valuation' },
+              { label: 'Div Yield',    getValue: (e: PeerEntry) => e.divY,      fmt: (v: number) => `${v.toFixed(2)}%`,                             section: 'Valuation' },
+              { label: 'EPS',          getValue: (e: PeerEntry) => e.eps,       fmt: (v: number) => `Rs ${v.toFixed(2)}`,                           section: 'Profitability' },
+              { label: 'ROE',          getValue: (e: PeerEntry) => e.roe,       fmt: (v: number) => `${v.toFixed(2)}%`,                             section: 'Profitability' },
+              { label: 'D / E',        getValue: (e: PeerEntry) => e.de,        fmt: (v: number) => `${v.toFixed(2)}x`, lowerBetter: true,          section: 'Leverage' },
+            ] as const
+
+            return (
+              <>
+                {/* KPI Summary Cards */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {[
+                    { label: 'P / E',          val: selfPe    != null ? selfPe.toFixed(1)         : '—', sub: sectorPe   ? `Sector ${sectorPe.toFixed(1)} · ${validPe.length} profitable`    : 'Sector avg n/a', pos: true },
+                    { label: 'Dividend Yield', val: selfDivY  != null ? `${selfDivY.toFixed(2)}%`  : '—', sub: sectorDivY ? `Sector ${sectorDivY.toFixed(2)}% · ${validDivY.length} payers`   : 'Sector avg n/a', pos: true },
+                    { label: 'ROE',            val: selfRoe   != null ? `${selfRoe.toFixed(2)}%`   : '—', sub: sectorRoe  ? `Sector ${sectorRoe.toFixed(2)}% · ${validRoe.length} companies`  : 'Sector avg n/a', pos: (selfRoe ?? 0) >= 0 },
+                    { label: 'EPS',            val: selfEps   > 0     ? `Rs ${selfEps.toFixed(2)}` : selfEps < 0 ? `Rs ${selfEps.toFixed(2)}` : '—', sub: sectorEps ? `Sector avg Rs ${sectorEps.toFixed(2)}` : 'Sector avg n/a', pos: selfEps >= 0 },
+                  ].map(c => (
+                    <div key={c.label} className="card" style={{ background: 'rgba(254,165,0,0.04)', border: '1px solid rgba(254,165,0,0.15)' }}>
+                      <p className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>{c.label}</p>
+                      <p className="text-lg font-bold" style={{ color: c.pos ? 'var(--text-primary)' : '#dc2626' }}>{c.val}</p>
+                      <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{c.sub}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Comparison card with view toggle */}
+                <div className="card" style={{ padding: '1rem' }}>
+                  {/* Header + toggle */}
+                  <div className="flex items-center justify-between mb-4 px-1">
+                    <span className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>Sector Comparison</span>
+                    <div className="flex items-center gap-2">
+                      {(['ranked', 'range'] as const).map(v => (
+                        <button key={v} onClick={() => setPeerView(v)}
+                          className="px-3 py-1 rounded-lg text-[11px] font-semibold transition-all"
+                          style={peerView === v ? {
+                            background: 'linear-gradient(135deg,#FEA500,#986300)', color: 'white',
+                          } : {
+                            background: 'var(--bg-hover)', color: 'var(--text-muted)',
+                            border: '1px solid var(--bg-border)',
+                          }}>
+                          {v === 'ranked' ? 'Ranked' : 'Range'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {peerView === 'ranked' ? (
+                    <div className="space-y-5">
+                      <SectionGroup title="Price & Market">
+                        <PremiumCard label="Price" entries={allEntries} getValue={e => e.price} fmt={v => `Rs ${v.toFixed(0)}`} />
+                        <PremiumCard label="Chg %" entries={allEntries} getValue={e => e.changePct} fmt={v => `${v>=0?'+':''}${v.toFixed(2)}%`} />
+                        <PremiumCard label="Mkt Cap" entries={allEntries} getValue={e => e.mc} fmt={v => v>=1e9?`${(v/1e9).toFixed(1)}B`:`${(v/1e6).toFixed(0)}M`} />
+                        <PremiumCard label="52W Position" entries={allEntries} getValue={e => e.pos52w} fmt={v => `${v.toFixed(0)}%`} />
+                      </SectionGroup>
+                      <SectionGroup title="Valuation">
+                        <PremiumCard label="P / E" entries={allEntries} getValue={e => e.pe != null && e.pe > 0 && e.pe < 500 ? e.pe : null} fmt={v => v.toFixed(1)} lowerBetter />
+                        <PremiumCard label="P / B" entries={allEntries} getValue={e => e.pb} fmt={v => `${v.toFixed(2)}x`} lowerBetter />
+                        <PremiumCard label="Div Yield" entries={allEntries} getValue={e => e.divY} fmt={v => `${v.toFixed(2)}%`} />
+                      </SectionGroup>
+                      <SectionGroup title="Profitability">
+                        <PremiumCard label="EPS" entries={allEntries} getValue={e => e.eps} fmt={v => `Rs ${v.toFixed(2)}`} />
+                        <PremiumCard label="ROE" entries={allEntries} getValue={e => e.roe} fmt={v => `${v.toFixed(2)}%`} />
+                      </SectionGroup>
+                      <SectionGroup title="Leverage">
+                        <PremiumCard label="D / E" entries={allEntries} getValue={e => e.de} fmt={v => `${v.toFixed(2)}x`} lowerBetter />
+                      </SectionGroup>
+                    </div>
+                  ) : (
+                    /* ── Range / dot-plot view ── */
+                    <div>
+                      {/* Weaker / Stronger header */}
+                      <div className="flex items-center px-2 mb-1" style={{ paddingLeft: 136 }}>
+                        <div className="flex-1 flex justify-between">
+                          <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Weaker</span>
+                          <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Stronger</span>
+                        </div>
+                        <div style={{ width: 68 }} />
+                      </div>
+
+                      {/* Rows grouped by section */}
+                      {(['Price & Market', 'Valuation', 'Profitability', 'Leverage'] as const).map(section => {
+                        const rows = rangeMetrics.filter(m => m.section === section)
+                        const rendered = rows.map(m => (
+                          <RangeRow key={m.label} label={m.label} entries={allEntries}
+                            getValue={m.getValue as (e: PeerEntry) => number|null}
+                            fmt={m.fmt as (v: number) => string}
+                            lowerBetter={'lowerBetter' in m ? m.lowerBetter : false} />
+                        )).filter(Boolean)
+                        if (!rendered.length) return null
+                        return (
+                          <div key={section} className="mb-2">
+                            <p className="text-[10px] font-bold uppercase tracking-widest px-1 py-2"
+                              style={{ color: '#FEA500' }}>{section}</p>
+                            {rendered}
+                          </div>
+                        )
+                      })}
+
+                      {/* Legend */}
+                      <div className="flex items-center gap-4 pt-3 mt-2" style={{ borderTop: '1px solid var(--bg-border)' }}>
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-4 h-4 rounded-full" style={{ border: '2px solid #FEA500', background: 'white' }} />
+                          <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>This Stock</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-4 h-4 rounded-full" style={{ border: '2px solid var(--bg-border)', background: 'var(--bg-card)' }} />
+                          <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Peers</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-5 h-px border-t border-dashed" style={{ borderColor: 'var(--text-muted)' }} />
+                          <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Sector Avg</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
+            )
+          })()}
         </div>
       )}
 
@@ -1325,15 +1635,6 @@ export default function StockDetailClient({
 
       {tab === 'announcements' && <StockAnnouncementsTab anns={anns} annLoad={annLoad} />}
 
-      {tab === 'report' && (
-        <StockReportTab
-          symbol={symbol}
-          overview={overview}
-          snapFunds={snapFunds}
-          profile={profile}
-          anns={anns}
-        />
-      )}
     </div>
   )
 }

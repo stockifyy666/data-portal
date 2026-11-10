@@ -102,10 +102,9 @@ const LIVE_IDS = new Set(['usdPkr', 'oilBrent', 'wti', 'sbpRate', 'inflation', '
 // ── KPI skeleton ──────────────────────────────────────────────────────────────
 function KpiSkeleton() {
   return (
-    <div style={{
-      backgroundColor: 'var(--bg-card)', border: '1px solid var(--bg-border)',
-      borderRadius: 5, padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 10,
-      animation: 'sk-pulse 1.6s ease-in-out infinite',
+    <div className="card" style={{
+      display: 'flex', flexDirection: 'column', gap: 10,
+      animation: 'sk-pulse 1.6s ease-in-out infinite', cursor: 'default',
     }}>
       <div style={{ height: 11, width: 90, borderRadius: 3, background: 'var(--bg-hover)' }} />
       <div style={{ height: 30, width: 110, borderRadius: 3, background: 'var(--bg-hover)' }} />
@@ -117,19 +116,19 @@ function KpiSkeleton() {
 // ── KPI Card ─────────────────────────────────────────────────────────────────
 function KpiCard({ id, d, loading }: { id: string; d: { value: number; change: number; label: string; note: string } | null; loading?: boolean }) {
   if (!d) return <KpiSkeleton />
-  // When change is available use it; otherwise fall back to value sign
   const direction = d.change !== 0 ? d.change : d.value
   const up        = direction > 0
   const isNeutral = direction === 0
   const isLive    = LIVE_IDS.has(id)
+  const dirColor  = up ? '#16a34a' : '#dc2626'
 
   const bgColor  = up ? '#dcfce7' : isNeutral ? 'var(--bg-card)' : '#fee2e2'
   const bdrColor = up ? 'rgba(22,163,74,0.35)' : isNeutral ? 'var(--bg-border)' : 'rgba(220,38,38,0.35)'
 
   return (
-    <div className="macro-card" style={{
+    <div className="card" style={{
       backgroundColor: bgColor, border: `1px solid ${bdrColor}`,
-      borderRadius: 5, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 6,
+      display: 'flex', flexDirection: 'column', gap: 6,
       position: 'relative', overflow: 'hidden',
     }}>
       {!isNeutral && (
@@ -155,8 +154,7 @@ function KpiCard({ id, d, loading }: { id: string; d: { value: number; change: n
             )}
           </div>
           {!isNeutral && (
-            <span style={{ fontSize: 10, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 2, marginTop: 2,
-              color: up ? '#16a34a' : '#dc2626' }}>
+            <span style={{ fontSize: 10, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 2, marginTop: 2, color: dirColor }}>
               {up ? <TrendingUp size={10}/> : <TrendingDown size={10}/>}
               {d.change !== 0 ? `${up ? '+' : ''}${d.change.toFixed(2)}%` : (up ? 'Positive' : 'Negative')}
             </span>
@@ -187,10 +185,7 @@ function KpiCard({ id, d, loading }: { id: string; d: { value: number; change: n
       </p>
       <div className="hidden sm:block" style={{ marginTop: 2 }}>
         {!isNeutral ? (
-          <span style={{
-            fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3,
-            color: up ? '#16a34a' : '#dc2626',
-          }}>
+          <span style={{ fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3, color: dirColor }}>
             {up ? <TrendingUp size={11}/> : <TrendingDown size={11}/>}
             {d.change !== 0
               ? `${up ? '+' : ''}${d.change.toFixed(2)}%`
@@ -438,392 +433,375 @@ export default function MacroDashboard() {
       <div className="grid grid-cols-1 gap-5">
 
         {/* ── IMF Program Tracker ─────────────────────────────────────────── */}
-        <Section title="IMF Program Tracker" subtitle="EFF Program — $7.0B (2023–2027)" icon={Shield}>
-          {/* Hero stats */}
-          <div style={{ display:'flex', alignItems:'flex-end', gap:32, marginBottom:20, flexWrap:'wrap' }}>
-            <div>
-              <p style={{ fontSize:11, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.07em', marginBottom:4 }}>Disbursed</p>
-              <p style={{ fontSize:36, fontWeight:900, color:'#16a34a', lineHeight:1, fontVariantNumeric:'tabular-nums', letterSpacing:'-.02em' }}>$6.5B</p>
-            </div>
-            <div style={{ paddingBottom:4 }}>
-              <p style={{ fontSize:18, color:'var(--text-muted)', fontWeight:300 }}>of $7.0B total</p>
-            </div>
-            <div style={{ flex:1, minWidth:160, paddingBottom:6 }}>
-              <div style={{ display:'flex', justifyContent:'space-between', marginBottom:5 }}>
-                <span style={{ fontSize:10, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.06em' }}>6 of 8 tranches</span>
-                <span style={{ fontSize:10, fontWeight:700, color:'#16a34a' }}>75%</span>
+        <Section title="IMF Program Tracker" subtitle="Extended Fund Facility (EFF) · $7.0B · 2023–2027" icon={Shield}>
+
+          {/* ── 4 KPI stats ── */}
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))', gap:1, marginBottom:20, borderRadius:12, overflow:'hidden', border:'1px solid var(--bg-border)' }}>
+            {[
+              { label:'Total Program', value:'$7.0B',   sub:'EFF commitment',   color:'var(--text-primary)' },
+              { label:'Disbursed',     value:'$6.5B',   sub:'6 of 8 tranches',  color:'#16a34a' },
+              { label:'Remaining',     value:'$0.5B',   sub:'2 tranches left',  color:'#f59e0b' },
+              { label:'Program End',   value:'Mar 2027', sub:'~16 months away', color:'var(--text-secondary)' },
+            ].map((k, i, arr) => (
+              <div key={k.label} style={{ padding:'16px 18px', backgroundColor:'var(--bg-hover)', borderRight: i < arr.length-1 ? '1px solid var(--bg-border)' : 'none' }}>
+                <p style={{ fontSize:10, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.07em', marginBottom:8 }}>{k.label}</p>
+                <p style={{ fontSize:22, fontWeight:800, color:k.color, lineHeight:1, fontVariantNumeric:'tabular-nums' }}>{k.value}</p>
+                <p style={{ fontSize:10, color:'var(--text-muted)', marginTop:5 }}>{k.sub}</p>
               </div>
-              <div style={{ display:'flex', gap:3 }}>
-                {Array.from({length:8}).map((_,i) => (
-                  <div key={i} style={{ flex:1, height:10, borderRadius:3,
-                    backgroundColor: i<6 ? '#16a34a' : i===6 ? '#f59e0b' : 'var(--bg-border)',
-                    opacity: i===7 ? 0.45 : 1 }} />
-                ))}
-              </div>
+            ))}
+          </div>
+
+          {/* ── Progress bar ── */}
+          <div style={{ marginBottom:20 }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:8 }}>
+              <span style={{ fontSize:11, fontWeight:600, color:'var(--text-secondary)' }}>Disbursement Progress</span>
+              <span style={{ fontSize:11, fontWeight:700, color:'#16a34a', fontVariantNumeric:'tabular-nums' }}>$6.5B of $7.0B — 75%</span>
             </div>
-            <div style={{ paddingBottom:4, textAlign:'right' }}>
-              <p style={{ fontSize:11, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.06em', marginBottom:4 }}>Program End</p>
-              <p style={{ fontSize:18, fontWeight:700, color:'var(--text-secondary)' }}>Mar 2027</p>
+            <div style={{ height:8, borderRadius:999, backgroundColor:'var(--bg-border)', overflow:'hidden', display:'flex' }}>
+              <div style={{ width:'75%', background:'#16a34a', borderRadius:999 }}/>
+              <div style={{ width:'18.57%', background:'#f59e0b', opacity:.6 }}/>
+            </div>
+            <div style={{ display:'flex', gap:16, marginTop:6 }}>
+              <span style={{ fontSize:10, color:'var(--text-muted)' }}><span style={{ color:'#16a34a' }}>●</span> Received (6)</span>
+              <span style={{ fontSize:10, color:'var(--text-muted)' }}><span style={{ color:'#f59e0b' }}>●</span> In Progress (1)</span>
+              <span style={{ fontSize:10, color:'var(--text-muted)' }}><span style={{ color:'var(--bg-border)' }}>●</span> Pending (1)</span>
             </div>
           </div>
 
-          {/* Cumulative disbursement staircase chart */}
-          <div style={{ marginBottom:20, borderTop:'1px solid var(--bg-border)', paddingTop:16 }}>
-            {(() => {
-              // cumulative totals after each tranche
-              const amounts = [1.1, 1.1, 1.0, 1.0, 1.0, 1.3, 1.3, 1.3]
-              const total   = 7.0
-              let cumul     = 0
-              const steps   = IMF_TRANCHES.map((t, i) => {
-                const prev = cumul
-                if (t.status === 'received') cumul += amounts[i]
-                return { ...t, prev, cumul: t.status === 'received' ? cumul : prev, amt: amounts[i] }
-              })
-              // SVG coords
-              const W = 720, H = 110, padL = 38, padB = 28
-              const toX = (i: number) => padL + (i / 7) * W
-              const toY = (v: number) => H - padB - (v / total) * (H - padB - 8)
-              // build staircase path for received + in-progress
-              const receivedCount = steps.filter(s => s.status === 'received').length
-              let path = `M${toX(0)},${toY(0)}`
-              steps.forEach((s, i) => {
-                const x = toX(i + 1)
-                const y = toY(s.cumul)
-                path += ` H${x} V${y}`
-              })
-              // fill path
-              const fillPath = `M${toX(0)},${toY(0)} ${steps.map((s,i)=>`H${toX(i+1)} V${toY(s.cumul)}`).join(' ')} V${H-padB} H${toX(0)} Z`
-              // target line y
-              const targetY = toY(total)
-              return (
-                <svg viewBox={`0 0 ${W+padL+10} ${H}`} width="100%" height={H} style={{ display:'block', overflow:'visible' }}>
-                  <defs>
-                    <linearGradient id="imfGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#16a34a" stopOpacity=".22"/>
-                      <stop offset="100%" stopColor="#16a34a" stopOpacity=".03"/>
-                    </linearGradient>
-                  </defs>
-
-                  {/* Grid lines + Y labels */}
-                  {[0,2,4,6,7].map(v => {
-                    const y = toY(v)
-                    const isTarget = v === 7
-                    return (
-                      <g key={v}>
-                        <line x1={padL} y1={y} x2={W+padL} y2={y}
-                          stroke={isTarget ? '#d97706' : 'var(--bg-border)'}
-                          strokeWidth={isTarget ? 1 : .6}
-                          strokeDasharray={isTarget ? '4 3' : ''}/>
-                        <text x={padL-4} y={y+3.5} fontSize="8.5" fill={isTarget?'#d97706':'var(--text-muted)'} textAnchor="end">
-                          ${v}B
-                        </text>
-                        {isTarget && (
-                          <text x={W+padL+6} y={y+3.5} fontSize="8" fill="#d97706" textAnchor="start">Target</text>
-                        )}
-                      </g>
-                    )
-                  })}
-
-                  {/* Shaded fill */}
-                  <path d={fillPath} fill="url(#imfGrad)"/>
-
-                  {/* Staircase line */}
-                  <path d={path} fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinejoin="round"/>
-
-                  {/* Step dots + labels at each rise */}
-                  {steps.map((s, i) => {
-                    const x = toX(i + 1)
-                    const y = toY(s.cumul)
-                    const received = s.status === 'received'
-                    const isNext   = s.status === 'upcoming'
-                    if (!received && !isNext) return null
-                    return (
-                      <g key={i}>
-                        <circle cx={x} cy={y} r={isNext?5:4}
-                          fill={received?'#16a34a':'#f59e0b'} stroke="var(--bg-card)" strokeWidth="1.5"/>
-                        <text x={x} y={y-8} fontSize="8.5" fontWeight="700"
-                          fill={received?'#16a34a':'#f59e0b'} textAnchor="middle">
-                          {received ? `$${s.cumul.toFixed(1)}B` : '~$6.5B'}
-                        </text>
-                      </g>
-                    )
-                  })}
-
-                  {/* X axis date labels */}
-                  {steps.map((s, i) => (
-                    <text key={i} x={toX(i+1)} y={H-padB+12} fontSize="8.5"
-                      fill={s.status==='upcoming'?'#f59e0b':'var(--text-muted)'} textAnchor="middle">
-                      {s.date}
-                    </text>
-                  ))}
-
-                  {/* Baseline */}
-                  <line x1={padL} y1={H-padB} x2={W+padL} y2={H-padB} stroke="var(--bg-border)" strokeWidth="1"/>
-
-                  {/* "In progress" dashed extension */}
-                  {(() => {
-                    const lastReceived = steps.filter(s=>s.status==='received').length
-                    const x1 = toX(lastReceived), x2 = toX(lastReceived+1)
-                    const y1 = toY(steps[lastReceived-1]?.cumul??0)
-                    return <line x1={x1} y1={y1} x2={x2} y2={y1}
-                      stroke="#f59e0b" strokeWidth="1.5" strokeDasharray="4 3"/>
-                  })()}
-                </svg>
-              )
-            })()}
-          </div>
-
-          {/* Full-width histogram */}
+          {/* ── Tranche timeline ── */}
           <div style={{ borderTop:'1px solid var(--bg-border)', paddingTop:16 }}>
-            <svg viewBox="0 0 760 160" width="100%" height="160" style={{ display:'block', overflow:'visible' }}>
-              {/* Y grid */}
-              {[0, 0.5, 1.0, 1.5].map(v => {
-                const y = 120 - (v / 1.5) * 104
-                return (
-                  <g key={v}>
-                    <line x1="36" y1={y} x2="754" y2={y} stroke="var(--bg-border)" strokeWidth=".65"/>
-                    <text x="32" y={y + 3.5} fontSize="8" fill="var(--text-muted)" textAnchor="end">${v.toFixed(1)}B</text>
-                  </g>
-                )
-              })}
-              {/* Bars */}
+            <p style={{ fontSize:11, fontWeight:600, color:'var(--text-secondary)', marginBottom:12, textTransform:'uppercase', letterSpacing:'.06em' }}>Tranche Timeline</p>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(8,1fr)', gap:6 }}>
               {IMF_TRANCHES.map((t, i) => {
                 const received = t.status === 'received'
                 const isNext   = t.status === 'upcoming'
                 const isFuture = t.status === 'future'
-                const amounts  = [1.1, 1.1, 1.0, 1.0, 1.0, 1.3, 1.3, 1.3]
-                const amt      = amounts[i]
-                const barH     = (amt / 1.5) * 104
-                const slotW    = (760 - 36) / 8
-                const x        = 36 + i * slotW + slotW * 0.15
-                const bW       = slotW * 0.70
-                const y        = 120 - barH
-                const fill     = received ? '#16a34a' : isNext ? '#f59e0b' : '#cbd5e1'
-                const textC    = received ? '#16a34a' : isNext ? '#f59e0b' : '#94a3b8'
+                const amtC     = received ? '#16a34a' : isNext ? '#f59e0b' : 'var(--text-muted)'
+                const dotColor = received ? '#16a34a' : isNext ? '#f59e0b' : 'var(--bg-border)'
                 return (
-                  <g key={i} opacity={isFuture ? 0.38 : 1}>
-                    <defs>
-                      <linearGradient id={`bg${i}`} x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor={fill} stopOpacity={received ? '.95' : '.7'}/>
-                        <stop offset="100%" stopColor={fill} stopOpacity={received ? '.65' : '.4'}/>
-                      </linearGradient>
-                    </defs>
-                    <rect x={x} y={y} width={bW} height={barH} fill={`url(#bg${i})`} rx="5"/>
-                    {/* Amount on top */}
-                    <text x={x + bW/2} y={y - 6} fontSize="9.5" fontWeight="800" fill={textC} textAnchor="middle">{t.amount}</text>
-                    {/* Checkmark inside received bars */}
-                    {received && barH > 20 && (
-                      <text x={x + bW/2} y={y + barH/2 + 5} fontSize="13" fill="rgba(255,255,255,0.85)" textAnchor="middle">✓</text>
-                    )}
-                    {/* Date */}
-                    <text x={x + bW/2} y="135" fontSize="8.5" fill={isNext ? '#d97706' : 'var(--text-muted)'} textAnchor="middle">{t.date}</text>
-                    {/* Status */}
-                    <text x={x + bW/2} y="150" fontSize="8" fontWeight={isNext ? '700' : '400'} fill={textC} textAnchor="middle">
-                      {received ? t.tranche : isNext ? 'In progress' : 'Pending'}
-                    </text>
-                  </g>
+                  <div key={i} style={{ opacity: isFuture ? .45 : 1 }}>
+                    {/* Connector line */}
+                    <div style={{ display:'flex', alignItems:'center', marginBottom:8 }}>
+                      <div style={{ width:12, height:12, borderRadius:'50%', backgroundColor: dotColor, flexShrink:0, border: isFuture ? '2px solid var(--bg-border)' : 'none', boxSizing:'border-box' }}/>
+                      {i < 7 && <div style={{ flex:1, height:1, backgroundColor:'var(--bg-border)' }}/>}
+                    </div>
+                    {/* Card */}
+                    <div style={{ padding:'10px 10px 10px', borderRadius:10, backgroundColor:'var(--bg-hover)', border:'1px solid var(--bg-border)' }}>
+                      <p style={{ fontSize:9, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:5 }}>{t.tranche}</p>
+                      <p style={{ fontSize:14, fontWeight:800, color:amtC, fontVariantNumeric:'tabular-nums', lineHeight:1, marginBottom:4 }}>{t.amount}</p>
+                      <p style={{ fontSize:9, color: isNext ? '#f59e0b' : 'var(--text-muted)', fontWeight: isNext ? 700 : 400, marginBottom:4 }}>{t.date}</p>
+                      <p style={{ fontSize:8.5, color:'var(--text-muted)', lineHeight:1.4 }}>{t.note}</p>
+                    </div>
+                  </div>
                 )
               })}
-              {/* Baseline */}
-              <line x1="36" y1="120" x2="754" y2="120" stroke="var(--bg-border)" strokeWidth="1.5"/>
-            </svg>
+            </div>
           </div>
-          <p style={{ fontSize:10, marginTop:10, color:'var(--text-muted)', display:'flex', alignItems:'center', gap:4 }}>
+
+          <p style={{ fontSize:10, marginTop:14, color:'var(--text-muted)', display:'flex', alignItems:'center', gap:4 }}>
             <Info size={9}/> Estimated — verify with IMF.org.
           </p>
         </Section>
 
         {/* ── SBP Policy Rate History ──────────────────────────────────────── */}
         <Section title="SBP Policy Rate History" subtitle="Monetary Policy Committee · Jul 2025 – present" icon={Calendar}>
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4"
-            style={{ paddingBottom:20, marginBottom:20, borderBottom:'1px solid var(--bg-border)' }}>
-            <div>
-              <p style={{ fontSize:10, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.07em', marginBottom:6 }}>Current Policy Rate</p>
-              <p style={{ fontSize:44, fontWeight:900, color:'var(--text-primary)', lineHeight:1,
-                letterSpacing:'-.03em', fontVariantNumeric:'tabular-nums' }}>11.50%</p>
-              <p style={{ fontSize:11, color:'#16a34a', marginTop:8, display:'flex', alignItems:'center', gap:5 }}>
-                <TrendingDown size={12}/> −350bps easing since Jul 2025 · 4 rate cuts
-              </p>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-7 gap-y-3">
-              {([
-                { label:'Next MPC',  value:'Sep 22, 2026',  color:'#d97706' },
-                { label:'Days away', value:`${daysToMPC} days`, color:'var(--text-primary)' },
-                { label:'Expected',  value:'Cut',           color:'#16a34a' },
-                { label:'Corridor',  value:'10.50%–12.50%', color:'var(--text-secondary)' },
-              ] as const).map((s,i) => (
-                <div key={i} className="sm:text-right">
-                  <p style={{ fontSize:10, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:5 }}>{s.label}</p>
-                  <p style={{ fontSize:13, fontWeight:700, color:s.color, fontVariantNumeric:'tabular-nums' }}>{s.value}</p>
+
+          {/* ── Stats strip ── */}
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(120px,1fr))', gap:1, marginBottom:20, borderRadius:12, overflow:'hidden', border:'1px solid var(--bg-border)' }}>
+            {[
+              { label:'Current Rate',  value:'11.50%',         sub:'As of Jun 2026',   color:'var(--text-primary)' },
+              { label:'Total Easing',  value:'−350bps',        sub:'4 cuts since Jul 25', color:'#16a34a' },
+              { label:'Next MPC',      value:'Sep 22, 2026',   sub:`${daysToMPC} days away`, color:'#f59e0b' },
+              { label:'Market Expects',value:'Cut',            sub:'50–100bps expected', color:'#16a34a' },
+            ].map((k, i, arr) => (
+              <div key={k.label} style={{ padding:'14px 16px', backgroundColor:'var(--bg-hover)', borderRight: i < arr.length-1 ? '1px solid var(--bg-border)' : 'none' }}>
+                <p style={{ fontSize:10, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.07em', marginBottom:7 }}>{k.label}</p>
+                <p style={{ fontSize:20, fontWeight:800, color:k.color, lineHeight:1, fontVariantNumeric:'tabular-nums' }}>{k.value}</p>
+                <p style={{ fontSize:10, color:'var(--text-muted)', marginTop:5 }}>{k.sub}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* ── Cascade waterfall ── */}
+          <div style={{ marginBottom:20 }}>
+            <p style={{ fontSize:10, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.07em', marginBottom:14 }}>Rate at each MPC meeting</p>
+
+            {/* Horizontal waterfall — each row = one MPC meeting */}
+            {[
+              { date:'Jul 2025', rate:14.0, prev:null,  bps:null,  status:'past',    note:'Easing cycle begins' },
+              { date:'Sep 2025', rate:13.0, prev:14.0,  bps:-100,  status:'past',    note:'First cut of cycle'  },
+              { date:'Jan 2026', rate:13.0, prev:13.0,  bps:0,     status:'past',    note:'Hold — watched inflation' },
+              { date:'Mar 2026', rate:12.5, prev:13.0,  bps:-50,   status:'past',    note:'Smaller calibrated cut' },
+              { date:'Apr 2026', rate:11.5, prev:12.5,  bps:-100,  status:'past',    note:'Aggressive easing' },
+              { date:'Jun 2026', rate:11.5, prev:11.5,  bps:0,     status:'current', note:'Current rate — held' },
+              { date:'Sep 2026', rate:null, prev:11.5,  bps:null,  status:'next',    note:'Expected cut 50–100bps' },
+            ].map((m, i) => {
+              const maxRate = 14
+              const isCut     = m.bps !== null && m.bps < 0
+              const isHold    = m.bps === 0
+              const isNext    = m.status === 'next'
+              const isCurrent = m.status === 'current'
+              const barW  = m.rate ? (m.rate / maxRate) * 100 : 80
+              const prevW = m.prev ? (m.prev / maxRate) * 100 : 0
+              const cutW  = isCut ? prevW - barW : 0
+
+              return (
+                <div key={i} className="grid gap-2 sm:gap-3"
+                  style={{ gridTemplateColumns:'80px 1fr 60px', alignItems:'center',
+                    padding:'8px 0', borderBottom:'1px solid var(--bg-border)', opacity: isNext ? .55 : 1 }}>
+
+                  {/* Date */}
+                  <span style={{ fontSize:11, fontVariantNumeric:'tabular-nums', flexShrink:0, fontWeight: isCurrent ? 700 : 400,
+                    color: isNext ? '#f59e0b' : isCurrent ? 'var(--text-primary)' : 'var(--text-muted)' }}>{m.date}</span>
+
+                  {/* Bar track + rate label outside */}
+                  <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                    <div style={{ flex:1, position:'relative', height:14, borderRadius:4, backgroundColor:'var(--bg-border)', overflow:'hidden' }}>
+                      {/* Rate bar */}
+                      <div style={{ position:'absolute', left:0, top:0, height:'100%', width:`${barW}%`,
+                        background: isCurrent ? 'linear-gradient(90deg,#FEA500aa,#FEA500)' : isNext ? '#f59e0b30' : '#FEA50040',
+                        borderRadius:4 }}/>
+                      {/* Cut gap highlight */}
+                      {isCut && (
+                        <div style={{ position:'absolute', left:`${barW}%`, top:0, height:'100%', width:`${cutW}%`,
+                          backgroundColor:'#16a34a25', borderLeft:'1.5px solid #16a34a50' }}/>
+                      )}
+                    </div>
+                    {/* Rate label outside bar */}
+                    <span style={{ fontSize:11, fontWeight:800, fontVariantNumeric:'tabular-nums', flexShrink:0, minWidth:38, textAlign:'right',
+                      color: isCurrent ? '#FEA500' : isNext ? '#f59e0b' : 'var(--text-secondary)' }}>
+                      {m.rate ? `${m.rate}%` : '~?%'}
+                    </span>
+                  </div>
+
+                  {/* BPS badge */}
+                  <div style={{ textAlign:'center' }}>
+                    {isCut ? (
+                      <span style={{ fontSize:10, fontWeight:800, color:'#16a34a', backgroundColor:'#16a34a15',
+                        padding:'2px 7px', borderRadius:999, display:'inline-block', whiteSpace:'nowrap' }}>{m.bps}bps</span>
+                    ) : isHold ? (
+                      <span style={{ fontSize:9, fontWeight:600, color:'var(--text-muted)', backgroundColor:'var(--bg-hover)',
+                        padding:'2px 7px', borderRadius:999, display:'inline-block' }}>Hold</span>
+                    ) : (
+                      <span style={{ fontSize:9, color:'#f59e0b', fontWeight:600 }}>?</span>
+                    )}
+                  </div>
+
                 </div>
+              )
+            })}
+
+            {/* Total easing summary */}
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'flex-end', gap:20, marginTop:10, paddingTop:8 }}>
+              <span style={{ fontSize:10, color:'var(--text-muted)' }}>Total easing cycle</span>
+              <span style={{ fontSize:14, fontWeight:900, color:'#16a34a', fontVariantNumeric:'tabular-nums' }}>−350bps</span>
+              <span style={{ fontSize:10, color:'var(--text-muted)' }}>14.00% → 11.50%</span>
+            </div>
+          </div>
+
+          {/* ── MPC meeting table ── */}
+          <div style={{ borderTop:'1px solid var(--bg-border)' }}>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 110px 80px 1fr 70px', gap:0,
+              padding:'8px 0', borderBottom:'1px solid var(--bg-border)', marginBottom:2 }}>
+              {['Date','Decision','Rate','','Change'].map((h,i) => (
+                <span key={i} style={{ fontSize:9, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.07em', fontWeight:700,
+                  textAlign: i >= 3 ? 'right' : 'left' }}>{h}</span>
               ))}
             </div>
-          </div>
-
-          {/* Step-down rate chart */}
-          <div style={{ marginBottom:20 }}>
-            <svg viewBox="0 0 620 110" width="100%" height="110" style={{ display:'block', overflow:'visible' }}>
-              {/* Y grid */}
-              {[11,12,13,14].map(r => {
-                const y = 95-(r-10.5)/4*85
-                return (
-                  <g key={r}>
-                    <line x1="32" y1={y} x2="608" y2={y} stroke="var(--bg-border)" strokeWidth=".6"/>
-                    <text x="28" y={y+3} fontSize="8.5" fill="var(--text-muted)" textAnchor="end">{r}%</text>
-                  </g>
-                )
-              })}
-              {/* Shaded area + step line */}
-              {(() => {
-                // rates over time, positions proportional to month offset
-                const pts=[
-                  {x:40,r:14},{x:115,r:13},{x:211,r:13},{x:307,r:13},
-                  {x:402,r:12.5},{x:451,r:11.5},{x:518,r:11.5}
-                ]
-                const toY=(r:number)=>95-(r-10.5)/4*85
-                let path='M'+pts.map(p=>`${p.x},${toY(p.r)}`).reduce((a,c,i)=>{
-                  if(i===0) return c
-                  const prev=pts[i-1], cur=pts[i]
-                  return a+` H${cur.x} V${toY(cur.r)}`
-                })
-                const fillPath=`M40,95 L40,${toY(14)} `+pts.slice(1).map((p,i)=>{
-                  const prev=pts[i]; return `H${p.x} V${toY(p.r)}`
-                }).join(' ')+` H518 V95 Z`
-                return (
-                  <>
-                    <defs>
-                      <linearGradient id="rateGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#2563eb" stopOpacity=".15"/>
-                        <stop offset="100%" stopColor="#2563eb" stopOpacity=".02"/>
-                      </linearGradient>
-                    </defs>
-                    <path d={fillPath} fill="url(#rateGrad)"/>
-                    <path d={`M${pts[0].x},${toY(pts[0].r)}`+pts.slice(1).map((p,i)=>`H${p.x} V${toY(p.r)}`).join(' ')}
-                      fill="none" stroke="#2563eb" strokeWidth="2" strokeLinejoin="round"/>
-                    {/* Current rate dot */}
-                    <circle cx={518} cy={toY(11.5)} r={5} fill="#2563eb"/>
-                    <text x={530} y={toY(11.5)+4} fontSize="9" fontWeight="700" fill="#2563eb">11.50%</text>
-                    {/* X axis labels */}
-                    {[{x:40,l:'Jul 25'},{x:115,l:'Sep 25'},{x:307,l:'Jan 26'},{x:451,l:'Apr 26'},{x:518,l:'Jun 26'}].map(p=>(
-                      <text key={p.l} x={p.x} y="106" fontSize="8" fill="var(--text-muted)" textAnchor="middle">{p.l}</text>
-                    ))}
-                  </>
-                )
-              })()}
-            </svg>
-          </div>
-
-          {/* Meeting rows — clean dividers only */}
-          <div style={{ borderTop:'1px solid var(--bg-border)' }}>
             {MPC_MEETINGS.map((m,i) => {
-              const isNext=m.status==='next', isFuture=m.status==='future'
-              const isCut=m.decision.includes('Cut')
-              const bps=(m.decision.match(/(\d+)bps/)||[])[1]
-              const rateVal=m.rate!=='?'?parseFloat(m.rate):null
-              const barPct=rateVal?`${((rateVal-10)/5)*100}%`:'28%'
+              const isNext   = m.status === 'next'
+              const isFuture = m.status === 'future'
+              const isCut    = m.decision.includes('Cut')
+              const bps      = (m.decision.match(/(\d+)bps/)||[])[1]
+              const rateVal  = m.rate !== '?' ? parseFloat(m.rate) : null
+              const barPct   = rateVal ? Math.min(((rateVal - 10) / 5) * 100, 100) : 20
               return (
-                <div key={i} style={{ display:'flex', alignItems:'center', gap:12, padding:'9px 0 9px',
-                  borderBottom:'1px solid var(--bg-border)', opacity:isFuture?.3:1,
-                  backgroundColor:isNext?'rgba(245,158,11,.04)':'transparent' }}>
-                  <span style={{ fontSize:11, fontVariantNumeric:'tabular-nums', width:88, flexShrink:0,
-                    color:isNext?'#d97706':'var(--text-muted)', fontWeight:isNext?600:400 }}>{m.date}</span>
-                  <span style={{ fontSize:11, fontWeight:600, width:80, flexShrink:0,
-                    color:isCut?'#2563eb':isNext?'#d97706':'var(--text-muted)' }}>{m.decision}</span>
-                  <span style={{ fontSize:15, fontWeight:800, width:52, flexShrink:0,
-                    fontVariantNumeric:'tabular-nums', color:'var(--text-primary)' }}>{m.rate}</span>
-                  <div className="hidden sm:block" style={{ flex:1, height:8, borderRadius:4, background:'var(--bg-hover)', overflow:'hidden' }}>
-                    <div style={{ height:'100%', borderRadius:4, width:barPct,
-                      backgroundColor:isCut?'#2563eb':isNext?'#f59e0b':'#94a3b8',
-                      opacity:m.rate==='?'?.25:1 }}/>
+                <div key={i} style={{ display:'grid', gridTemplateColumns:'1fr 110px 80px 1fr 70px',
+                  padding:'9px 0', borderBottom:'1px solid var(--bg-border)',
+                  opacity: isFuture ? .35 : 1,
+                  backgroundColor: isNext ? '#f59e0b08' : 'transparent' }}>
+                  <span style={{ fontSize:11, fontVariantNumeric:'tabular-nums',
+                    color: isNext ? '#f59e0b' : 'var(--text-secondary)', fontWeight: isNext ? 600 : 400 }}>{m.date}</span>
+                  <span style={{ fontSize:11, fontWeight:600,
+                    color: isCut ? '#16a34a' : isNext ? '#f59e0b' : 'var(--text-muted)' }}>{m.decision}</span>
+                  <span style={{ fontSize:13, fontWeight:800, fontVariantNumeric:'tabular-nums',
+                    color: 'var(--text-primary)' }}>{m.rate}{m.rate !== '?' ? '%' : ''}</span>
+                  {/* mini bar */}
+                  <div style={{ display:'flex', alignItems:'center', paddingRight:12 }}>
+                    <div style={{ flex:1, height:5, borderRadius:999, backgroundColor:'var(--bg-border)', overflow:'hidden' }}>
+                      <div style={{ width:`${barPct}%`, height:'100%', borderRadius:999,
+                        backgroundColor: isCut ? '#FEA500' : isNext ? '#f59e0b' : 'var(--bg-border)',
+                        opacity: m.rate === '?' ? .3 : 1 }}/>
+                    </div>
                   </div>
-                  <span className="hidden sm:inline" style={{ fontSize:11, fontWeight:700, width:60, textAlign:'right', flexShrink:0,
-                    fontVariantNumeric:'tabular-nums',
-                    color:isCut?'#16a34a':isNext?'#d97706':'var(--text-muted)' }}>
-                    {isCut?`−${bps}bps`:isNext?'expected':'—'}
+                  <span style={{ fontSize:11, fontWeight:700, textAlign:'right', fontVariantNumeric:'tabular-nums',
+                    color: isCut ? '#16a34a' : isNext ? '#f59e0b' : 'var(--text-muted)' }}>
+                    {isCut ? `−${bps}bps` : isNext ? 'upcoming' : '—'}
                   </span>
                 </div>
               )
             })}
           </div>
+
           <p style={{ fontSize:10, marginTop:10, color:'var(--text-muted)', display:'flex', alignItems:'center', gap:4 }}>
-            <Info size={9}/> Future dates are estimates.
+            <Info size={9}/> Future MPC dates are estimates. Rate corridor: 10.50%–12.50%.
           </p>
         </Section>
 
         {/* ── Foreign Reserves Monitor ─────────────────────────────────────── */}
         <Section title="Foreign Reserves Monitor" subtitle="SBP weekly data — USD billions" icon={Building2}>
-          {/* Stats row */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-0 mb-6 pb-5"
-            style={{ borderBottom:'1px solid var(--bg-border)' }}>
-            {([
-              { label:'SBP Holdings',  value:'$17.1B', sub:'Aug 2026',    vc:'var(--text-primary)', accent:false },
-              { label:'Total Reserves',value:'$22.5B', sub:'SBP + banks', vc:'var(--text-primary)', accent:false },
-              { label:'Import Cover',  value:'~3 mo',  sub:'comfortable', vc:'#16a34a',             accent:true  },
-              { label:'6-mo Change',   value:'+$4.0B', sub:'Feb→Aug 2026',vc:'#16a34a',             accent:true  },
-            ] as const).map((s,i) => (
-              <div key={i} className={i>0 ? 'sm:border-l sm:pl-6' : ''} style={{ borderColor:'var(--bg-border)' }}>
-                <p style={{ fontSize:10, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.06em', marginBottom:6 }}>{s.label}</p>
-                <p style={{ fontSize:26, fontWeight:800, color:s.vc, fontVariantNumeric:'tabular-nums', lineHeight:1, letterSpacing:'-.01em' }}>{s.value}</p>
-                <p style={{ fontSize:10, color:'var(--text-muted)', marginTop:4 }}>{s.sub}</p>
-              </div>
-            ))}
-          </div>
+          {(() => {
+            const maxTotal = Math.max(...RESERVES_DATA.map(d => d.total))
+            const latest   = RESERVES_DATA[RESERVES_DATA.length - 1]
+            const first    = RESERVES_DATA[0]
+            const gain6m   = +(latest.sbp - first.sbp).toFixed(1)
+            const banksPortion = +(latest.total - latest.sbp).toFixed(1)
 
-          {/* Chart + table */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-7">
-            <div>
-              <p style={{ fontSize:10, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.06em', marginBottom:12 }}>Monthly trend</p>
-              <svg viewBox="0 0 340 130" width="100%" height="130" style={{ display:'block', overflow:'visible' }}>
-                {[0,10,20].map(v=>{const y=110-(v/25)*100;return(
-                  <g key={v}><line x1="28" y1={y} x2="330" y2={y} stroke="var(--bg-border)" strokeWidth=".6"/>
-                  <text x="24" y={y+3.5} fontSize="8" fill="var(--text-muted)" textAnchor="end">${v}B</text></g>
-                )})}
-                {RESERVES_DATA.map((d,i)=>{
-                  const x=32+i*44; const sbpH=(d.sbp/25)*100; const totH=(d.total/25)*100
-                  const isLast=i===RESERVES_DATA.length-1; const col=isLast?'#d97706':'#2563eb'
-                  return(<g key={d.month}>
-                    <rect x={x} y={110-totH} width="22" height={totH} fill={col} opacity=".15" rx="2"/>
-                    <rect x={x} y={110-sbpH} width="22" height={sbpH} fill={col} rx="2" opacity={isLast?1:.8}/>
-                    <text x={x+11} y="126" fontSize="8" fill={isLast?'#d97706':'var(--text-muted)'} textAnchor="middle">{d.month}</text>
-                  </g>)
-                })}
-              </svg>
-              <div style={{ display:'flex', gap:14, marginTop:6 }}>
-                {([{c:'#2563eb',l:'SBP Reserves'},{c:'#2563eb22',l:'Total',b:'1px solid #2563eb40'}] as any[]).map((x,i)=>(
-                  <div key={i} style={{ display:'flex', alignItems:'center', gap:5 }}>
-                    <div style={{ width:10, height:10, borderRadius:2, background:x.c, border:x.b||'none' }}/>
-                    <span style={{ fontSize:10, color:'var(--text-muted)' }}>{x.l}</span>
+            return (
+              <>
+                {/* ── Top KPI strip ── */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-7">
+                  {([
+                    { label:'SBP Holdings',   value:`$${latest.sbp}B`,    sub:`Latest — ${latest.month}`,        icon:'🏦', accent:false },
+                    { label:'Total Reserves', value:`$${latest.total}B`,  sub:'SBP + commercial banks',          icon:'💰', accent:false },
+                    { label:'Import Cover',   value:'~3 months',           sub:'Comfortable buffer',              icon:'🛡️', accent:true  },
+                    { label:'6-Month Gain',   value:`+$${gain6m}B`,       sub:`${first.month} → ${latest.month}`,icon:'📈', accent:true  },
+                  ] as const).map((s,i) => (
+                    <div key={i} className="rounded-xl p-4 flex flex-col gap-2"
+                      style={{
+                        background: s.accent ? 'linear-gradient(135deg,#f0fdf4,#dcfce7)' : 'var(--bg-hover)',
+                        border: `1px solid ${s.accent ? 'rgba(22,163,74,0.2)' : 'var(--bg-border)'}`,
+                      }}>
+                      <div className="flex items-center justify-between">
+                        <span style={{ fontSize:10, fontWeight:700, color: s.accent ? '#15803d' : 'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.06em' }}>
+                          {s.label}
+                        </span>
+                        <span style={{ fontSize:14 }}>{s.icon}</span>
+                      </div>
+                      <span style={{ fontSize:22, fontWeight:800, color: s.accent ? '#15803d' : 'var(--text-primary)', lineHeight:1, fontVariantNumeric:'tabular-nums' }}>
+                        {s.value}
+                      </span>
+                      <span style={{ fontSize:10, color: s.accent ? '#16a34a' : 'var(--text-muted)' }}>{s.sub}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* ── Composition pill (SBP vs Banks) ── */}
+                <div className="mb-6 p-4 rounded-xl" style={{ background:'var(--bg-hover)', border:'1px solid var(--bg-border)' }}>
+                  <div className="flex items-center justify-between mb-3">
+                    <span style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.06em' }}>
+                      Reserve Composition — {latest.month}
+                    </span>
+                    <span style={{ fontSize:11, color:'var(--text-muted)' }}>Total: <strong style={{ color:'var(--text-primary)' }}>${latest.total}B</strong></span>
                   </div>
-                ))}
-              </div>
-            </div>
-            <div className="border-t sm:border-t-0 sm:border-l pt-5 sm:pt-0 sm:pl-6" style={{ borderColor:'var(--bg-border)' }}>
-              <div style={{ display:'grid', gridTemplateColumns:'52px 60px 60px 48px',
-                paddingBottom:7, borderBottom:'1px solid var(--bg-border)', marginBottom:4 }}>
-                {['Month','SBP','Total','Chg'].map(h=>(
-                  <span key={h} style={{ fontSize:10, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.05em', fontWeight:600 }}>{h}</span>
-                ))}
-              </div>
-              {RESERVES_DATA.map((d,i)=>{
-                const isLast=i===RESERVES_DATA.length-1
-                const prev=i>0?RESERVES_DATA[i-1]:null
-                const chg=prev?+(d.sbp-prev.sbp).toFixed(1):null
-                return(
-                  <div key={d.month} style={{ display:'grid', gridTemplateColumns:'52px 60px 60px 48px',
-                    padding:'7px 0', borderBottom:'1px solid var(--bg-border)', fontWeight:isLast?700:400 }}>
-                    <span style={{ fontSize:11, color:isLast?'#d97706':'var(--text-muted)' }}>{d.month}</span>
-                    <span style={{ fontSize:11, fontVariantNumeric:'tabular-nums', color:isLast?'var(--text-primary)':'var(--text-secondary)' }}>${d.sbp}B</span>
-                    <span style={{ fontSize:11, fontVariantNumeric:'tabular-nums', color:'var(--text-muted)' }}>${d.total}B</span>
-                    <span style={{ fontSize:11, fontVariantNumeric:'tabular-nums', color:chg&&chg>0?'#16a34a':'var(--text-muted)' }}>{chg!==null?`+${chg}`:'—'}</span>
+                  {/* Stacked bar */}
+                  <div className="relative h-8 rounded-lg overflow-hidden mb-3" style={{ background:'var(--bg-border)' }}>
+                    <div className="absolute left-0 top-0 h-full flex items-center justify-center rounded-lg transition-all"
+                      style={{ width:`${(latest.sbp/latest.total)*100}%`, background:'linear-gradient(90deg,#1d4ed8,#2563eb)', minWidth:60 }}>
+                      <span style={{ fontSize:10, fontWeight:700, color:'white' }}>SBP ${latest.sbp}B</span>
+                    </div>
+                    <div className="absolute top-0 h-full flex items-center justify-center"
+                      style={{ left:`${(latest.sbp/latest.total)*100}%`, width:`${(banksPortion/latest.total)*100}%` }}>
+                      <span style={{ fontSize:10, fontWeight:600, color:'var(--text-muted)' }}>Banks ${banksPortion}B</span>
+                    </div>
                   </div>
-                )
-              })}
-            </div>
-          </div>
-          <p style={{ fontSize:10, marginTop:12, color:'var(--text-muted)', display:'flex', alignItems:'center', gap:4 }}>
-            <Info size={9}/> Low reserves = market stress signal. Watch for improvement after IMF tranche.
-          </p>
+                  <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-sm" style={{ background:'#2563eb' }}/>
+                      <span style={{ fontSize:10, color:'var(--text-muted)' }}>SBP Holdings <strong style={{ color:'var(--text-primary)' }}>{((latest.sbp/latest.total)*100).toFixed(0)}%</strong></span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-sm" style={{ background:'var(--bg-border)', border:'1px solid var(--text-muted)' }}/>
+                      <span style={{ fontSize:10, color:'var(--text-muted)' }}>Commercial Banks <strong style={{ color:'var(--text-primary)' }}>{((banksPortion/latest.total)*100).toFixed(0)}%</strong></span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── Monthly bar chart ── */}
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <span style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.06em' }}>Monthly Trend</span>
+                    <div className="flex items-center gap-5">
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-sm" style={{ background:'#2563eb' }}/>
+                        <span style={{ fontSize:10, color:'var(--text-muted)' }}>SBP</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-sm" style={{ background:'#bfdbfe' }}/>
+                        <span style={{ fontSize:10, color:'var(--text-muted)' }}>Banks</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    {RESERVES_DATA.map((d,i) => {
+                      const isLast   = i === RESERVES_DATA.length - 1
+                      const prev     = i > 0 ? RESERVES_DATA[i-1] : null
+                      const chg      = prev ? +(d.sbp - prev.sbp).toFixed(1) : null
+                      const sbpW     = (d.sbp   / maxTotal) * 100
+                      const banksW   = ((d.total - d.sbp) / maxTotal) * 100
+                      const sbpCol   = isLast ? '#d97706' : '#2563eb'
+                      const bankCol  = isLast ? '#fde68a' : '#bfdbfe'
+
+                      return (
+                        <div key={d.month} className="flex items-center gap-3 group px-3 py-2 rounded-lg transition-colors"
+                          style={{ background: isLast ? 'rgba(217,119,6,0.06)' : 'transparent' }}>
+
+                          {/* Month */}
+                          <span className="shrink-0 text-right" style={{ width:46, fontSize:11, fontWeight: isLast?700:500, color: isLast?'#d97706':'var(--text-muted)' }}>
+                            {d.month}
+                          </span>
+
+                          {/* Stacked bar */}
+                          <div className="flex-1 relative h-6 rounded-md overflow-hidden" style={{ background:'var(--bg-hover)' }}>
+                            {/* banks portion */}
+                            <div className="absolute left-0 top-0 h-full rounded-md transition-all"
+                              style={{ width:`${sbpW+banksW}%`, background: bankCol }}/>
+                            {/* sbp portion */}
+                            <div className="absolute left-0 top-0 h-full rounded-md flex items-center pl-2 transition-all"
+                              style={{ width:`${sbpW}%`, background: sbpCol }}>
+                              {sbpW > 20 && (
+                                <span style={{ fontSize:9, fontWeight:700, color:'white', whiteSpace:'nowrap' }}>${d.sbp}B</span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* SBP value */}
+                          <span className="shrink-0 text-right font-number" style={{ width:44, fontSize:11, fontWeight: isLast?700:400, color: isLast?'var(--text-primary)':'var(--text-secondary)', fontVariantNumeric:'tabular-nums' }}>
+                            ${d.sbp}B
+                          </span>
+
+                          {/* Total */}
+                          <span className="hidden sm:block shrink-0 text-right font-number" style={{ width:44, fontSize:11, color:'var(--text-muted)', fontVariantNumeric:'tabular-nums' }}>
+                            ${d.total}B
+                          </span>
+
+                          {/* Change */}
+                          <span className="shrink-0 text-right font-number" style={{ width:48, fontSize:11, fontWeight:600, fontVariantNumeric:'tabular-nums',
+                            color: chg===null?'var(--text-muted)': chg>0?'#16a34a':'#dc2626' }}>
+                            {chg===null ? '—' : `${chg>0?'+':''}${chg}`}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  {/* Column labels */}
+                  <div className="flex items-center gap-3 mt-2 px-3">
+                    <span style={{ width:46, fontSize:9, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.05em' }}/>
+                    <div className="flex-1"/>
+                    <span className="text-right" style={{ width:44, fontSize:9, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.05em' }}>SBP</span>
+                    <span className="hidden sm:block text-right" style={{ width:44, fontSize:9, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.05em' }}>Total</span>
+                    <span className="text-right" style={{ width:48, fontSize:9, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.05em' }}>Δ MoM</span>
+                  </div>
+                </div>
+
+                <p style={{ fontSize:10, marginTop:16, color:'var(--text-muted)', display:'flex', alignItems:'center', gap:4 }}>
+                  <Info size={9}/> Low reserves = market stress signal. Watch for improvement after IMF tranche.
+                </p>
+              </>
+            )
+          })()}
         </Section>
 
         {/* ── Rupee Impact Analysis ────────────────────────────────────────── */}

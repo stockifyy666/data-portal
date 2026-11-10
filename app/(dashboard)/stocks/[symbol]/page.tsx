@@ -9,6 +9,7 @@ import Link                 from 'next/link'
 import { ArrowLeft }        from 'lucide-react'
 import WatchlistButton   from '@/components/market/WatchlistButton'
 import StockDetailClient from '@/components/stock/StockDetailClient'
+import SymbolLogo        from '@/components/ui/SymbolLogo'
 
 type Params = { symbol: string }
 
@@ -54,6 +55,7 @@ export default async function StockDetailPage({ params }: { params: Promise<Para
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-3 flex-wrap">
+            <SymbolLogo symbol={symbol} size={80} />
             <h1 className="text-2xl font-black" style={{ color: 'var(--text-primary)' }}>
               {symbol}
             </h1>

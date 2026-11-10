@@ -113,7 +113,22 @@ export default function FIPIPage() {
   ) ? (invType === 'fipi' ? data!.foreign : data!.local) : []
 
   const maxBars = period === '1y' ? 260 : period === '3m' ? 65 : 10
-  const sorted  = [...days].sort((a, b) => a.date.localeCompare(b.date)).slice(-maxBars)
+
+  // Parse a sortable timestamp from the date field regardless of format:
+  // "2026-10-25"            → ISO date (daily)
+  // "Oct 25 - Oct 31"      → extract first date with current year
+  // "2026-10-25 - 2026-10-31" → extract first ISO date
+  function parseSortKey(d: string): number {
+    // ISO date or ISO range
+    const iso = d.match(/^(\d{4}-\d{2}-\d{2})/)
+    if (iso) return new Date(iso[1]).getTime()
+    // "MMM D - MMM D" range — parse first part, assume current year context
+    const short = d.match(/^([A-Za-z]+ \d{1,2})/)
+    if (short) return new Date(`${short[1]} ${new Date().getFullYear()}`).getTime()
+    return 0
+  }
+
+  const sorted  = [...days].sort((a, b) => parseSortKey(a.date) - parseSortKey(b.date)).slice(-maxBars)
 
   // Cumulative line
   let cum = 0
@@ -143,7 +158,7 @@ export default function FIPIPage() {
             {(['fipi', 'lipi'] as InvType[]).map(t => (
               <button key={t} onClick={() => setInvType(t)}
                 className="px-4 py-1.5 text-xs font-semibold transition-colors uppercase"
-                style={{ background: invType === t ? '#1e3a5f' : 'var(--bg-card)', color: invType === t ? '#fff' : 'var(--text-secondary)' }}>
+                style={{ background: invType === t ? 'linear-gradient(135deg,#FEA500,#986300)' : 'var(--bg-card)', color: invType === t ? '#fff' : 'var(--text-secondary)' }}>
                 {t}
               </button>
             ))}
@@ -176,7 +191,7 @@ export default function FIPIPage() {
               { label: 'Net Volume', value: latest ? latest.vol.toLocaleString() : '—', pos: (latest?.vol ?? 0) >= 0, sub: 'shares' },
               { label: 'Days of Data', value: String(days.length), pos: true, sub: period },
             ].map(c => (
-              <div key={c.label} className="rounded-xl p-3 border" style={{ background: 'var(--bg-card)', borderColor: 'var(--bg-border)' }}>
+              <div key={c.label} className="card p-3">
                 <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>{c.label}</p>
                 <p className="text-lg font-bold font-mono" style={{ color: c.pos ? '#22c55e' : '#ef4444' }}>{c.value}</p>
                 <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{c.sub}</p>
@@ -185,7 +200,7 @@ export default function FIPIPage() {
           </div>
 
           {/* Chart card */}
-          <div className="rounded-xl border" style={{ background: 'var(--bg-card)', borderColor: 'var(--bg-border)' }}>
+          <div className="card overflow-hidden">
             <div className="px-4 pt-4 pb-2">
               <p className="text-sm font-semibold" style={{ color: 'var(--text-muted)' }}>
                 Net {invType.toUpperCase()} (in $USD)
@@ -208,7 +223,7 @@ export default function FIPIPage() {
                   ))}
                 </Bar>
                 <Line yAxisId="line" type="monotone" dataKey="cumulative"
-                  stroke="#1e3a5f" strokeWidth={2} dot={{ r: 3, fill: '#1e3a5f' }} activeDot={{ r: 5 }} />
+                  stroke="#FEA500" strokeWidth={2} dot={{ r: 3, fill: '#FEA500' }} activeDot={{ r: 5, fill: '#986300' }} />
               </ComposedChart>
             </ResponsiveContainer>
 
@@ -219,7 +234,7 @@ export default function FIPIPage() {
                 {(['10d', '3m', '1y'] as Period[]).map(p => (
                   <button key={p} onClick={() => { setPeriod(p); load(p) }}
                     className="px-3 py-1 rounded-lg text-xs font-semibold transition-colors"
-                    style={{ background: period === p ? '#1e3a5f' : 'var(--bg-hover)', color: period === p ? '#fff' : 'var(--text-secondary)' }}>
+                    style={{ background: period === p ? 'linear-gradient(135deg,#FEA500,#986300)' : 'var(--bg-hover)', color: period === p ? '#fff' : 'var(--text-secondary)' }}>
                     {p === '10d' ? '10 Days' : p === '3m' ? '3 Months' : '1 Year'}
                   </button>
                 ))}
@@ -229,7 +244,7 @@ export default function FIPIPage() {
                 {(['client', 'sector'] as BreakMode[]).map(m => (
                   <button key={m} onClick={() => setBreakMode(m)}
                     className="px-3 py-1 rounded-lg text-xs font-semibold transition-colors capitalize"
-                    style={{ background: breakMode === m ? '#1e3a5f' : 'var(--bg-hover)', color: breakMode === m ? '#fff' : 'var(--text-secondary)' }}>
+                    style={{ background: breakMode === m ? 'linear-gradient(135deg,#FEA500,#986300)' : 'var(--bg-hover)', color: breakMode === m ? '#fff' : 'var(--text-secondary)' }}>
                     By {m.charAt(0).toUpperCase() + m.slice(1)}
                   </button>
                 ))}
@@ -243,7 +258,7 @@ export default function FIPIPage() {
             const entries = Object.entries(breakdown).sort((a, b) => b[1] - a[1])
             const net = latest.usd
             return (
-              <div className="rounded-xl border overflow-hidden" style={{ borderColor: 'var(--bg-border)' }}>
+              <div className="card overflow-hidden">
                 <div className="px-4 py-3 border-b flex items-center justify-between" style={{ background: 'var(--bg-card)', borderColor: 'var(--bg-border)' }}>
                   <span className="font-semibold text-sm">
                     {invType.toUpperCase()} Breakdown — {latest.date} · By {breakMode.charAt(0).toUpperCase() + breakMode.slice(1)}

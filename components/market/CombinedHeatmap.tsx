@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import Link                              from 'next/link'
 import { cachedFetch }                   from '@/lib/utils/clientCache'
+import SymbolLogo                        from '@/components/ui/SymbolLogo'
 import type { StockQuote }               from '@/types/market'
 
 /* ── Constants ────────────────────────────────────────────────────── */
@@ -248,9 +249,11 @@ export default function CombinedHeatmap() {
                 // Approximate pixel dimensions to decide what text to show
                 const approxPxW = (rect.w / 100) * (sr.w / 100) * containerW
                 const approxPxH = (rect.h / 100) * containerH * (sr.h / 100)
-                const showSym = approxPxW > 24 && approxPxH > 18
-                const showPct = approxPxW > 34 && approxPxH > 34
-                const fs      = Math.min(14, Math.max(7, Math.min(approxPxW / 5.5, approxPxH / 3.5)))
+                const showSym  = approxPxW > 24 && approxPxH > 18
+                const showPct  = approxPxW > 34 && approxPxH > 34
+                const showLogo = approxPxW > 52 && approxPxH > 52
+                const logoSize = Math.min(28, Math.max(16, Math.round(Math.min(approxPxW, approxPxH) * 0.3)))
+                const fs       = Math.min(14, Math.max(7, Math.min(approxPxW / 5.5, approxPxH / 3.5)))
 
                 return (
                   <Link
@@ -277,6 +280,13 @@ export default function CombinedHeatmap() {
                     }}
                     className="hover:brightness-110"
                   >
+                    {showLogo && (
+                      <SymbolLogo
+                        symbol={stock.symbol}
+                        size={logoSize}
+                        style={{ marginBottom: 2, border: '1.5px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.15)' }}
+                      />
+                    )}
                     {showSym && (
                       <span style={{ fontSize: fs, fontWeight: 700, lineHeight: 1.15, whiteSpace: 'nowrap', maxWidth: '94%', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {stock.symbol}

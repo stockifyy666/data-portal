@@ -18,17 +18,17 @@ const NAV_ITEMS = [
   { icon: Globe,             label: 'Macro Dashboard',  href: '/macro'      },
   { icon: TrendingUp,        label: 'Stocks',           href: '/stocks'     },
   { icon: BookMarked,        label: 'Watchlist',        href: '/watchlist'  },
-  { icon: Briefcase,         label: 'Portfolio',        href: '/portfolio'  },
+  // { icon: Briefcase,         label: 'Portfolio',        href: '/portfolio'  },
   { icon: Activity,          label: 'Indices',           href: '/indices'    },
   { icon: Grid2x2,           label: 'Heatmap',          href: '/heatmap'    },
   { icon: SlidersHorizontal, label: 'Screener',         href: '/screener'   },
   { icon: ArrowUpDown,       label: 'FIPI / LIPI',      href: '/fipi'       },
-  { icon: Bell,              label: 'Alerts',           href: '/alerts'     },
-  { icon: Calculator,        label: 'Tools',            href: '/tools'      },
-  { icon: BookOpen,          label: 'Reports',          href: '/reports'    },
+  // { icon: Bell,              label: 'Alerts',           href: '/alerts'     },
+  // { icon: Calculator,        label: 'Tools',            href: '/tools'      },
+  // { icon: BookOpen,          label: 'Reports',          href: '/reports'    },
   { icon: Newspaper,         label: 'News',             href: '/news'       },
-  { icon: BarChart2,         label: 'Technical Chart',  href: '/chart'      },
-  { icon: PanelTopOpen,      label: 'Multi Chart',      href: '/multichart' },
+  // { icon: BarChart2,         label: 'Technical Chart',  href: '/chart'      },
+  // { icon: PanelTopOpen,      label: 'Multi Chart',      href: '/multichart' },
 ]
 
 function StockifyySVGLogo() {
@@ -37,7 +37,7 @@ function StockifyySVGLogo() {
   )
 }
 
-export default function Sidebar({ onClose }: { onClose?: () => void }) {
+export default function Sidebar({ onClose, noHeader }: { onClose?: () => void; noHeader?: boolean }) {
   const pathname = usePathname()
   const router   = useRouter()
   const supabase = createClient()
@@ -51,23 +51,25 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
 
   return (
     <aside
-      className="flex flex-col h-screen w-56 shrink-0 border-r"
+      className="flex flex-col h-full w-56 shrink-0 border-r"
       style={{
         backgroundColor: 'var(--bg-sidebar)',
         borderColor:     'var(--bg-border)',
       }}
     >
-      {/* Logo */}
-      <div className="px-4 py-2 border-b flex items-center justify-between" style={{ borderColor: 'var(--bg-border)' }}>
-        <Link href="/dashboard" className="flex items-center" onClick={onClose}>
-          <StockifyySVGLogo />
-        </Link>
-        {onClose && (
-          <button onClick={onClose} className="p-1 rounded md:hidden" style={{ color: 'var(--text-muted)' }}>
-            <X size={18} />
-          </button>
-        )}
-      </div>
+      {/* Logo — shown only when not controlled by parent layout */}
+      {!noHeader && (
+        <div className="px-4 py-2 border-b flex items-center justify-between" style={{ borderColor: 'var(--bg-border)' }}>
+          <Link href="/dashboard" className="flex items-center" onClick={onClose}>
+            <StockifyySVGLogo />
+          </Link>
+          {onClose && (
+            <button onClick={onClose} className="p-1 rounded md:hidden" style={{ color: 'var(--text-muted)' }}>
+              <X size={18} />
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto py-2 px-2 space-y-0.5">

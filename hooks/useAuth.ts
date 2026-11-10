@@ -26,9 +26,15 @@ export function useAuth() {
       setLoading(false)
     })
 
-    // Listen for auth state changes (sign in, sign out, token refresh)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null)
+    // Listen for auth state changes — use getUser() to get the verified user,
+    // not session.user which comes directly from storage and is unverified.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session) {
+        const { data: { user: verified } } = await supabase.auth.getUser()
+        setUser(verified ?? null)
+      } else {
+        setUser(null)
+      }
     })
 
     return () => subscription.unsubscribe()

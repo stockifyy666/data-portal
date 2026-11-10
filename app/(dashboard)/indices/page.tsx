@@ -385,12 +385,19 @@ function SectorWheel({
         {/* Header row — hide mini-bar col on mobile via CSS class trick */}
         <div style={{
           display: 'grid', gridTemplateColumns: '1fr auto auto auto',
-          gap: '0 8px', padding: '0 4px 6px',
+          gap: '0 0', padding: '0 20px 6px',
           borderBottom: '1px solid var(--bg-border)',
         }}>
-          {['Sector', 'Stks', 'Mkt%', 'Chg'].map(h => (
-            <span key={h} style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em',
-              color: 'var(--text-muted)', textTransform: 'uppercase', textAlign: h === 'Sector' ? 'left' : 'right' }}>{h}</span>
+          {[
+            { label: 'Sector', w: undefined },
+            { label: 'Stks',   w: 40 },
+            { label: 'Mkt%',   w: 56 },
+            { label: 'Chg',    w: 68 },
+          ].map(({ label, w }) => (
+            <span key={label} style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em',
+              color: 'var(--text-muted)', textTransform: 'uppercase',
+              textAlign: label === 'Sector' ? 'left' : 'right',
+              width: w, flexShrink: 0 }}>{label}</span>
           ))}
         </div>
         <div style={{ maxHeight: 360, overflowY: 'auto' }}>
@@ -404,8 +411,8 @@ function SectorWheel({
                 key={name}
                 onClick={() => onSelect(isSel ? null : name)}
                 style={{
-                  display: 'grid', gridTemplateColumns: '1fr auto auto auto',
-                  gap: '0 8px', width: '100%', padding: '7px 4px',
+                  display: 'flex', alignItems: 'center',
+                  gap: 0, width: '100%', padding: '7px 20px',
                   background: isSel ? sd.color + '14' : 'transparent',
                   border: 'none', borderBottom: '1px solid var(--bg-border)',
                   cursor: 'pointer', alignItems: 'center', textAlign: 'left',
@@ -413,7 +420,7 @@ function SectorWheel({
                 }}
               >
                 {/* Sector name with color dot */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: 0 }}>
                   <span style={{
                     width: 7, height: 7, borderRadius: '50%',
                     background: sd.color, flexShrink: 0,
@@ -426,17 +433,18 @@ function SectorWheel({
                   }}>{name}</span>
                 </div>
                 {/* Stock count */}
-                <span style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'right' }}>
+                <span style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'right', width: 40, flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
                   {sd.stocks.length}
                 </span>
                 {/* Market cap % */}
-                <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>
+                <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums', textAlign: 'right', width: 56, flexShrink: 0 }}>
                   {pct.toFixed(1)}%
                 </span>
                 {/* % change */}
                 <span style={{
                   fontSize: 11, fontWeight: 700, color: up ? '#16a34a' : '#dc2626',
                   fontVariantNumeric: 'tabular-nums', textAlign: 'right',
+                  width: 68, flexShrink: 0,
                 }}>
                   {up ? '+' : ''}{sd.pctChange.toFixed(2)}%
                 </span>

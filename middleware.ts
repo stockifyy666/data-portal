@@ -95,13 +95,13 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // Use getSession() — reads from cookie, no network call, safe for middleware
-  const { data: { session } } = await supabase.auth.getSession()
+  // getUser() contacts Supabase Auth server to verify the JWT — no warning, fully secure.
+  const { data: { user } } = await supabase.auth.getUser()
 
-  const role = session?.user?.app_metadata?.role as string | undefined
+  const role = user?.app_metadata?.role as string | undefined
   const isAdminRole = role === 'admin' || role === 'superadmin'
 
-  if (!session && !isPublic(pathname)) {
+  if (!user && !isPublic(pathname)) {
     // API routes get a 401 JSON — page routes get redirected to /login
     if (pathname.startsWith('/api/')) {
       return new NextResponse(JSON.stringify({ error: 'Unauthorized' }), {
@@ -115,12 +115,12 @@ export async function middleware(request: NextRequest) {
   }
 
   // Redirect logged-in users away from auth pages based on role
-  if (session && (pathname === '/login' || pathname === '/register')) {
+  if (user && (pathname === '/login' || pathname === '/register')) {
     return NextResponse.redirect(new URL(isAdminRole ? '/admin' : '/dashboard', request.url))
   }
 
   // Protect /admin — only admin and superadmin
-  if (session && pathname.startsWith('/admin') && !isAdminRole) {
+  if (user && pathname.startsWith('/admin') && !isAdminRole) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 

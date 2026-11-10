@@ -30,26 +30,26 @@ function ReportCard({ r }: { r: Report }) {
       style={{ backgroundColor:'var(--bg-card)', border:'1px solid var(--bg-border)' }}>
 
       {/* Header row */}
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2 flex-wrap min-w-0">
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0"
             style={{ backgroundColor:`${color}18`, color, border:`1px solid ${color}30` }}>
             {r.team}
           </span>
           {r.featured && (
-            <span className="text-[9px] font-bold px-2 py-0.5 rounded-full"
+            <span className="text-[9px] font-bold px-2 py-0.5 rounded-full shrink-0"
               style={{ background:'linear-gradient(135deg,#FEA500,#986300)', color:'white' }}>
               Featured
             </span>
           )}
         </div>
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex flex-col items-end gap-0.5 shrink-0">
           <div className="flex items-center gap-1 text-[10px]" style={{ color:'var(--text-muted)' }}>
-            <Calendar size={10} />
+            <Calendar size={9} />
             {fmtDate(r.date)}
           </div>
           <div className="flex items-center gap-1 text-[10px]" style={{ color:'var(--text-muted)' }}>
-            <Clock size={10} />
+            <Clock size={9} />
             {r.readTime}
           </div>
         </div>
@@ -105,8 +105,8 @@ export default function ReportsPage() {
     <div className="space-y-8 animate-data">
 
       {/* Page header */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-xl font-bold" style={{ color:'var(--text-primary)' }}>Stockifyy Reports</h1>
           <p className="text-sm mt-0.5" style={{ color:'var(--text-secondary)' }}>
             In-depth research, technical and fundamental analysis by the Stockifyy team
@@ -128,17 +128,17 @@ export default function ReportsPage() {
       </div>
 
       {/* Team filter tabs */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
         {TEAMS.map(t => {
           const Icon    = t.icon
           const isActive = activeTeam === t.id
           return (
             <button key={t.id} onClick={() => setActiveTeam(t.id)}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all"
+              className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all shrink-0"
               style={isActive
                 ? { background:'linear-gradient(135deg,#FEA500,#986300)', color:'white' }
                 : { backgroundColor:'var(--bg-card)', color:'var(--text-secondary)', border:'1px solid var(--bg-border)' }}>
-              <Icon size={13} />
+              <Icon size={12} />
               {t.label}
               <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold"
                 style={{ backgroundColor: isActive ? 'rgba(255,255,255,0.25)' : 'var(--bg-hover)', color: isActive ? 'white' : 'var(--text-muted)' }}>
