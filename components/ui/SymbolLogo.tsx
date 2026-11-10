@@ -1,6 +1,9 @@
 'use client'
 
 import { useState } from 'react'
+import logoMap from '@/public/images/stock_logos/symbol_to_logo.json'
+
+const LOGO_MAP = logoMap as Record<string, string>
 
 const HUES = [210, 160, 280, 30, 320, 180, 60, 240]
 function symColor(s: string) {
@@ -17,6 +20,7 @@ interface Props {
 }
 
 export default function SymbolLogo({ symbol, size = 28, className = '', style, isSelf }: Props) {
+  const logoUrl = LOGO_MAP[symbol] ?? null
   const [failed, setFailed] = useState(false)
   const color = symColor(symbol)
   const initials = symbol.slice(0, 2).toUpperCase()
@@ -34,11 +38,11 @@ export default function SymbolLogo({ symbol, size = 28, className = '', style, i
     ...style,
   }
 
-  if (!failed) {
+  if (logoUrl && !failed) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
-        src={`/images/stock_logos/${symbol}.svg`}
+        src={logoUrl}
         alt={symbol}
         width={size}
         height={size}
