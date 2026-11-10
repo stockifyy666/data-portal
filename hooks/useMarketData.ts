@@ -1,15 +1,25 @@
-// =============================================================================
-// FILE: hooks/useMarketData.ts
-// PURPOSE: Custom hook for fetching and auto-refreshing market data from our
-//          internal API routes. Components use this instead of raw fetch() calls.
-//          Handles loading state, error state, and auto-refresh intervals.
-//          All fetches go to our /api/market/* routes which are Redis-cached,
-//          so this hook never directly calls Capital Stake — saving rate limit quota.
-// =============================================================================
-
 'use client'
 
+// =============================================================================
+// FILE: hooks/useMarketData.ts
+// PURPOSE: Custom React hooks for fetching market data in components.
+//          Wraps cachedFetch with React state (loading, error, data, refresh).
+//          All hooks auto-refresh on the interval passed — default 5 minutes.
+//
+//          AVAILABLE HOOKS:
+//          useAllQuotes()     → all 500+ PSX stock quotes
+//          useIndices()       → KSE100, KSE30, KMI30 index levels
+//          useMarketStatus()  → market open/closed status
+//          useMarketMovers()  → top gainers and losers
+//          useStockOverview() → single stock company overview
+//          useStockChart()    → single stock chart data
+//
+//          Uses cachedFetch internally so multiple components using the same
+//          hook share one network request (no duplicate API calls).
+// =============================================================================
+
 import { useState, useEffect, useCallback } from 'react'
+import { cachedFetch } from '@/lib/utils/clientCache'
 
 type FetchState<T> = {
   data:     T | null
@@ -29,18 +39,15 @@ function useMarketFetch<T>(
 
   const fetch_ = useCallback(async () => {
     try {
-      const res  = await fetch(endpoint)
-      const json = await res.json()
-
-      if (!res.ok) throw new Error(json.error ?? 'API error')
-      setData(json.data)
+      const json = await cachedFetch<{ data: T }>(endpoint, intervalMs)
+      setData((json as any).data ?? json)
       setError(null)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to fetch')
     } finally {
       setLoading(false)
     }
-  }, [endpoint])
+  }, [endpoint, intervalMs])
 
   useEffect(() => {
     fetch_()

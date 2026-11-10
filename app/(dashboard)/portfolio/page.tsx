@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import Link from 'next/link'
@@ -10,6 +10,7 @@ import { formatPrice, getChangeColor } from '@/lib/utils/format'
 import { cachedFetch } from '@/lib/utils/clientCache'
 import type { StockQuote } from '@/types/market'
 import KMIBadge, { isKMI } from '@/components/ui/KMIBadge'
+import toast from 'react-hot-toast'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -1425,7 +1426,12 @@ export default function PortfolioPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ symbol, quantity: qty, averagePrice: effectivePrice }),
     })
-    if (!res.ok) { const j = await res.json(); throw new Error(j.error ?? 'Failed to add holding') }
+    if (!res.ok) {
+      const j = await res.json()
+      toast.error(j.error ?? 'Failed to add holding')
+      throw new Error(j.error ?? 'Failed to add holding')
+    }
+    toast.success(`${symbol} added to portfolio`)
     await loadData()
   }
 
@@ -1446,10 +1452,14 @@ export default function PortfolioPage() {
         portfolioId,
       }),
     })
-    if (!res.ok) { const j = await res.json(); throw new Error(j.error ?? 'Failed to record sale') }
-    // Refresh both tabs
+    if (!res.ok) {
+      const j = await res.json()
+      toast.error(j.error ?? 'Failed to record sale')
+      throw new Error(j.error ?? 'Failed to record sale')
+    }
+    toast.success(`${holding.symbol} sale recorded`)
     await loadData()
-    setTransactions([]) // force history reload on next tab switch
+    setTransactions([])
   }
 
   async function handleDelete(holdingId: string) {
@@ -1460,8 +1470,9 @@ export default function PortfolioPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ holdingId }),
       })
-      if (!res.ok) throw new Error('Failed to remove holding')
+      if (!res.ok) { toast.error('Failed to remove holding'); return }
       setHoldings(prev => prev.filter(h => h.id !== holdingId))
+      toast.success('Holding removed')
     } finally { setDeleting(null) }
   }
 

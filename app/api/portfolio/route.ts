@@ -1,9 +1,9 @@
 // =============================================================================
 // FILE: app/api/portfolio/route.ts
 // PURPOSE: CRUD for the user's portfolio holdings.
-//          GET  — returns all portfolios with their holdings.
-//          POST — add or update a holding (symbol, quantity, averagePrice).
-//          All operations are scoped to the logged-in user via Supabase RLS.
+//          GET    — returns all portfolios with their holdings.
+//          POST   — adds or updates a holding (symbol, quantity, averagePrice).
+//          DELETE — removes a holding. Scoped to authenticated user only (IDOR fix S-01).
 // =============================================================================
 
 import { NextResponse }  from 'next/server'
@@ -48,6 +48,16 @@ export async function DELETE(request: Request) {
 
   const { holdingId } = await request.json()
   if (!holdingId) return NextResponse.json({ error: 'holdingId required' }, { status: 400 })
+
+  // Verify the holding belongs to this user by joining through portfolios
+  const { data: holding } = await (supabase as any)
+    .from('portfolio_holdings')
+    .select('id, portfolio_id, portfolios!inner(user_id)')
+    .eq('id', holdingId)
+    .eq('portfolios.user_id', user.id)
+    .single()
+
+  if (!holding) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const { error } = await (supabase as any)
     .from('portfolio_holdings')

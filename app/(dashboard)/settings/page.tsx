@@ -1,8 +1,21 @@
 'use client'
 
+// =============================================================================
+// FILE: app/(dashboard)/settings/page.tsx
+// PURPOSE: User settings page. Handles:
+//          1. Profile display — shows name, email, account info
+//          2. Password change — calls Supabase updateUser()
+//          3. Account deletion — calls /api/auth/delete-account then signs out
+//
+//          IMPORTANT: Delete account calls the API FIRST, then signs out.
+//          This order prevents a race condition (S-03) where signing out first
+//          could cause the delete API call to fail due to expired session.
+// =============================================================================
+
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import toast from 'react-hot-toast'
 import {
   User, Mail, Shield, Bell, Palette, Link2, LogOut,
   ChevronRight, Check, Moon, Sun, Monitor, AlertTriangle,
@@ -148,7 +161,6 @@ export default function SettingsPage() {
   const [fullName,   setFullName]   = useState('')
   const [username,   setUsername]   = useState('')
   const [saving,     setSaving]     = useState(false)
-  const [saveMsg,    setSaveMsg]    = useState<{ ok: boolean; text: string } | null>(null)
 
   // Delete modal
   const [showDelete, setShowDelete] = useState(false)
@@ -186,7 +198,6 @@ export default function SettingsPage() {
   async function handleSaveProfile() {
     if (!user) return
     setSaving(true)
-    setSaveMsg(null)
     const trimName = fullName.trim()
     const trimUser = username.trim().toLowerCase().replace(/[^a-z0-9_]/g, '')
     const { error } = await (supabase as any)
@@ -195,12 +206,11 @@ export default function SettingsPage() {
       .eq('id', user.id)
     setSaving(false)
     if (error) {
-      setSaveMsg({ ok: false, text: error.message })
+      toast.error(error.message)
     } else {
       setProfile((p: any) => ({ ...p, full_name: trimName, username: trimUser }))
       setUsername(trimUser)
-      setSaveMsg({ ok: true, text: 'Profile saved.' })
-      setTimeout(() => setSaveMsg(null), 3000)
+      toast.success('Profile saved.')
     }
   }
 
@@ -208,16 +218,19 @@ export default function SettingsPage() {
     if (!user) return
     setDeleting(true)
     try {
-      // Sign out first so the session is cleared
+      const res = await fetch('/api/auth/delete-account', { method: 'DELETE' })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        toast.error(body?.error ?? 'Failed to delete account.')
+      }
       await supabase.auth.signOut()
-      // Call the admin delete endpoint (server-side, uses service role)
-      await fetch('/api/auth/delete-account', { method: 'DELETE' })
     } catch { /* best effort */ }
     router.push('/login')
   }
 
   async function handleSignOut() {
     setSigningOut(true)
+    toast('Signing out…', { icon: '👋' })
     await supabase.auth.signOut()
     router.push('/login')
   }
@@ -330,16 +343,6 @@ export default function SettingsPage() {
         </div>
 
         {/* Save button */}
-        {saveMsg && (
-          <div className="text-[11px] px-3 py-2 rounded-lg"
-               style={{
-                 backgroundColor: saveMsg.ok ? '#22c55e18' : '#ef444418',
-                 color: saveMsg.ok ? '#22c55e' : '#ef4444',
-                 border: `1px solid ${saveMsg.ok ? '#22c55e30' : '#ef444430'}`,
-               }}>
-            {saveMsg.text}
-          </div>
-        )}
         <button
           onClick={handleSaveProfile}
           disabled={!profileDirty || saving}

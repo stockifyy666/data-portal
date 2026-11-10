@@ -1,7 +1,17 @@
 'use client'
 
+// =============================================================================
+// FILE: components/layout/StockTicker.tsx
+// PURPOSE: Horizontal scrolling price ticker shown at the top of every page.
+//          Displays top 50 stocks with live price and % change.
+//          Uses clientCache (cachedFetch) so it doesn't fire a separate
+//          /api/market/quotes request — shares the cached result with the
+//          dashboard components instead of adding an extra network call.
+// =============================================================================
+
 import { useEffect, useRef, useState } from 'react'
 import { TrendingUp, TrendingDown } from 'lucide-react'
+import { cachedFetch } from '@/lib/utils/clientCache'
 
 type TickerItem = {
   symbol:    string
@@ -43,8 +53,7 @@ export default function StockTicker() {
   useEffect(() => {
     async function load() {
       try {
-        const res  = await fetch('/api/market/quotes')
-        const json = await res.json()
+        const json = await cachedFetch<{ quotes: any[] }>('/api/market/quotes', 5 * 60_000)
         const quotes: any[] = json?.quotes ?? []
         const list = quotes
           .slice(0, 50)

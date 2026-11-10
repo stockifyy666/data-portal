@@ -1,8 +1,9 @@
-﻿'use client'
+'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import { Star, TrendingUp, TrendingDown, Trash2, Loader2, LayoutGrid, List } from 'lucide-react'
+import toast from 'react-hot-toast'
 import { formatPrice, formatChange, getChangeColor } from '@/lib/utils/format'
 import { cachedFetch } from '@/lib/utils/clientCache'
 import type { StockQuote } from '@/types/market'
@@ -116,7 +117,12 @@ export default function WatchlistPage() {
     setRemoving(id)
     try {
       const res = await fetch(`/api/watchlist?symbol=${symbol}`, { method: 'DELETE' })
-      if (res.ok) setItems(prev => prev.filter(i => i.id !== id))
+      if (res.ok) {
+        setItems(prev => prev.filter(i => i.id !== id))
+        toast.success(`${symbol} removed from watchlist`)
+      } else {
+        toast.error('Failed to remove from watchlist')
+      }
     } finally { setRemoving(null) }
   }
 

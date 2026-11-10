@@ -1,4 +1,11 @@
-﻿'use client'
+'use client'
+
+// =============================================================================
+// FILE: components/market/DashboardClient.tsx
+// PURPOSE: Main dashboard client component. Fetches indices, movers, and quotes
+//          via cachedFetch and renders the full dashboard layout including
+//          the stock table, gainers/losers, and market summary tiles.
+// =============================================================================
 
 import { useState, useEffect, useMemo } from 'react'
 import Link                              from 'next/link'
@@ -98,7 +105,7 @@ export default function DashboardClient() {
 
   // Load quotes
   useEffect(() => {
-    cachedFetch<{ quotes: StockQuote[] }>('/api/market/quotes', 15 * 60_000)
+    cachedFetch<{ quotes: StockQuote[] }>('/api/market/quotes', 5 * 60_000)
       .then(j => { if (j.quotes) setQuotes(j.quotes) })
       .catch(() => {})
       .finally(() => setQtLoading(false))

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Inter, JetBrains_Mono } from 'next/font/google'
 import { ThemeProvider } from '@/components/providers/ThemeProvider'
+import { Toaster } from 'react-hot-toast'
 import './globals.css'
 
 const inter = Inter({
@@ -41,6 +42,20 @@ export default function RootLayout({
       <body className={`${inter.variable} ${jetbrainsMono.variable} antialiased`}>
         <ThemeProvider>
           {children}
+          <Toaster
+            position="bottom-right"
+            toastOptions={{
+              duration: 3500,
+              style: {
+                borderRadius: '10px',
+                fontSize: '13px',
+                fontWeight: 500,
+              },
+              success: {
+                iconTheme: { primary: '#FEA500', secondary: '#fff' },
+              },
+            }}
+          />
         </ThemeProvider>
       </body>
     </html>

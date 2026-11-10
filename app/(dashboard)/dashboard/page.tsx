@@ -1,4 +1,4 @@
-import { createClient }       from '@/lib/supabase/server'
+﻿﻿import { createClient }       from '@/lib/supabase/server'
 import MarketStatusBanner      from '@/components/market/MarketStatusBanner'
 import DashboardClient         from '@/components/market/DashboardClient'
 import MorningBrief            from '@/components/market/MorningBrief'

@@ -1,3 +1,14 @@
+// =============================================================================
+// FILE: app/api/watchlist/route.ts
+// PURPOSE: Manages the user's watchlist — stocks they want to track.
+//          GET  → returns all watchlists + items for the logged-in user
+//          POST → adds a stock symbol to the user's default watchlist
+//          DELETE → removes a stock symbol from the user's watchlists
+//
+//          SECURITY: DELETE is scoped to the authenticated user's own watchlists.
+//          A user cannot delete another user's watchlist items (IDOR fix S-02).
+// =============================================================================
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient }              from '@/lib/supabase/server'
 import { z }                         from 'zod'
@@ -87,8 +98,17 @@ export async function DELETE(request: NextRequest) {
     const symbol = request.nextUrl.searchParams.get('symbol')?.toUpperCase()
     if (!symbol) return NextResponse.json({ error: 'Symbol is required' }, { status: 400 })
 
+    // Only delete items from watchlists owned by this user
+    const { data: userWatchlists } = await supabase
+      .from('watchlists').select('id').eq('user_id', user.id)
+
+    const watchlistIds = (userWatchlists ?? []).map((w: { id: string }) => w.id)
+    if (watchlistIds.length === 0) return NextResponse.json({ success: true, symbol }, { status: 200 })
+
     const { error } = await supabase
-      .from('watchlist_items').delete().eq('symbol', symbol)
+      .from('watchlist_items').delete()
+      .eq('symbol', symbol)
+      .in('watchlist_id', watchlistIds)
 
     if (error) throw error
     return NextResponse.json({ success: true, symbol }, { status: 200 })

@@ -1,5 +1,22 @@
-// Client-side in-memory cache for API responses.
-// Prevents duplicate requests on navigation and deduplicates concurrent calls.
+// =============================================================================
+// FILE: lib/utils/clientCache.ts
+// PURPOSE: Browser-side in-memory cache for API responses.
+//          This is the FIRST layer of our two-layer cache system:
+//          Layer 1 (this file) → browser memory, per-tab, cleared on page close
+//          Layer 2 (lib/redis/cache.ts) → Upstash Redis, shared across all users
+//
+//          HOW IT WORKS:
+//          - cachedFetch(url, ttlMs) checks an in-memory Map first
+//          - If fresh data exists → returns it immediately (0 network calls)
+//          - If multiple components call the same URL at the same time →
+//            only ONE real fetch fires, others wait for it (deduplication)
+//          - After ttlMs milliseconds the entry expires and next call fetches fresh
+//
+//          WHY THIS EXISTS:
+//          The dashboard has 10+ components that all need /api/market/quotes.
+//          Without this, each component fires its own request on every render.
+//          With this, they all share one fetch result.
+// =============================================================================
 
 type Entry<T> = { data: T; expiresAt: number }
 
