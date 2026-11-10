@@ -81,17 +81,17 @@ export async function trackCSAPICall(endpoint: string): Promise<number> {
 export async function getCSAPIUsage(): Promise<{ used: number; remaining: number; resetIn: number }> {
   try {
     const [count, ttl] = await Promise.all([
-      redis.get<number>(RATE_LIMIT_KEY),
-      redis.ttl(RATE_LIMIT_KEY),
+      redis.get<number>(UAT_KEY),
+      redis.ttl(UAT_KEY),
     ])
 
     const used = count ?? 0
     return {
       used,
-      remaining: Math.max(0, MAX_REQUESTS_PER_HOUR - used),
-      resetIn: ttl > 0 ? ttl : 3600,  // seconds until the hour resets
+      remaining: Math.max(0, UAT_MAX_PER_DAY - used),
+      resetIn: ttl > 0 ? ttl : DAY_SECONDS,
     }
   } catch {
-    return { used: 0, remaining: MAX_REQUESTS_PER_HOUR, resetIn: 3600 }
+    return { used: 0, remaining: UAT_MAX_PER_DAY, resetIn: DAY_SECONDS }
   }
 }
