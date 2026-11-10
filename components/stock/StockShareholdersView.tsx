@@ -55,7 +55,7 @@ export function ShareholdersView({ data }: { data: StatementData }) {
       {groups.map((group, gi) => {
         const latestTotal = group.rows.reduce((s, r) => s + (r.values[0] ?? 0), 0)
         return (
-          <div key={group.heading}>
+          <div key={`${group.heading}-${gi}`}>
             <div className="flex items-center gap-3 mb-3">
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg shrink-0"
                 style={{ background: 'linear-gradient(135deg,#FEA500,#986300)' }}>
@@ -83,7 +83,7 @@ export function ShareholdersView({ data }: { data: StatementData }) {
                   : null
 
                 return (
-                  <div key={row.label} className="rounded-xl p-3" style={{ backgroundColor: 'var(--bg-hover)' }}>
+                  <div key={`${row.label}-${ri}`} className="rounded-xl p-3" style={{ backgroundColor: 'var(--bg-hover)' }}>
                     <div className="flex items-center justify-between gap-2 mb-2">
                       <span className="text-xs font-bold leading-tight" style={{ color: 'var(--text-primary)' }}>
                         {row.label}

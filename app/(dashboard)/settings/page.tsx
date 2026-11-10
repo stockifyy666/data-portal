@@ -167,10 +167,10 @@ export default function SettingsPage() {
   const [deleting,   setDeleting]   = useState(false)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) { router.push('/login'); return }
-      setUser(session.user)
-      ;(supabase as any).from('profiles').select('full_name,username,avatar_url').eq('id', session.user.id).single()
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) { router.push('/login'); return }
+      setUser(user)
+      ;(supabase as any).from('profiles').select('full_name,username,avatar_url').eq('id', user.id).single()
         .then(({ data }: { data: any }) => {
           setProfile(data)
           setFullName(data?.full_name ?? '')

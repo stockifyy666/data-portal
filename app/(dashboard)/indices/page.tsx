@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import Link from 'next/link'
 import { TrendingUp, TrendingDown, Activity, RefreshCw } from 'lucide-react'
 import { cachedFetch } from '@/lib/utils/clientCache'
+import { useTheme } from '@/components/providers/ThemeProvider'
 import type { StockQuote } from '@/types/market'
 
 // ─── Sector palette — Gold & Amber brand tones (31 colors) ──────────────────
@@ -381,14 +382,22 @@ function SectorWheel({
 
       {/* Sector table — sorted by market cap, all sectors, click to drill down */}
       <div style={{ marginTop: 16 }}>
+        {/* Header row — hide mini-bar col on mobile via CSS class trick */}
         <div style={{
           display: 'grid', gridTemplateColumns: '1fr auto auto auto',
-          gap: '0 12px', padding: '0 4px 6px',
+          gap: '0 0', padding: '0 20px 6px',
           borderBottom: '1px solid var(--bg-border)',
         }}>
-          {['Sector', 'Stocks', 'Mkt Cap %', 'Change'].map(h => (
-            <span key={h} style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em',
-              color: 'var(--text-muted)', textTransform: 'uppercase' }}>{h}</span>
+          {[
+            { label: 'Sector', w: undefined },
+            { label: 'Stks',   w: 40 },
+            { label: 'Mkt%',   w: 56 },
+            { label: 'Chg',    w: 68 },
+          ].map(({ label, w }) => (
+            <span key={label} style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em',
+              color: 'var(--text-muted)', textTransform: 'uppercase',
+              textAlign: label === 'Sector' ? 'left' : 'right',
+              width: w, flexShrink: 0 }}>{label}</span>
           ))}
         </div>
         <div style={{ maxHeight: 360, overflowY: 'auto' }}>
@@ -402,44 +411,40 @@ function SectorWheel({
                 key={name}
                 onClick={() => onSelect(isSel ? null : name)}
                 style={{
-                  display: 'grid', gridTemplateColumns: '1fr auto auto auto',
-                  gap: '0 12px', width: '100%', padding: '8px 4px',
+                  display: 'flex', alignItems: 'center',
+                  gap: 0, width: '100%', padding: '7px 20px',
                   background: isSel ? sd.color + '14' : 'transparent',
                   border: 'none', borderBottom: '1px solid var(--bg-border)',
-                  cursor: 'pointer', alignItems: 'center', textAlign: 'left',
+                  cursor: 'pointer', textAlign: 'left',
                   transition: 'background 0.15s',
                 }}
               >
                 {/* Sector name with color dot */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: 0 }}>
                   <span style={{
-                    width: 8, height: 8, borderRadius: '50%',
+                    width: 7, height: 7, borderRadius: '50%',
                     background: sd.color, flexShrink: 0,
                     boxShadow: isSel ? `0 0 6px ${sd.color}` : 'none',
                   }} />
                   <span style={{
-                    fontSize: 12, fontWeight: isSel ? 700 : 600,
+                    fontSize: 11, fontWeight: isSel ? 700 : 600,
                     color: isSel ? sd.color : 'var(--text-primary)',
                     whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                   }}>{name}</span>
                 </div>
                 {/* Stock count */}
-                <span style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'right' }}>
+                <span style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'right', width: 40, flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
                   {sd.stocks.length}
                 </span>
-                {/* Market cap % with mini bar */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5, justifyContent: 'flex-end' }}>
-                  <div style={{ width: 48, height: 4, borderRadius: 2, background: 'var(--bg-hover)', overflow: 'hidden' }}>
-                    <div style={{ width: `${Math.min(pct * 2.5, 100)}%`, height: '100%', borderRadius: 2, background: sd.color + 'bb' }} />
-                  </div>
-                  <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums', width: 42, textAlign: 'right' }}>
-                    {pct.toFixed(2)}%
-                  </span>
-                </div>
+                {/* Market cap % */}
+                <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums', textAlign: 'right', width: 56, flexShrink: 0 }}>
+                  {pct.toFixed(1)}%
+                </span>
                 {/* % change */}
                 <span style={{
                   fontSize: 11, fontWeight: 700, color: up ? '#16a34a' : '#dc2626',
                   fontVariantNumeric: 'tabular-nums', textAlign: 'right',
+                  width: 68, flexShrink: 0,
                 }}>
                   {up ? '+' : ''}{sd.pctChange.toFixed(2)}%
                 </span>
@@ -468,6 +473,7 @@ function ContribHistogram({ bars }: { bars: ContribBar[] }) {
   // Each hit area tracks its pixel bounds for precise hover detection
   const hitRef = useRef<{ x: number; w: number; yTop: number; yBot: number; bar: ContribBar }[]>([])
   const [tip, setTip] = useState<(ContribBar & { x: number; y: number; flipLeft: boolean }) | null>(null)
+  const { theme } = useTheme()  // re-draw whenever dark/light toggles
 
   // Split into mirrored gainers (above) and losers (below), each sorted descending
   const gainers = useMemo(() => bars.filter(b => b.pts >= 0).sort((a, b) => b.pts - a.pts),  [bars])
@@ -483,11 +489,13 @@ function ContribHistogram({ bars }: { bars: ContribBar[] }) {
     canvas.width = W * dpr; canvas.height = H * dpr; ctx.scale(dpr, dpr)
     ctx.clearRect(0, 0, W, H)
 
-    const css = getComputedStyle(document.documentElement)
-    const textMut = css.getPropertyValue('--text-muted').trim() || '#7a839e'
-    const border  = css.getPropertyValue('--bg-border').trim()  || '#1e2232'
+    const css     = getComputedStyle(document.documentElement)
+    const isDark  = document.documentElement.classList.contains('dark')
+    const textMut = css.getPropertyValue('--text-muted').trim() || (isDark ? '#7a839e' : '#64748b')
+    const textPri = css.getPropertyValue('--text-primary').trim() || (isDark ? '#f1f5f9' : '#0f172a')
+    const border  = css.getPropertyValue('--bg-border').trim()  || (isDark ? '#1e2232' : '#e2e8f0')
 
-    const PAD = { top: 40, right: 20, bottom: 40, left: 72 }
+    const PAD = { top: 52, right: 20, bottom: 60, left: 72 }
     const cW = W - PAD.left - PAD.right
     const cH = H - PAD.top  - PAD.bottom
 
@@ -496,21 +504,27 @@ function ContribHistogram({ bars }: { bars: ContribBar[] }) {
       ...gainers.map(b => Math.abs(b.pts)),
       ...losers.map(b => Math.abs(b.pts)),
       1
-    ) * 1.15
-    const range = absMax * 2
-    const toY   = (v: number) => PAD.top + cH - ((v + absMax) / range) * cH
-    const z0    = toY(0)   // always exactly the vertical midpoint
-
-    // Grid lines (symmetric around zero)
-    for (let i = 0; i <= 4; i++) {
-      const v = -absMax + (absMax * 2 / 4) * i
-      const y = toY(v)
-      ctx.strokeStyle = border; ctx.lineWidth = 0.5; ctx.setLineDash([3, 4])
-      ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(W - PAD.right, y); ctx.stroke()
-      ctx.setLineDash([])
-      ctx.fillStyle = textMut; ctx.font = '9px system-ui'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle'
-      ctx.fillText(v.toFixed(2), PAD.left - 6, y)
+    )
+    // sqrt scale: compresses the huge range so small bars are still distinctly taller
+    // than the next tier. min 5% of half-chart height, max 95% of half-chart height.
+    const halfH  = cH / 2
+    const minBh  = halfH * 0.10   // 10% of half = 5% of total — always visible
+    const maxBh  = halfH * 0.95
+    const toBarH = (v: number) => {
+      const fraction = Math.abs(v) / absMax           // 0→1 linear
+      const scaled   = Math.pow(fraction, 0.45)       // sqrt-ish compression
+      return Math.max(scaled * maxBh, minBh)
     }
+    const z0 = PAD.top + halfH   // zero line at exact vertical midpoint
+
+    // Grid: just the zero reference + two symmetric tick labels (max gain / max loss)
+    ctx.strokeStyle = border; ctx.lineWidth = 0.5; ctx.setLineDash([3, 4])
+    ctx.beginPath(); ctx.moveTo(PAD.left, PAD.top); ctx.lineTo(W - PAD.right, PAD.top); ctx.stroke()
+    ctx.beginPath(); ctx.moveTo(PAD.left, PAD.top + cH); ctx.lineTo(W - PAD.right, PAD.top + cH); ctx.stroke()
+    ctx.setLineDash([])
+    ctx.fillStyle = textMut; ctx.font = '9px system-ui'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle'
+    ctx.fillText(`+${absMax.toFixed(2)}`, PAD.left - 6, PAD.top)
+    ctx.fillText(`-${absMax.toFixed(2)}`, PAD.left - 6, PAD.top + cH)
 
     // Zero line (gold, solid)
     ctx.strokeStyle = 'rgba(254,165,0,0.55)'; ctx.lineWidth = 1.5; ctx.setLineDash([])
@@ -521,19 +535,16 @@ function ContribHistogram({ bars }: { bars: ContribBar[] }) {
     hitRef.current = []
 
     const drawBar = (b: ContribBar, colIdx: number) => {
-      const up  = b.pts >= 0
-      const cx2 = PAD.left + colIdx * gW + gW / 2
-      const bx  = cx2 - bW / 2
-      const barTop = Math.min(toY(b.pts), z0)
-      const bh     = Math.max(Math.abs(toY(b.pts) - z0), 1)
+      const up     = b.pts >= 0
+      const cx2    = PAD.left + colIdx * gW + gW / 2
+      const bx     = cx2 - bW / 2
+      const bh     = toBarH(b.pts)
+      const barTop = up ? z0 - bh : z0
 
-      ctx.save()
-      ctx.shadowColor = up ? 'rgba(34,197,94,0.35)' : 'rgba(239,68,68,0.35)'
-      ctx.shadowBlur  = 8
-
+      // No shadow blur — keeps bars sharp and crisp
       const grad = ctx.createLinearGradient(0, barTop, 0, barTop + bh)
-      if (up) { grad.addColorStop(0, '#4ade80'); grad.addColorStop(1, '#15803d') }
-      else    { grad.addColorStop(0, '#f87171'); grad.addColorStop(1, '#991b1b') }
+      if (up) { grad.addColorStop(0, '#22c55e'); grad.addColorStop(1, '#166534') }
+      else    { grad.addColorStop(0, '#ef4444'); grad.addColorStop(1, '#7f1d1d') }
       ctx.fillStyle = grad
 
       const r = Math.min(4, bW / 2)
@@ -550,37 +561,30 @@ function ContribHistogram({ bars }: { bars: ContribBar[] }) {
         ctx.lineTo(bx, barTop)
       }
       ctx.closePath(); ctx.fill()
-      ctx.restore()
 
       // Sheen
-      ctx.fillStyle = 'rgba(255,255,255,0.10)'
+      ctx.fillStyle = 'rgba(255,255,255,0.12)'
       ctx.fillRect(bx + 1, barTop, bW - 2, 2)
 
-      // Labels
+      // Labels — all outside the bar, symbol uses theme primary color so it's always readable
       const fs = Math.min(10, Math.max(7, gW / 3.2))
-      const minBarForLabel = fs * 2.2
+      const sf = Math.max(7, fs - 1)
       ctx.textAlign = 'center'
       const ptsStr = `${b.pts >= 0 ? '+' : ''}${b.pts.toFixed(2)}`
       const pctStr = `${b.pct >= 0 ? '+' : ''}${b.pct.toFixed(2)}%`
 
       if (up) {
-        ctx.fillStyle = '#4ade80'; ctx.font = `700 ${fs}px system-ui`
-        ctx.textBaseline = 'bottom'; ctx.fillText(ptsStr, cx2, barTop - 4)
-        if (bh >= minBarForLabel) {
-          ctx.fillStyle = '#ffffff'; ctx.font = `600 ${Math.max(7, fs - 1)}px system-ui`
-          ctx.textBaseline = 'top'; ctx.fillText(b.symbol.slice(0, 6), cx2, barTop + 4)
-        }
-        ctx.fillStyle = 'rgba(74,222,128,0.85)'; ctx.font = `600 ${Math.max(7, fs - 1)}px system-ui`
-        ctx.textBaseline = 'bottom'; ctx.fillText(pctStr, cx2, z0 - 3)
+        // Green bars: symbol just above bar top, pts above symbol
+        ctx.fillStyle = textPri; ctx.font = `700 ${sf}px system-ui`
+        ctx.textBaseline = 'bottom'; ctx.fillText(b.symbol.slice(0, 6), cx2, barTop - 1)
+        ctx.fillStyle = '#16a34a'; ctx.font = `700 ${fs}px system-ui`
+        ctx.textBaseline = 'bottom'; ctx.fillText(ptsStr, cx2, barTop - 1 - sf - 1)
       } else {
-        ctx.fillStyle = '#f87171'; ctx.font = `700 ${fs}px system-ui`
-        ctx.textBaseline = 'top'; ctx.fillText(ptsStr, cx2, barTop + bh + 4)
-        if (bh >= minBarForLabel) {
-          ctx.fillStyle = '#ffffff'; ctx.font = `600 ${Math.max(7, fs - 1)}px system-ui`
-          ctx.textBaseline = 'bottom'; ctx.fillText(b.symbol.slice(0, 6), cx2, barTop + bh - 4)
-        }
-        ctx.fillStyle = 'rgba(248,113,113,0.85)'; ctx.font = `600 ${Math.max(7, fs - 1)}px system-ui`
-        ctx.textBaseline = 'top'; ctx.fillText(pctStr, cx2, z0 + 3)
+        // Red bars: pts just below bar (1px gap), symbol below pts
+        ctx.fillStyle = '#dc2626'; ctx.font = `700 ${fs}px system-ui`
+        ctx.textBaseline = 'top'; ctx.fillText(ptsStr, cx2, barTop + bh + 1)
+        ctx.fillStyle = textPri; ctx.font = `700 ${sf}px system-ui`
+        ctx.textBaseline = 'top'; ctx.fillText(b.symbol.slice(0, 6), cx2, barTop + bh + 1 + fs + 2)
       }
 
       hitRef.current.push({ x: bx - 4, w: bW + 8, yTop: barTop, yBot: barTop + bh, bar: b })
@@ -594,7 +598,7 @@ function ContribHistogram({ bars }: { bars: ContribBar[] }) {
     ctx.save(); ctx.translate(12, PAD.top + cH / 2); ctx.rotate(-Math.PI / 2)
     ctx.fillStyle = textMut; ctx.font = '9px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
     ctx.fillText('Index Points', 0, 0); ctx.restore()
-  }, [gainers, losers, totalCols, bars])
+  }, [gainers, losers, totalCols, bars, theme])  // theme from useTheme() triggers redraw on dark/light switch
 
   function onMove(e: React.MouseEvent<HTMLCanvasElement>) {
     const rect = e.currentTarget.getBoundingClientRect()
@@ -611,7 +615,7 @@ function ContribHistogram({ bars }: { bars: ContribBar[] }) {
   return (
     <div style={{ position: 'relative' }}>
       <canvas ref={ref} onMouseMove={onMove} onMouseLeave={() => setTip(null)}
-        style={{ width: '100%', height: 400, display: 'block' }} />
+        style={{ width: '100%', height: 420, display: 'block' }} />
       {tip && (
         <div style={{
           position: 'absolute',
@@ -785,11 +789,11 @@ export default function IndicesPage() {
   const up = (kse?.totalPts ?? 0) >= 0
 
   return (
-    <div className="space-y-5 animate-data">
+    <div className="space-y-5 animate-data" style={{ overflowX: 'hidden' }}>
 
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
             <Activity size={20} style={{ color: '#FEA500' }} />
             Indices
@@ -798,15 +802,16 @@ export default function IndicesPage() {
             PSX index breakdown — sector wheel &amp; top contributors
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          {/* Index selector */}
-          <div className="flex rounded-lg overflow-hidden border" style={{ borderColor: 'var(--bg-border)' }}>
+        <div className="flex items-center gap-2 min-w-0 w-full sm:w-auto">
+          {/* Index selector — scrollable on mobile */}
+          <div className="flex rounded-lg border min-w-0 flex-1 sm:flex-none" style={{ borderColor: 'var(--bg-border)', overflowX: 'auto' }}>
             {INDEX_OPTIONS.map(opt => (
               <button
                 key={opt.value}
                 onClick={() => setIndexKey(opt.value)}
                 style={{
-                  padding: '6px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                  padding: '6px 9px', fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                  whiteSpace: 'nowrap', flexShrink: 0,
                   background: indexKey === opt.value
                     ? 'linear-gradient(135deg,#FEA500,#986300)'
                     : 'var(--bg-card)',
@@ -822,7 +827,7 @@ export default function IndicesPage() {
             onClick={load}
             disabled={loading}
             style={{
-              padding: '6px 10px', borderRadius: 8, fontSize: 12,
+              padding: '6px 10px', borderRadius: 8, fontSize: 12, flexShrink: 0,
               background: 'var(--bg-card)', border: '1px solid var(--bg-border)',
               color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
             }}
@@ -845,7 +850,7 @@ export default function IndicesPage() {
         <>
           {/* KPI Row */}
           {kse && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(130px,1fr))', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(110px,1fr))', gap: 10 }}>
               {[
                 {
                   label: `${kse.label} Change`,
@@ -1000,17 +1005,59 @@ export default function IndicesPage() {
 
           {/* Top Points Contributors */}
           <div className="card" style={{ padding: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <div style={{ marginBottom: 10 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                TOP POINTS CONTRIBUTORS — {kse?.label}
+              </p>
+              <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                Stocks ranked by absolute index point impact
+              </p>
+            </div>
+
+            {/* Mobile: top 8 gainers + 8 losers as cards */}
+            <div className="sm:hidden space-y-3">
+              {/* Gainers */}
               <div>
-                <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                  TOP POINTS CONTRIBUTORS — {kse?.label}
-                </p>
-                <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-                  Stocks ranked by absolute index point impact · hover for detail
-                </p>
+                <p className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: '#16a34a' }}>▲ Top Point Contributors</p>
+                <div className="space-y-1.5">
+                  {(topContribsSplit?.g ?? []).slice(0, 8).map(b => (
+                    <div key={b.symbol} className="flex items-center gap-2 rounded-lg px-3 py-2" style={{ backgroundColor: 'rgba(74,222,128,0.06)', border: '1px solid rgba(74,222,128,0.15)' }}>
+                      <Link href={`/stocks/${b.symbol}`} className="font-bold text-xs shrink-0 w-16 truncate" style={{ color: '#FEA500', textDecoration: 'none' }}>{b.symbol}</Link>
+                      <div className="flex-1 min-w-0">
+                        <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--bg-border)' }}>
+                          <div className="h-full rounded-full" style={{ width: `${Math.min(Math.abs(b.pts) / Math.abs((topContribsSplit?.g[0]?.pts) ?? 1) * 100, 100)}%`, backgroundColor: '#22c55e' }} />
+                        </div>
+                      </div>
+                      <span className="text-xs font-bold font-number shrink-0" style={{ color: '#4ade80' }}>+{b.pts.toFixed(2)}</span>
+                      <span className="text-[10px] font-semibold font-number shrink-0" style={{ color: '#16a34a' }}>+{b.pct.toFixed(2)}%</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {/* Losers */}
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: '#dc2626' }}>▼ Top Point Decliners</p>
+                <div className="space-y-1.5">
+                  {(topContribsSplit?.l ?? []).slice(0, 8).map(b => (
+                    <div key={b.symbol} className="flex items-center gap-2 rounded-lg px-3 py-2" style={{ backgroundColor: 'rgba(248,113,113,0.06)', border: '1px solid rgba(248,113,113,0.15)' }}>
+                      <Link href={`/stocks/${b.symbol}`} className="font-bold text-xs shrink-0 w-16 truncate" style={{ color: '#FEA500', textDecoration: 'none' }}>{b.symbol}</Link>
+                      <div className="flex-1 min-w-0">
+                        <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--bg-border)' }}>
+                          <div className="h-full rounded-full" style={{ width: `${Math.min(Math.abs(b.pts) / Math.abs((topContribsSplit?.l[0]?.pts) ?? 1) * 100, 100)}%`, backgroundColor: '#ef4444' }} />
+                        </div>
+                      </div>
+                      <span className="text-xs font-bold font-number shrink-0" style={{ color: '#f87171' }}>{b.pts.toFixed(2)}</span>
+                      <span className="text-[10px] font-semibold font-number shrink-0" style={{ color: '#dc2626' }}>{b.pct.toFixed(2)}%</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
-            <ContribHistogram bars={topContribs} />
+
+            {/* Desktop: canvas histogram */}
+            <div className="hidden sm:block">
+              <ContribHistogram bars={topContribs} />
+            </div>
           </div>
 
           {/* Full stock table for selected sector OR all index stocks */}
@@ -1021,7 +1068,43 @@ export default function IndicesPage() {
                 ({(selected ? (selData?.stocks ?? []) : indexStocks).length} companies)
               </span>
             </p>
-            <div style={{ overflowX: 'auto' }}>
+
+            {/* Mobile card view */}
+            <div className="sm:hidden space-y-2">
+              {(selected ? (selData?.stocks ?? []) : indexStocks)
+                .slice().sort((a, b) => Math.abs(b.changePct ?? 0) - Math.abs(a.changePct ?? 0))
+                .map(q => {
+                  const chg = q.changePct ?? 0
+                  const up2 = chg >= 0
+                  return (
+                    <div key={q.symbol} className="rounded-xl p-3" style={{ border: '1px solid var(--bg-border)', backgroundColor: 'var(--bg-hover)' }}>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <Link href={`/stocks/${q.symbol}`} className="font-bold text-sm" style={{ color: '#FEA500', textDecoration: 'none' }}>{q.symbol}</Link>
+                          <p className="text-[11px] truncate mt-0.5" style={{ color: 'var(--text-muted)' }}>{(q.name ?? '').slice(0, 28)}</p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <div className="text-sm font-semibold font-number" style={{ color: 'var(--text-primary)' }}>{q.price?.toFixed(2) ?? '—'}</div>
+                          <span style={{
+                            display: 'inline-block', padding: '1px 5px', borderRadius: 4, fontSize: 11, fontWeight: 600, marginTop: 2,
+                            background: up2 ? 'rgba(74,222,128,0.12)' : 'rgba(248,113,113,0.12)',
+                            color: up2 ? '#4ade80' : '#f87171',
+                          }}>
+                            {up2 ? '+' : ''}{chg.toFixed(2)}%
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 mt-2 text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                        <span>Vol: <span className="font-number">{(q.volume ?? 0).toLocaleString()}</span></span>
+                        <span className="truncate">{normSector(q.sector ?? '')}</span>
+                      </div>
+                    </div>
+                  )
+                })}
+            </div>
+
+            {/* Desktop table */}
+            <div className="hidden sm:block" style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid var(--bg-border)' }}>
@@ -1036,7 +1119,7 @@ export default function IndicesPage() {
                 </thead>
                 <tbody>
                   {(selected ? (selData?.stocks ?? []) : indexStocks)
-                    .sort((a, b) => Math.abs(b.changePct ?? 0) - Math.abs(a.changePct ?? 0))
+                    .slice().sort((a, b) => Math.abs(b.changePct ?? 0) - Math.abs(a.changePct ?? 0))
                     .map((q, i) => {
                       const chg = q.changePct ?? 0
                       const up2 = chg >= 0

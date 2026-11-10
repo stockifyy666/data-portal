@@ -48,12 +48,12 @@ function Field({
 
 function ResultCard({ label, value, accent, sub }: { label: string; value: string; accent?: boolean; sub?: string }) {
   return (
-    <div className="rounded-xl p-4 flex flex-col gap-1"
+    <div className="rounded-xl p-3 sm:p-4 flex flex-col gap-1 min-w-0"
       style={{ backgroundColor: accent ? 'rgba(254,165,0,0.1)' : 'var(--bg-hover)',
                border: accent ? '1px solid rgba(254,165,0,0.3)' : '1px solid var(--bg-border)' }}>
-      <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color:'var(--text-muted)' }}>{label}</span>
-      <span className="text-lg font-bold font-number" style={{ color: accent ? '#FEA500' : 'var(--text-primary)' }}>{value}</span>
-      {sub && <span className="text-[11px]" style={{ color:'var(--text-muted)' }}>{sub}</span>}
+      <span className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider leading-tight" style={{ color:'var(--text-muted)' }}>{label}</span>
+      <span className="text-sm sm:text-lg font-bold font-number truncate" style={{ color: accent ? '#FEA500' : 'var(--text-primary)' }}>{value}</span>
+      {sub && <span className="text-[10px] sm:text-[11px] truncate" style={{ color:'var(--text-muted)' }}>{sub}</span>}
     </div>
   )
 }
@@ -61,11 +61,11 @@ function ResultCard({ label, value, accent, sub }: { label: string; value: strin
 function TableView({ headers, rows }: { headers: string[]; rows: (string|number)[][] }) {
   return (
     <div className="overflow-x-auto rounded-xl" style={{ border:'1px solid var(--bg-border)' }}>
-      <table className="w-full text-xs">
+      <table className="text-xs" style={{ minWidth: '100%', width: 'max-content' }}>
         <thead>
           <tr style={{ backgroundColor:'var(--bg-hover)', borderBottom:'1px solid var(--bg-border)' }}>
             {headers.map(h => (
-              <th key={h} className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider"
+              <th key={h} className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider whitespace-nowrap"
                 style={{ color:'var(--text-muted)' }}>{h}</th>
             ))}
           </tr>
@@ -75,7 +75,7 @@ function TableView({ headers, rows }: { headers: string[]; rows: (string|number)
             <tr key={i} style={{ borderBottom: i<rows.length-1 ? '1px solid var(--bg-border)' : 'none',
                                   backgroundColor: i%2===0?'transparent':'var(--bg-hover)' }}>
               {row.map((cell, j) => (
-                <td key={j} className="px-4 py-2.5 font-number tabular-nums"
+                <td key={j} className="px-4 py-2.5 font-number tabular-nums whitespace-nowrap"
                   style={{ color: j===0?'var(--text-secondary)':'var(--text-primary)', fontWeight: j===row.length-1?700:400 }}>
                   {cell}
                 </td>
@@ -321,7 +321,7 @@ function CompoundingCalc() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Field label="Principal (Rs)"   value={principal} onChange={setPrincipal} prefix="Rs" />
         <Field label="Annual Rate"      value={rate}      onChange={setRate}      suffix="%" />
         <Field label="Compounding"      value={freq}      onChange={setFreq}
@@ -368,7 +368,7 @@ function DCFCalc() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Field label="Base Cash Flow (Rs)" value={cf0}      onChange={setCf0}      prefix="Rs" />
         <Field label="Growth Rate"         value={growth}   onChange={setGrowth}   suffix="%" />
         <Field label="Discount Rate"       value={discount} onChange={setDiscount} suffix="%" />
@@ -492,7 +492,7 @@ function DepreciationCalc() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Field label="Asset Cost (Rs)"    value={cost}    onChange={setCost}    prefix="Rs" />
         <Field label="Salvage Value (Rs)" value={salvage} onChange={setSalvage} prefix="Rs" />
         <Field label="Useful Life (Yrs)"  value={life}    onChange={setLife}    min="1" step="1" />
@@ -538,7 +538,7 @@ function ExchangeRateCalc() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Field label="Amount"                       value={amount} onChange={setAmount} />
         <Field label="From Currency"                value={from}   onChange={setFrom}   options={CURRENCIES} />
         <Field label="To Currency"                  value={to}     onChange={setTo}     options={CURRENCIES} />
@@ -794,12 +794,12 @@ function PositionSizeCalc() {
                 return (
                   <div className="px-4 py-5 space-y-3">
                     {levels.map(l => (
-                      <div key={l.label} className="flex items-center gap-3">
-                        <span className="text-[10px] font-bold w-16 shrink-0" style={{ color: l.color }}>{l.label}</span>
-                        <div className="flex-1 h-2 rounded-full relative" style={{ backgroundColor: 'var(--bg-hover)' }}>
+                      <div key={l.label} className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold w-14 shrink-0" style={{ color: l.color }}>{l.label}</span>
+                        <div className="flex-1 h-2 rounded-full relative min-w-0" style={{ backgroundColor: 'var(--bg-hover)' }}>
                           <div className="absolute top-0 left-0 h-2 rounded-full" style={{ width: pct(l.price), backgroundColor: l.color, opacity: 0.8 }} />
                         </div>
-                        <span className="text-xs font-bold font-number w-16 text-right" style={{ color: 'var(--text-primary)' }}>Rs {l.price.toFixed(2)}</span>
+                        <span className="text-[11px] font-bold font-number w-14 text-right shrink-0" style={{ color: 'var(--text-primary)' }}>Rs {l.price.toFixed(2)}</span>
                       </div>
                     ))}
                   </div>
@@ -840,14 +840,14 @@ export default function CalculatorClient({ calc }: { calc: string }) {
           style={{ color: 'var(--text-muted)' }}>
           <ArrowLeft size={13} /> Back to Tools
         </Link>
-        <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-xl flex items-center justify-center text-2xl shrink-0"
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center text-xl sm:text-2xl shrink-0"
             style={{ background: 'linear-gradient(135deg,#FEA500,#986300)' }}>
             {meta.icon}
           </div>
-          <div>
-            <h1 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>{meta.title}</h1>
-            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{meta.desc}</p>
+          <div className="min-w-0">
+            <h1 className="text-lg sm:text-xl font-bold leading-tight" style={{ color: 'var(--text-primary)' }}>{meta.title}</h1>
+            <p className="text-xs sm:text-sm" style={{ color: 'var(--text-secondary)' }}>{meta.desc}</p>
           </div>
         </div>
       </div>

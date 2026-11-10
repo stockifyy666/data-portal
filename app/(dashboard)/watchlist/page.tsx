@@ -8,6 +8,7 @@ import { formatPrice, formatChange, getChangeColor } from '@/lib/utils/format'
 import { cachedFetch } from '@/lib/utils/clientCache'
 import type { StockQuote } from '@/types/market'
 import KMIBadge, { isKMI } from '@/components/ui/KMIBadge'
+import SymbolLogo from '@/components/ui/SymbolLogo'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -153,14 +154,17 @@ export default function WatchlistPage() {
           onMouseEnter={e => (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--bg-hover)'}
           onMouseLeave={e => (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'}>
         <td className="py-2.5 px-2">
-          <div className="flex items-center gap-1">
-            <Link href={`/stocks/${item.symbol}`} className="font-bold hover:underline" style={{ color: '#FEA500' }}>
-              {item.symbol}
-            </Link>
-            {isKMI(item.indexKeys, item.symbol) && <KMIBadge />}
+          <div className="flex items-center gap-2">
+            <SymbolLogo symbol={item.symbol} size={24} />
+            <div className="flex items-center gap-1">
+              <Link href={`/stocks/${item.symbol}`} className="font-bold hover:underline" style={{ color: '#FEA500' }}>
+                {item.symbol}
+              </Link>
+              {isKMI(item.indexKeys, item.symbol) && <KMIBadge />}
+            </div>
           </div>
         </td>
-        <td className="py-2.5 px-2 max-w-[180px] truncate">
+        <td className="py-2.5 px-2 truncate overflow-hidden">
           <Link href={`/stocks/${item.symbol}`} className="hover:underline" style={{ color: 'var(--text-secondary)' }}>{item.name}</Link>
         </td>
         <td className="py-2.5 px-2 font-number" style={{ color: 'var(--text-muted)' }}>
@@ -196,14 +200,17 @@ export default function WatchlistPage() {
     )
   }
 
+  const COL_WIDTHS = ['12%', '28%', '12%', '11%', '11%', '11%', '11%', '4%']
+  const COL_LABELS = ['Symbol', 'Company', 'Added Price', 'Price', 'Change', '% Chg', 'Volume', '']
+
   function TableHead() {
     return (
       <thead>
         <tr style={{ borderBottom: '1px solid var(--bg-border)' }}>
-          {['Symbol', 'Company', 'Added Price', 'Price', 'Change', '% Chg', 'Volume', ''].map(col => (
-            <th key={col}
+          {COL_LABELS.map((col, i) => (
+            <th key={col + i}
                 className="text-left py-2 px-2 text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap"
-                style={{ color: 'var(--text-muted)' }}>
+                style={{ color: 'var(--text-muted)', width: COL_WIDTHS[i] }}>
               {col}
             </th>
           ))}
@@ -287,7 +294,7 @@ export default function WatchlistPage() {
       ) : view === 'list' ? (
         /* ── List view ── */
         <div className="card overflow-x-auto">
-          <table className="w-full text-xs">
+          <table className="w-full text-xs table-fixed">
             <TableHead />
             <tbody>
               {items.map(item => <Row key={item.id} item={item} />)}
@@ -319,7 +326,7 @@ export default function WatchlistPage() {
                     {sDown > 0 && <span style={{ color: '#dc2626' }}>▼ {sDown}</span>}
                   </div>
                 </div>
-                <table className="w-full text-xs">
+                <table className="w-full text-xs table-fixed">
                   <TableHead />
                   <tbody>
                     {sectorItems.map(item => <Row key={item.id} item={item} />)}

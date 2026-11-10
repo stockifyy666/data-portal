@@ -81,6 +81,14 @@ export default function FIPIPage() {
   const [period,    setPeriod]    = useState<Period>('10d')
   const [invType,   setInvType]   = useState<InvType>('lipi')
   const [breakMode, setBreakMode] = useState<BreakMode>('client')
+  const [isMobile,  setIsMobile]  = useState(false)
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 480)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
 
   const load = useCallback(async (p: Period) => {
     setLoading(true); setError(null)
@@ -105,7 +113,22 @@ export default function FIPIPage() {
   ) ? (invType === 'fipi' ? data!.foreign : data!.local) : []
 
   const maxBars = period === '1y' ? 260 : period === '3m' ? 65 : 10
-  const sorted  = [...days].sort((a, b) => a.date.localeCompare(b.date)).slice(-maxBars)
+
+  // Parse a sortable timestamp from the date field regardless of format:
+  // "2026-10-25"            → ISO date (daily)
+  // "Oct 25 - Oct 31"      → extract first date with current year
+  // "2026-10-25 - 2026-10-31" → extract first ISO date
+  function parseSortKey(d: string): number {
+    // ISO date or ISO range
+    const iso = d.match(/^(\d{4}-\d{2}-\d{2})/)
+    if (iso) return new Date(iso[1]).getTime()
+    // "MMM D - MMM D" range — parse first part, assume current year context
+    const short = d.match(/^([A-Za-z]+ \d{1,2})/)
+    if (short) return new Date(`${short[1]} ${new Date().getFullYear()}`).getTime()
+    return 0
+  }
+
+  const sorted  = [...days].sort((a, b) => parseSortKey(a.date) - parseSortKey(b.date)).slice(-maxBars)
 
   // Cumulative line
   let cum = 0
@@ -122,8 +145,8 @@ export default function FIPIPage() {
     <div className=" space-y-4" style={{ color: 'var(--text-primary)' }}>
 
       {/* Header row */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-xl font-bold">Portfolio Investments</h1>
           <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
             Foreign &amp; Local Institutional Portfolio Investment — PSX · Source: NCCPL
@@ -135,7 +158,7 @@ export default function FIPIPage() {
             {(['fipi', 'lipi'] as InvType[]).map(t => (
               <button key={t} onClick={() => setInvType(t)}
                 className="px-4 py-1.5 text-xs font-semibold transition-colors uppercase"
-                style={{ background: invType === t ? '#1e3a5f' : 'var(--bg-card)', color: invType === t ? '#fff' : 'var(--text-secondary)' }}>
+                style={{ background: invType === t ? 'linear-gradient(135deg,#FEA500,#986300)' : 'var(--bg-card)', color: invType === t ? '#fff' : 'var(--text-secondary)' }}>
                 {t}
               </button>
             ))}
@@ -168,7 +191,7 @@ export default function FIPIPage() {
               { label: 'Net Volume', value: latest ? latest.vol.toLocaleString() : '—', pos: (latest?.vol ?? 0) >= 0, sub: 'shares' },
               { label: 'Days of Data', value: String(days.length), pos: true, sub: period },
             ].map(c => (
-              <div key={c.label} className="rounded-xl p-3 border" style={{ background: 'var(--bg-card)', borderColor: 'var(--bg-border)' }}>
+              <div key={c.label} className="card p-3">
                 <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>{c.label}</p>
                 <p className="text-lg font-bold font-mono" style={{ color: c.pos ? '#22c55e' : '#ef4444' }}>{c.value}</p>
                 <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{c.sub}</p>
@@ -177,20 +200,21 @@ export default function FIPIPage() {
           </div>
 
           {/* Chart card */}
-          <div className="rounded-xl border" style={{ background: 'var(--bg-card)', borderColor: 'var(--bg-border)' }}>
+          <div className="card overflow-hidden">
             <div className="px-4 pt-4 pb-2">
               <p className="text-sm font-semibold" style={{ color: 'var(--text-muted)' }}>
                 Net {invType.toUpperCase()} (in $USD)
               </p>
             </div>
-            <ResponsiveContainer width="100%" height={320}>
-              <ComposedChart data={chartData} margin={{ top: 8, right: 48, left: 8, bottom: 4 }}>
+            <ResponsiveContainer width="100%" height={isMobile ? 240 : 300}>
+              <ComposedChart data={chartData} margin={{ top: 8, right: isMobile ? 28 : 40, left: isMobile ? -8 : 0, bottom: 4 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--bg-border)" vertical={false} />
-                <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
-                <YAxis yAxisId="bar" tick={{ fontSize: 10, fill: 'var(--text-muted)' }}
-                  tickFormatter={v => `${fmtK(v)}K`} axisLine={false} tickLine={false} />
-                <YAxis yAxisId="line" orientation="right" tick={{ fontSize: 10, fill: 'var(--text-muted)' }}
-                  tickFormatter={v => `${v}m`} axisLine={false} tickLine={false} />
+                <XAxis dataKey="label" tick={{ fontSize: isMobile ? 9 : 10, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false}
+                  tickFormatter={(v: string) => isMobile && v.length === 10 ? v.slice(5) : v} />
+                <YAxis yAxisId="bar" tick={{ fontSize: isMobile ? 9 : 10, fill: 'var(--text-muted)' }}
+                  tickFormatter={v => `${fmtK(v)}K`} axisLine={false} tickLine={false} width={isMobile ? 42 : 50} />
+                <YAxis yAxisId="line" orientation="right" tick={{ fontSize: isMobile ? 9 : 10, fill: 'var(--text-muted)' }}
+                  tickFormatter={v => `${v}m`} axisLine={false} tickLine={false} width={isMobile ? 26 : 32} />
                 <Tooltip content={<CustomTooltip days={sorted} breakMode={breakMode} />} />
                 <ReferenceLine yAxisId="bar" y={0} stroke="var(--text-muted)" strokeOpacity={0.4} />
                 <Bar yAxisId="bar" dataKey="net" radius={[3, 3, 0, 0]} maxBarSize={40}>
@@ -199,18 +223,18 @@ export default function FIPIPage() {
                   ))}
                 </Bar>
                 <Line yAxisId="line" type="monotone" dataKey="cumulative"
-                  stroke="#1e3a5f" strokeWidth={2} dot={{ r: 3, fill: '#1e3a5f' }} activeDot={{ r: 5 }} />
+                  stroke="#FEA500" strokeWidth={2} dot={{ r: 3, fill: '#FEA500' }} activeDot={{ r: 5, fill: '#986300' }} />
               </ComposedChart>
             </ResponsiveContainer>
 
             {/* Bottom controls */}
-            <div className="flex items-center justify-between px-4 py-3 border-t" style={{ borderColor: 'var(--bg-border)' }}>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between px-4 py-3 border-t gap-2" style={{ borderColor: 'var(--bg-border)' }}>
               {/* Period */}
-              <div className="flex gap-1">
+              <div className="flex gap-1 flex-wrap">
                 {(['10d', '3m', '1y'] as Period[]).map(p => (
                   <button key={p} onClick={() => { setPeriod(p); load(p) }}
                     className="px-3 py-1 rounded-lg text-xs font-semibold transition-colors"
-                    style={{ background: period === p ? '#1e3a5f' : 'var(--bg-hover)', color: period === p ? '#fff' : 'var(--text-secondary)' }}>
+                    style={{ background: period === p ? 'linear-gradient(135deg,#FEA500,#986300)' : 'var(--bg-hover)', color: period === p ? '#fff' : 'var(--text-secondary)' }}>
                     {p === '10d' ? '10 Days' : p === '3m' ? '3 Months' : '1 Year'}
                   </button>
                 ))}
@@ -220,7 +244,7 @@ export default function FIPIPage() {
                 {(['client', 'sector'] as BreakMode[]).map(m => (
                   <button key={m} onClick={() => setBreakMode(m)}
                     className="px-3 py-1 rounded-lg text-xs font-semibold transition-colors capitalize"
-                    style={{ background: breakMode === m ? '#1e3a5f' : 'var(--bg-hover)', color: breakMode === m ? '#fff' : 'var(--text-secondary)' }}>
+                    style={{ background: breakMode === m ? 'linear-gradient(135deg,#FEA500,#986300)' : 'var(--bg-hover)', color: breakMode === m ? '#fff' : 'var(--text-secondary)' }}>
                     By {m.charAt(0).toUpperCase() + m.slice(1)}
                   </button>
                 ))}
@@ -234,13 +258,14 @@ export default function FIPIPage() {
             const entries = Object.entries(breakdown).sort((a, b) => b[1] - a[1])
             const net = latest.usd
             return (
-              <div className="rounded-xl border overflow-hidden" style={{ borderColor: 'var(--bg-border)' }}>
+              <div className="card overflow-hidden">
                 <div className="px-4 py-3 border-b flex items-center justify-between" style={{ background: 'var(--bg-card)', borderColor: 'var(--bg-border)' }}>
                   <span className="font-semibold text-sm">
                     {invType.toUpperCase()} Breakdown — {latest.date} · By {breakMode.charAt(0).toUpperCase() + breakMode.slice(1)}
                   </span>
                 </div>
-                <table className="w-full text-sm">
+                <div className="overflow-x-auto">
+                <table className="w-full text-sm min-w-[280px]">
                   <thead>
                     <tr style={{ background: 'var(--bg-hover)' }}>
                       <th className="px-4 py-2 text-left font-medium" style={{ color: 'var(--text-muted)' }}>
@@ -274,6 +299,7 @@ export default function FIPIPage() {
                     </tr>
                   </tbody>
                 </table>
+                </div>
               </div>
             )
           })()}

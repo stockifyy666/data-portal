@@ -37,8 +37,8 @@ export default function ResetPasswordPage() {
 
   // Verify the user arrived here with a valid recovery session
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setHasSession(!!data.session)
+    supabase.auth.getUser().then(({ data }) => {
+      setHasSession(!!data.user)
     })
   }, [supabase])
 

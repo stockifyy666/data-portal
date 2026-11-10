@@ -19,13 +19,13 @@ const CreateSchema = z.object({
 
 export async function GET() {
   const supabase = await createClient()
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { data } = await supabase
     .from('price_alerts')
     .select('*')
-    .eq('user_id', session.user.id)
+    .eq('user_id', user.id)
     .order('created_at', { ascending: false })
 
   return NextResponse.json({ data: data ?? [] })
@@ -33,8 +33,8 @@ export async function GET() {
 
 export async function POST(request: Request) {
   const supabase = await createClient()
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body   = await request.json()
   const parsed = CreateSchema.safeParse(body)
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
   const { symbol, targetPrice, direction } = parsed.data
 
   const { error } = await (supabase as any).from('price_alerts').insert({
-    user_id:      session.user.id,
+    user_id:      user.id,
     symbol,
     target_price: targetPrice,
     condition:    direction,
@@ -59,8 +59,8 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   const supabase = await createClient()
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const id = new URL(request.url).searchParams.get('id')
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
@@ -69,7 +69,7 @@ export async function DELETE(request: Request) {
     .from('price_alerts')
     .delete()
     .eq('id', id)
-    .eq('user_id', session.user.id)  // RLS double-check in query
+    .eq('user_id', user.id)  // RLS double-check in query
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 

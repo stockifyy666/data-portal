@@ -140,7 +140,8 @@ function SectorModal({ sector, onClose }: { sector: SectorGroup; onClose: () => 
 
         {/* Table */}
         <div className="overflow-y-auto flex-1">
-          <table className="w-full text-xs">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[420px] text-xs">
             <thead className="sticky top-0" style={{ backgroundColor: 'var(--bg-card)' }}>
               <tr style={{ borderBottom: '1px solid var(--bg-border)' }}>
                 <th className="text-left py-2.5 px-4 text-[10px] font-semibold uppercase tracking-wider"
@@ -204,6 +205,7 @@ function SectorModal({ sector, onClose }: { sector: SectorGroup; onClose: () => 
               })}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
     </div>
@@ -290,27 +292,27 @@ export default function SectorHeatmap() {
       </div>
 
       {/* Sector cards grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
         {sectors.map(sector => {
-          const volPct = ((sector.totalVolume / totalVol) * 100).toFixed(1)
-          const topStocks = sector.stocks.slice(0, 12)
-          const big   = topStocks.slice(0, 2)
-          const small = topStocks.slice(2)
+          const volPct    = ((sector.totalVolume / totalVol) * 100).toFixed(1)
+          const topStocks = sector.stocks.slice(0, 10)
+          const big       = topStocks.slice(0, 2)
+          const small     = topStocks.slice(2, 8)   // max 6 compact on mobile (2 rows × 3 cols)
 
           return (
             <div key={sector.code}
                  onClick={() => setActiveSector(sector)}
-                 className="card p-2 flex flex-col gap-1.5 min-h-[130px] cursor-pointer transition-all hover:opacity-80"
-                 style={{ outline: 'none' }}>
+                 className="card p-2 flex flex-col gap-1.5 cursor-pointer transition-all hover:opacity-80"
+                 style={{ outline: 'none', minHeight: 120 }}>
               {/* Sector header */}
-              <div className="flex items-center justify-between gap-1">
+              <div className="flex items-start justify-between gap-1">
                 <div className="min-w-0">
-                  <span className="text-[10px] font-bold uppercase tracking-wide leading-none truncate block"
+                  <span className="text-[10px] font-bold uppercase tracking-wide leading-tight truncate block"
                         style={{ color: 'var(--text-primary)' }}>
                     {sector.name}
                   </span>
                   <span className="text-[9px] leading-none" style={{ color: 'var(--text-muted)' }}>
-                    {volPct}% vol · {sector.stocks.length} stocks
+                    {volPct}% vol · {sector.stocks.length} stk
                   </span>
                 </div>
                 <span className={`text-[9px] font-bold px-1 py-0.5 rounded leading-none shrink-0
@@ -322,12 +324,12 @@ export default function SectorHeatmap() {
               <div className="flex-1 flex flex-col gap-1">
                 {big.length > 0 && (
                   <div className={`grid gap-1 ${big.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}
-                       style={{ minHeight: 48 }}>
+                       style={{ minHeight: 44 }}>
                     {big.map(s => <StockBox key={s.symbol} stock={s} />)}
                   </div>
                 )}
                 {small.length > 0 && (
-                  <div className="grid grid-cols-4 gap-0.5" style={{ minHeight: 32 }}>
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-0.5" style={{ minHeight: 28 }}>
                     {small.map(s => <StockBox key={s.symbol} stock={s} compact />)}
                   </div>
                 )}

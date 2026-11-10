@@ -1,56 +1,75 @@
 // =============================================================================
 // FILE: lib/utils/rateLimit.ts
-// PURPOSE: Tracks how many Capital Stake API calls we have made and warns
-//          us if we are getting close to the 20 requests/hour limit.
-//          We store the call count in Redis so it works across all server
-//          instances and resets automatically every hour.
-//          This is a safety net — our caching strategy should keep us well
-//          under the limit, but this catches any unexpected bursts.
+// PURPOSE: Tracks Capital Stake API usage against the agreed plan limits.
+//          Counts are stored in Redis with a 24-hour rolling window so they
+//          work across all server instances and reset automatically each day.
+//
+//          Plan limits (Capital Stake agreement):
+//            UAT API (uat.csapis.com) — 10,000 requests / day
+//            Overage charge: PKR 10 per extra request
 // =============================================================================
 
 import { redis } from '@/lib/redis/client'
 
-const MAX_REQUESTS_PER_HOUR = 20
-const RATE_LIMIT_KEY = 'cs:api:call-count'
+// UAT API (uat.csapis.com) — stocks, quotes, charts, all new endpoints
+const UAT_KEY             = 'cs:uat:call-count'
+const UAT_MAX_PER_DAY     = 10_000
+const UAT_WARN_THRESHOLD  = 8_000   // warn at 80%
+const DAY_SECONDS         = 86_400
+
+// Legacy main API (stockifyy.capitalstake.com) — kept for old endpoints still in use
+const LEGACY_KEY          = 'cs:api:call-count'
+const LEGACY_MAX_PER_HOUR = 20
+const HOUR_SECONDS        = 3_600
 
 // =============================================================================
-// trackCSAPICall — Call this every time we make a Capital Stake API request
-// Increments the counter in Redis and logs a warning if we are getting close.
-// Returns the current count so callers can decide whether to proceed.
+// trackUATCall — call every time we hit uat.csapis.com
 // =============================================================================
-export async function trackCSAPICall(endpoint: string): Promise<number> {
+export async function trackChartAPICall(endpoint: string): Promise<number> {
   try {
-    // Increment the counter — if key doesn't exist, Redis creates it at 1
-    const count = await redis.incr(RATE_LIMIT_KEY)
+    const count = await redis.incr(UAT_KEY)
+    if (count === 1) await redis.expire(UAT_KEY, DAY_SECONDS)
 
-    // Set expiry to 1 hour on first call (subsequent incr calls keep existing TTL)
-    if (count === 1) {
-      await redis.expire(RATE_LIMIT_KEY, 3600)
-    }
+    console.log(`[CS UAT] Call #${count}/${UAT_MAX_PER_DAY} today → ${endpoint}`)
 
-    // Log which endpoint was called and current usage
-    console.log(`[CS API] Call #${count}/${MAX_REQUESTS_PER_HOUR} → ${endpoint}`)
-
-    // Warn at 15 calls (75% of limit)
-    if (count >= 15) {
+    if (count >= UAT_WARN_THRESHOLD) {
       console.warn(
-        `[CS API] WARNING: ${count}/${MAX_REQUESTS_PER_HOUR} requests used this hour. ` +
-        `Consider extending cache TTLs.`
+        `[CS UAT] WARNING: ${count}/${UAT_MAX_PER_DAY} requests used today. ` +
+        `Overage is PKR 10/request. Consider raising cache TTLs.`
       )
     }
-
-    // At the limit — log an error (the call still happens, this is just a warning)
-    if (count > MAX_REQUESTS_PER_HOUR) {
+    if (count > UAT_MAX_PER_DAY) {
       console.error(
-        `[CS API] LIMIT EXCEEDED: ${count} calls made. ` +
-        `Capital Stake may start rejecting requests. ` +
-        `Endpoint attempted: ${endpoint}`
+        `[CS UAT] LIMIT EXCEEDED: ${count} calls today — overage charges apply. ` +
+        `Endpoint: ${endpoint}`
       )
     }
 
     return count
   } catch {
-    // If Redis fails, allow the API call to proceed — don't block the user
+    return 0
+  }
+}
+
+// =============================================================================
+// trackCSAPICall — call every time we hit the legacy main API
+// =============================================================================
+export async function trackCSAPICall(endpoint: string): Promise<number> {
+  try {
+    const count = await redis.incr(LEGACY_KEY)
+    if (count === 1) await redis.expire(LEGACY_KEY, HOUR_SECONDS)
+
+    console.log(`[CS Legacy] Call #${count}/${LEGACY_MAX_PER_HOUR} this hour → ${endpoint}`)
+
+    if (count >= LEGACY_MAX_PER_HOUR * 0.75) {
+      console.warn(`[CS Legacy] WARNING: ${count}/${LEGACY_MAX_PER_HOUR} requests this hour.`)
+    }
+    if (count > LEGACY_MAX_PER_HOUR) {
+      console.error(`[CS Legacy] LIMIT EXCEEDED: ${count} calls this hour. Endpoint: ${endpoint}`)
+    }
+
+    return count
+  } catch {
     return 0
   }
 }
@@ -62,17 +81,17 @@ export async function trackCSAPICall(endpoint: string): Promise<number> {
 export async function getCSAPIUsage(): Promise<{ used: number; remaining: number; resetIn: number }> {
   try {
     const [count, ttl] = await Promise.all([
-      redis.get<number>(RATE_LIMIT_KEY),
-      redis.ttl(RATE_LIMIT_KEY),
+      redis.get<number>(UAT_KEY),
+      redis.ttl(UAT_KEY),
     ])
 
     const used = count ?? 0
     return {
       used,
-      remaining: Math.max(0, MAX_REQUESTS_PER_HOUR - used),
-      resetIn: ttl > 0 ? ttl : 3600,  // seconds until the hour resets
+      remaining: Math.max(0, UAT_MAX_PER_DAY - used),
+      resetIn: ttl > 0 ? ttl : DAY_SECONDS,
     }
   } catch {
-    return { used: 0, remaining: MAX_REQUESTS_PER_HOUR, resetIn: 3600 }
+    return { used: 0, remaining: UAT_MAX_PER_DAY, resetIn: DAY_SECONDS }
   }
 }

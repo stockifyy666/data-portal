@@ -22,6 +22,27 @@ async function buildHeaders(contentType = 'application/json') {
   }
 }
 
+// GET for all uat.csapis.com endpoints (stocks, quotes, charts).
+// Uses CAPITAL_STAKE_CHART_BEARER_TOKEN; falls back to main token if not set.
+// Uses a minimal header set — the UAT API only needs Bearer auth, no session cookies.
+export async function csUatGet<T = unknown>(url: string): Promise<T> {
+  const rawToken =
+    process.env.CAPITAL_STAKE_CHART_BEARER_TOKEN ||
+    process.env.CAPITAL_STAKE_BEARER_TOKEN!
+  // Minimal headers only — no Origin/Referer which can trigger CORS/IP blocks on UAT
+  const headers = {
+    'Authorization': `Bearer ${rawToken}`,
+    'Accept':        'application/json',
+  }
+  const res = await fetch(url, { method: 'GET', headers, cache: 'no-store' })
+  if (res.status === 401) throw new Error(`CS Chart API 401 Unauthorized: ${url}`)
+  if (res.status === 403) throw new Error(`CS Chart API 403 Forbidden: ${url}`)
+  if (!res.ok)            throw new Error(`CS Chart API ${res.status} ${res.statusText}: ${url}`)
+  const data = await res.json()
+  if (data.status === 'error') throw new Error(`CS Chart API error: ${data.message}`)
+  return data as T
+}
+
 // GET any Capital Stake endpoint
 export async function csGet<T = unknown>(url: string): Promise<T> {
   const res = await fetch(url, { method: 'GET', headers: await buildHeaders(), cache: 'no-store' })

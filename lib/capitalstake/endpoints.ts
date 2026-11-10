@@ -6,28 +6,45 @@
 //          BASE_URL comes from environment variables — never hardcoded.
 // =============================================================================
 
-const BASE = process.env.CAPITAL_STAKE_BASE_URL ?? 'https://stockifyy.capitalstake.com'
+const BASE       = process.env.CAPITAL_STAKE_BASE_URL       ?? 'https://stockifyy.capitalstake.com'
+const CHART_BASE = process.env.CAPITAL_STAKE_CHART_BASE_URL ?? 'https://uat.csapis.com'
+
+// UAT base is the same as CHART_BASE — both use uat.csapis.com with the same bearer token.
+// As we migrate sections, all new endpoints will be added here.
+const UAT_BASE   = CHART_BASE
 
 export const CS_ENDPOINTS = {
 
-  // ── MARKET QUOTES (main market data endpoint) ───────────────────────────
+  // ── MARKET QUOTES (main market data endpoint — legacy) ──────────────────
   MARKET_ALL: `${BASE}/api/v3/market?path=/req`,
 
-  // ── CHART DATA ───────────────────────────────────────────────────────────
-  // Intraday 1-min candles for today — path periods: 1D, 2D, 1W, 1M, 3M, 6M, 1Y
+  // ── NEW UAT API (uat.csapis.com — all new endpoints go here) ────────────
+  // Static reference data: sector, market cap, 52w range, index membership
+  STOCKS_LIST:  `${UAT_BASE}/3.0/market/stocks`,
+  // Live quotes: current price, change, volume, bid/ask
+  QUOTES_LIST:  `${UAT_BASE}/3.0/market/quotes`,
+  // Live tickers: compact price + change for all symbols and indices
+  TICKERS:      `${UAT_BASE}/3.0/market/tickers`,
+  // Announcements by symbol (paginated) — path is literally /symbol, symbol passed as query param
+  ANNOUNCEMENTS_UAT: (symbol: string, offset = 0, count = 50) =>
+    `${UAT_BASE}/3.0/announcements/symbol?symbol=${symbol}&offset=${offset}&count=${count}`,
+
+  // ── CHART DATA (csapis.com) ───────────────────────────────────────────────
+  // Pattern: /3.0/market/intraday/{interval}?symbol={SYMBOL}
+  CHART_1MIN:   (symbol: string) => `${CHART_BASE}/3.0/market/intraday/1m?symbol=${symbol}`,
+  CHART_5MIN:   (symbol: string) => `${CHART_BASE}/3.0/market/intraday/5m?symbol=${symbol}`,
+  CHART_10MIN:  (symbol: string) => `${CHART_BASE}/3.0/market/intraday/10m?symbol=${symbol}`,
+  CHART_15MIN:  (symbol: string) => `${CHART_BASE}/3.0/market/intraday/15m?symbol=${symbol}`,
+  CHART_30MIN:  (symbol: string) => `${CHART_BASE}/3.0/market/intraday/30m?symbol=${symbol}`,
+  CHART_1H:     (symbol: string) => `${CHART_BASE}/3.0/market/intraday/1h?symbol=${symbol}`,
+  EOD_ADJUSTED:   (symbol: string) => `${CHART_BASE}/3.0/market/intraday/1m?symbol=${symbol}`,
+  EOD_UNADJUSTED: (symbol: string) => `${CHART_BASE}/3.0/market/intraday/1m?symbol=${symbol}`,
+
+  // Legacy intraday/daily kept for any other routes that may use them
   INTRADAY: (symbol: string, period = '1D') =>
     `${BASE}/api/v3/market?path=/intraday/${symbol}/${period}`,
-
-  // Daily OHLCV historical bars
   DAILY: (symbol: string) =>
     `${BASE}/api/v3/market?path=/daily/${symbol}`,
-
-  // Legacy aliases kept so existing routes don't break
-  CHART_1MIN:  (symbol: string) => `${BASE}/api/v3/market?path=/intraday/${symbol}/1D`,
-  CHART_5MIN:  (symbol: string) => `${BASE}/api/v3/market?path=/intraday/${symbol}/1D`,
-  CHART_15MIN: (symbol: string) => `${BASE}/api/v3/market?path=/intraday/${symbol}/2D`,
-  EOD_ADJUSTED:   (symbol: string) => `${BASE}/api/v3/market?path=/daily/${symbol}`,
-  EOD_UNADJUSTED: (symbol: string) => `${BASE}/api/v3/market?path=/daily/${symbol}`,
 
   // ── COMPANY STATEMENTS (balance / income / fundamentals / shareholders) ──
   // type: balance | income | fundamentals | profile | shareholders

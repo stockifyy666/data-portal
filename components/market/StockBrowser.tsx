@@ -3,11 +3,13 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import Link                             from 'next/link'
 import { Search, X, ChevronDown }       from 'lucide-react'
-import { formatPrice, formatChange, formatPercent, formatVolume, getChangeColor }
-  from '@/lib/utils/format'
-import { cachedFetch }  from '@/lib/utils/clientCache'
-import type { StockQuote } from '@/types/market'
-import KMIBadge, { isKMI } from '@/components/ui/KMIBadge'
+import { formatPrice, formatVolume }    from '@/lib/utils/format'
+import { cachedFetch }                  from '@/lib/utils/clientCache'
+import KMIBadge                         from '@/components/ui/KMIBadge'
+import SymbolLogo                        from '@/components/ui/SymbolLogo'
+import type { MergedStock }             from '@/types/capitalstake'
+
+type UATStock = MergedStock
 
 const INDEX_OPTIONS = [
   { value: '',         label: 'All Indices' },
@@ -47,17 +49,19 @@ function FilterSelect({
   onChange: (v: string) => void
   options: { value: string; label: string }[]
 }) {
+  const active = value !== ''
   return (
     <div className="relative">
       <select
         value={value}
         onChange={e => onChange(e.target.value)}
-        className="appearance-none rounded-lg border pl-3 pr-8 py-2 text-sm
-                   focus:outline-none transition-colors cursor-pointer w-full"
+        className="appearance-none rounded-xl border pl-3.5 pr-9 py-2 text-sm font-medium
+                   focus:outline-none cursor-pointer w-full transition-all duration-150"
         style={{
-          backgroundColor: 'var(--bg-card)',
-          borderColor:     'var(--bg-border)',
-          color:           'var(--text-primary)',
+          backgroundColor: active ? '#FEA50012' : 'var(--bg-card)',
+          borderColor:     active ? '#FEA500'   : 'var(--bg-border)',
+          color:           active ? '#FEA500'   : 'var(--text-secondary)',
+          boxShadow:       active ? '0 0 0 1px #FEA50033' : 'none',
         }}
       >
         {options.map(o => (
@@ -65,9 +69,9 @@ function FilterSelect({
         ))}
       </select>
       <ChevronDown
-        size={14}
+        size={13}
         className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2"
-        style={{ color: 'var(--text-muted)' }}
+        style={{ color: active ? '#FEA500' : 'var(--text-muted)' }}
       />
     </div>
   )
@@ -75,8 +79,15 @@ function FilterSelect({
 
 const PAGE_SIZE = 50
 
+function formatMcap(v: number) {
+  if (v >= 1e12) return `₨${(v / 1e12).toFixed(2)}T`
+  if (v >= 1e9)  return `₨${(v / 1e9).toFixed(2)}B`
+  if (v >= 1e6)  return `₨${(v / 1e6).toFixed(2)}M`
+  return `₨${v.toLocaleString()}`
+}
+
 export default function StockBrowser() {
-  const [quotes,     setQuotes]     = useState<StockQuote[]>([])
+  const [stocks,     setStocks]     = useState<UATStock[]>([])
   const [loading,    setLoading]    = useState(true)
   const [indexKey,   setIndexKey]   = useState('')
   const [sectorCode, setSectorCode] = useState('')
@@ -97,21 +108,23 @@ export default function StockBrowser() {
   const dropResults = useMemo(() => {
     if (!search.trim()) return []
     const q = search.toUpperCase().trim()
-    return quotes
-      .filter(s => s.price > 0 && (s.symbol.includes(q) || s.name.toUpperCase().includes(q)))
+    return stocks
+      .filter(s => s.symbol.includes(q) || s.name.toUpperCase().includes(q))
       .slice(0, 10)
-  }, [search, quotes])
+  }, [search, stocks])
+
+  const liveCount = useMemo(() => stocks.filter(s => s.price !== null).length, [stocks])
 
   useEffect(() => {
-    cachedFetch<{ quotes: StockQuote[] }>('/api/market/quotes')
-      .then(json => { if (json.quotes) setQuotes(json.quotes) })
+    cachedFetch<{ stocks: UATStock[] }>('/api/market/stocks')
+      .then(json => { if (json.stocks) setStocks(json.stocks) })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
 
   // Derive available sectors from actual data
   const sectorOptions = useMemo(() => {
-    const codes = new Set(quotes.map(q => q.sector).filter(Boolean))
+    const codes = new Set(stocks.map(s => s.sector).filter(Boolean))
     return [
       { value: '', label: 'All Industries' },
       ...Array.from(codes)
@@ -124,21 +137,21 @@ export default function StockBrowser() {
         })
         .map(code => ({ value: code, label: SECTOR_NAMES[code] ?? code })),
     ]
-  }, [quotes])
+  }, [stocks])
 
   const filtered = useMemo(() => {
-    let list = quotes.filter(q => q.price > 0)
+    let list = stocks
 
-    if (indexKey)   list = list.filter(q => q.indexKeys?.includes(indexKey))
-    if (sectorCode) list = list.filter(q => q.sector === sectorCode)
+    if (indexKey)   list = list.filter(s => s.listed_in?.includes(indexKey))
+    if (sectorCode) list = list.filter(s => s.sector === sectorCode)
 
     if (search.trim()) {
       const q = search.toUpperCase().trim()
       list = list.filter(s => s.symbol.includes(q) || s.name.toUpperCase().includes(q))
     }
 
-    return list
-  }, [quotes, indexKey, sectorCode, search])
+    return list.sort((a, b) => a.symbol.localeCompare(b.symbol))
+  }, [stocks, indexKey, sectorCode, search])
 
   // Reset page when filters/search change
   useEffect(() => { setPage(1) }, [indexKey, sectorCode, search])
@@ -153,7 +166,7 @@ export default function StockBrowser() {
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE)
   const pageItems  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
-  const COLS = ['Symbol', 'Company', 'Price', 'Change', '% Chg', 'Volume', '52W High', '52W Low']
+  const COLS = ['Symbol', 'Company', 'Price', 'Change', '% Chg', 'Volume', '52W High', '52W Low', 'Upper Cap']
 
   return (
     <div className="card">
@@ -201,12 +214,13 @@ export default function StockBrowser() {
               onFocus={handleSearchFocus}
               onBlur={handleSearchBlur}
               placeholder="Symbol or name…"
-              className="w-full rounded-lg border pl-8 pr-3 py-2 text-sm
-                         focus:outline-none transition-colors"
+              className="w-full rounded-xl border pl-8 pr-3 py-2 text-sm font-medium
+                         focus:outline-none transition-all duration-150"
               style={{
-                backgroundColor: 'var(--bg-card)',
-                borderColor:     'var(--bg-border)',
-                color:           'var(--text-primary)',
+                backgroundColor: search ? '#FEA50012'      : 'var(--bg-card)',
+                borderColor:     search ? '#FEA500'        : 'var(--bg-border)',
+                color:           search ? 'var(--text-primary)' : 'var(--text-secondary)',
+                boxShadow:       search ? '0 0 0 1px #FEA50033' : 'none',
               }}
             />
 
@@ -219,38 +233,39 @@ export default function StockBrowser() {
                   zIndex: 60,
                   overflow: 'hidden',
                 }}>
-                {dropResults.map(q => {
-                  const up = q.changePct >= 0
-                  return (
-                    <Link key={q.symbol} href={`/stocks/${q.symbol}`}
-                      prefetch={false}
-                      className="flex items-center justify-between px-4 py-2.5 hover:opacity-80 transition-opacity"
-                      style={{ borderBottom: '1px solid var(--bg-border)' }}
-                      onMouseDown={e => e.preventDefault()}>
-                      <div className="flex items-center gap-3">
-                        <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-[10px] font-bold shrink-0"
-                          style={{ background: 'linear-gradient(135deg,#FEA500,#986300)' }}>
-                          {q.symbol.charAt(0)}
+                {dropResults.map(s => (
+                  <Link key={s.symbol} href={`/stocks/${s.symbol}`}
+                    prefetch={false}
+                    className="flex items-center justify-between px-4 py-2.5 hover:opacity-80 transition-opacity"
+                    style={{ borderBottom: '1px solid var(--bg-border)' }}
+                    onMouseDown={e => e.preventDefault()}>
+                    <div className="flex items-center gap-3">
+                      <SymbolLogo symbol={s.symbol} size={28} />
+                      <div>
+                        <div className="flex items-center gap-1">
+                          <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{s.symbol}</p>
+                          {(s.listed_in?.includes('KMI30') || s.listed_in?.includes('KMIALLSHR')) && <KMIBadge />}
                         </div>
-                        <div>
-                          <div className="flex items-center gap-1">
-                            <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{q.symbol}</p>
-                            {isKMI(q.indexKeys, q.symbol) && <KMIBadge />}
-                          </div>
-                          <p className="text-[11px] truncate max-w-[200px]" style={{ color: 'var(--text-muted)' }}>{q.name}</p>
-                        </div>
+                        <p className="text-[11px] truncate max-w-[200px]" style={{ color: 'var(--text-muted)' }}>{s.name}</p>
                       </div>
-                      <div className="text-right">
-                        <p className="text-sm font-bold font-number" style={{ color: 'var(--text-primary)' }}>
-                          {q.price.toFixed(2)}
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-bold font-number" style={{ color: 'var(--text-primary)' }}>
+                        {(s.price ?? s.ldcp).toFixed(2)}
+                      </p>
+                      {s.change_percent !== null ? (
+                        <p className="text-[11px] font-semibold font-number"
+                           style={{ color: s.change_percent >= 0 ? '#16a34a' : '#dc2626' }}>
+                          {s.change_percent >= 0 ? '+' : ''}{(s.change_percent * 100).toFixed(2)}%
                         </p>
-                        <p className="text-[11px] font-semibold font-number" style={{ color: up ? '#16a34a' : '#dc2626' }}>
-                          {up ? '+' : ''}{q.changePct.toFixed(2)}%
+                      ) : (
+                        <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                          {SECTOR_NAMES[s.sector] ?? s.sector}
                         </p>
-                      </div>
-                    </Link>
-                  )
-                })}
+                      )}
+                    </div>
+                  </Link>
+                ))}
               </div>
             )}
           </div>
@@ -317,55 +332,72 @@ export default function StockBrowser() {
                 </td>
               </tr>
             ) : (
-              pageItems.map(q => {
-                const clr = getChangeColor(q.change)
-                return (
-                  <tr
-                    key={q.symbol}
-                    className="transition-colors"
-                    style={{ borderBottom: '1px solid var(--bg-border)' }}
-                    onMouseEnter={e => (e.currentTarget as HTMLTableRowElement).style.backgroundColor = 'var(--bg-hover)'}
-                    onMouseLeave={e => (e.currentTarget as HTMLTableRowElement).style.backgroundColor = 'transparent'}
-                  >
-                    <td className="py-2 px-2">
+              pageItems.map(s => (
+                <tr
+                  key={s.symbol}
+                  className="transition-colors"
+                  style={{ borderBottom: '1px solid var(--bg-border)' }}
+                  onMouseEnter={e => (e.currentTarget as HTMLTableRowElement).style.backgroundColor = 'var(--bg-hover)'}
+                  onMouseLeave={e => (e.currentTarget as HTMLTableRowElement).style.backgroundColor = 'transparent'}
+                >
+                  <td className="py-2 px-2">
+                    <div className="flex items-center gap-2">
+                      <SymbolLogo symbol={s.symbol} size={24} />
                       <div className="flex items-center gap-1">
-                        <Link href={`/stocks/${q.symbol}`}
+                        <Link href={`/stocks/${s.symbol}`}
                               prefetch={false}
                               className="font-bold hover:underline"
                               style={{ color: '#FEA500' }}>
-                          {q.symbol}
+                          {s.symbol}
                         </Link>
-                        {isKMI(q.indexKeys, q.symbol) && <KMIBadge />}
+                        {(s.listed_in?.includes('KMI30') || s.listed_in?.includes('KMIALLSHR')) && <KMIBadge />}
                       </div>
-                    </td>
-                    <td className="py-2 px-2 max-w-[160px] truncate">
-                      <Link href={`/stocks/${q.symbol}`} prefetch={false} className="hover:underline" style={{ color: 'var(--text-secondary)' }}>{q.name}</Link>
-                    </td>
-                    <td className="py-2 px-2 font-number font-semibold"
-                        style={{ color: 'var(--text-primary)' }}>
-                      {formatPrice(q.price)}
-                    </td>
-                    <td className={`py-2 px-2 font-number ${clr}`}>
-                      {formatChange(q.change)}
-                    </td>
-                    <td className={`py-2 px-2 font-number font-semibold ${clr}`}>
-                      {formatPercent(q.changePct / 100)}
-                    </td>
-                    <td className="py-2 px-2 font-number"
-                        style={{ color: 'var(--text-secondary)' }}>
-                      {formatVolume(q.volume)}
-                    </td>
-                    <td className="py-2 px-2 font-number"
-                        style={{ color: 'var(--text-secondary)' }}>
-                      {formatPrice(q.high52)}
-                    </td>
-                    <td className="py-2 px-2 font-number"
-                        style={{ color: 'var(--text-secondary)' }}>
-                      {formatPrice(q.low52)}
-                    </td>
-                  </tr>
-                )
-              })
+                    </div>
+                  </td>
+                  <td className="py-2 px-2 max-w-[160px] truncate">
+                    <Link href={`/stocks/${s.symbol}`} prefetch={false} className="hover:underline"
+                          style={{ color: 'var(--text-secondary)' }}>
+                      {s.name}
+                    </Link>
+                  </td>
+                  {/* Price: live close or fallback to ldcp */}
+                  <td className="py-2 px-2 font-number font-semibold"
+                      style={{ color: 'var(--text-primary)' }}>
+                    {formatPrice(s.price ?? s.ldcp)}
+                  </td>
+                  {/* Change */}
+                  <td className="py-2 px-2 font-number"
+                      style={{ color: s.change === null ? 'var(--text-muted)'
+                              : s.change >= 0 ? '#16a34a' : '#dc2626' }}>
+                    {s.change === null ? '—'
+                      : `${s.change >= 0 ? '+' : ''}${s.change.toFixed(2)}`}
+                  </td>
+                  {/* % Change */}
+                  <td className="py-2 px-2 font-number font-semibold"
+                      style={{ color: s.change_percent === null ? 'var(--text-muted)'
+                              : s.change_percent >= 0 ? '#16a34a' : '#dc2626' }}>
+                    {s.change_percent === null ? '—'
+                      : `${s.change_percent >= 0 ? '+' : ''}${(s.change_percent * 100).toFixed(2)}%`}
+                  </td>
+                  {/* Volume: live if available, else last-day close volume */}
+                  <td className="py-2 px-2 font-number"
+                      style={{ color: 'var(--text-secondary)' }}>
+                    {formatVolume(s.volume ?? s.ldcv)}
+                  </td>
+                  <td className="py-2 px-2 font-number"
+                      style={{ color: 'var(--text-secondary)' }}>
+                    {formatPrice(s.high52)}
+                  </td>
+                  <td className="py-2 px-2 font-number"
+                      style={{ color: 'var(--text-secondary)' }}>
+                    {formatPrice(s.low52)}
+                  </td>
+                  <td className="py-2 px-2 font-number font-semibold"
+                      style={{ color: '#16a34a' }}>
+                    {formatPrice(s.ucap)}
+                  </td>
+                </tr>
+              ))
             )}
           </tbody>
         </table>
@@ -376,7 +408,8 @@ export default function StockBrowser() {
         <div className="mt-4 pt-3 flex items-center justify-between gap-2"
              style={{ borderTop: '1px solid var(--bg-border)' }}>
           <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
-            Page {page} of {totalPages} · Data refreshes every 5 min
+            Page {page} of {totalPages}
+            {liveCount > 0 ? ` · ${liveCount} live · refreshes every 2 min` : ' · market closed'}
           </p>
           <div className="flex items-center gap-1 flex-wrap">
             <button
@@ -429,7 +462,10 @@ export default function StockBrowser() {
       {!loading && totalPages <= 1 && (
         <div className="mt-3 pt-3" style={{ borderTop: '1px solid var(--bg-border)' }}>
           <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
-            Data refreshes every 5 minutes · Powered by Capital Stake
+            {liveCount > 0
+              ? `${liveCount} live · prices refresh every 2 min · reference data every 10 min`
+              : 'Market closed · showing last session prices'}
+            {' · Powered by Capital Stake'}
           </p>
         </div>
       )}

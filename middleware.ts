@@ -12,9 +12,15 @@ import { createServerClient }             from '@supabase/ssr'
 import { Ratelimit }                      from '@upstash/ratelimit'
 import { Redis }                          from '@upstash/redis/cloudflare'
 
-const PUBLIC_ROUTES = ['/login', '/register', '/forgot-password', '/api/auth']
+const PUBLIC_ROUTES = ['/login', '/register', '/forgot-password']
+
+// API routes that do NOT require a logged-in session
+const PUBLIC_API_ROUTES = ['/api/auth']
 
 function isPublic(pathname: string) {
+  if (pathname.startsWith('/api/')) {
+    return PUBLIC_API_ROUTES.some(r => pathname.startsWith(r))
+  }
   return PUBLIC_ROUTES.some(r => pathname.startsWith(r))
 }
 
@@ -89,16 +95,32 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // Use getSession() — reads from cookie, no network call, safe for middleware
-  const { data: { session } } = await supabase.auth.getSession()
+  // getUser() contacts Supabase Auth server to verify the JWT — no warning, fully secure.
+  const { data: { user } } = await supabase.auth.getUser()
 
-  if (!session && !isPublic(pathname)) {
+  const role = user?.app_metadata?.role as string | undefined
+  const isAdminRole = role === 'admin' || role === 'superadmin'
+
+  if (!user && !isPublic(pathname)) {
+    // API routes get a 401 JSON — page routes get redirected to /login
+    if (pathname.startsWith('/api/')) {
+      return new NextResponse(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
     const loginUrl = new URL('/login', request.url)
     if (pathname !== '/') loginUrl.searchParams.set('next', pathname)
     return NextResponse.redirect(loginUrl)
   }
 
-  if (session && (pathname === '/login' || pathname === '/register')) {
+  // Redirect logged-in users away from auth pages based on role
+  if (user && (pathname === '/login' || pathname === '/register')) {
+    return NextResponse.redirect(new URL(isAdminRole ? '/admin' : '/dashboard', request.url))
+  }
+
+  // Protect /admin — only admin and superadmin
+  if (user && pathname.startsWith('/admin') && !isAdminRole) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 

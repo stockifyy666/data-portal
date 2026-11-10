@@ -36,7 +36,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-5 animate-data">
-      <MorningBrief userName={userName} />
+      {/* <MorningBrief userName={userName} /> */}
       <MarketStatusBanner />
       <DashboardClient />
     </div>

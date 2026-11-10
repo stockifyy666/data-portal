@@ -102,7 +102,7 @@ function NewsCard({ item }: { item: NewsItem }) {
         </p>
         {item.description && (
           <p className="text-[11px] leading-relaxed line-clamp-2"
-            style={{ color: 'var(--text-muted)' }}>
+            style={{ color: 'var(--text-secondary)' }}>
             {item.description}
           </p>
         )}

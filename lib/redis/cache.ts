@@ -27,6 +27,13 @@ import { redis } from './client'
 //   Static data (profiles, financials) barely counts — cached 24 hours.
 // =============================================================================
 export const TTL_SECONDS = {
+  // UAT stocks list — static reference data (sector, market cap, 52w), refreshes every 1 hour
+  STOCKS_LIST:      60 * 60,   // 3600 seconds = 1 hour
+  // UAT live quotes — current price, change, volume; refreshes every 15 min
+  QUOTES_UAT:       15 * 60,   // 900 seconds = 15 minutes
+  // UAT tickers — compact live feed; refreshes every 5 min
+  TICKERS:          5 * 60,    // 300 seconds = 5 minutes
+
   // Live market data — refreshes every 5 minutes (general overview portal, not live trading)
   LIVE_QUOTES:      5 * 60,    // 300 seconds = 5 minutes
   INDICES:          5 * 60,    // 300 seconds = 5 minutes
@@ -136,6 +143,9 @@ export async function withCache<T>(
 // Using a consistent naming scheme prevents key collisions.
 // =============================================================================
 export const CACHE_KEYS = {
+  allStocks:           () => 'market:stocks:all',    // UAT /3.0/market/stocks
+  allQuotesUAT:        () => 'market:quotes:uat',    // UAT /3.0/market/quotes
+  tickers:             () => 'market:tickers',        // UAT /3.0/market/tickers (KMI only)
   allQuotes:           () => 'market:quotes:all',
   allIndices:          () => 'market:indices:all',
   gainersLosers:       () => 'market:movers:gainers-losers',
@@ -148,7 +158,7 @@ export const CACHE_KEYS = {
   chartEOD:       (symbol: string) => `stock:chart:eod:${symbol.toUpperCase()}`,
   financials:     (symbol: string) => `stock:financials:${symbol.toUpperCase()}`,
   ratios:         (symbol: string) => `stock:ratios:${symbol.toUpperCase()}`,
-  announcements:  (symbol: string) => `stock:announcements:${symbol.toUpperCase()}`,
+  announcements:  (symbol: string, offset = 0) => `stock:announcements:${symbol.toUpperCase()}:${offset}`,
 forex:               () => 'forex:all',
   sectors:             () => 'market:sectors',
   holidays:            () => 'market:holidays',

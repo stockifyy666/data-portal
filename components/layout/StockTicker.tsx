@@ -49,26 +49,17 @@ export default function StockTicker() {
   const [paused,  setPaused]  = useState(false)
   const trackRef = useRef<HTMLDivElement>(null)
 
-  /* fetch live quotes */
+  /* fetch KMI tickers */
   useEffect(() => {
     async function load() {
       try {
-        const json = await cachedFetch<{ quotes: any[] }>('/api/market/quotes', 5 * 60_000)
-        const quotes: any[] = json?.quotes ?? []
-        const list = quotes
-          .slice(0, 50)
-          .map(d => ({
-            symbol:    d.symbol,
-            price:     d.price     ?? 0,
-            change:    d.change    ?? 0,
-            changePct: d.changePct ?? 0,
-          }))
-          .filter(i => i.price > 0)
+        const json = await cachedFetch<{ tickers: TickerItem[] }>('/api/market/tickers', 5 * 60_000)
+        const list = json?.tickers ?? []
         if (list.length) setItems(list)
       } catch { /* silently ignore */ }
     }
     load()
-    const id = setInterval(load, 60_000)
+    const id = setInterval(load, 5 * 60_000)
     return () => clearInterval(id)
   }, [])
 
@@ -92,9 +83,8 @@ export default function StockTicker() {
     <div
       className="w-full overflow-hidden flex items-center shrink-0"
       style={{
-        height:          '32px',
+        height:          '100%',
         backgroundColor: 'var(--bg-card)',
-        borderBottom:    '1px solid var(--bg-border)',
       }}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
