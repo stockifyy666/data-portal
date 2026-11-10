@@ -415,7 +415,7 @@ function SectorWheel({
                   gap: 0, width: '100%', padding: '7px 20px',
                   background: isSel ? sd.color + '14' : 'transparent',
                   border: 'none', borderBottom: '1px solid var(--bg-border)',
-                  cursor: 'pointer', alignItems: 'center', textAlign: 'left',
+                  cursor: 'pointer', textAlign: 'left',
                   transition: 'background 0.15s',
                 }}
               >
