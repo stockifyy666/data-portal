@@ -4,13 +4,14 @@ import Link            from 'next/link'
 import Image           from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useState }    from 'react'
-import { LayoutDashboard, Users, Settings, LogOut, ChevronRight, Menu, X } from 'lucide-react'
+import { LayoutDashboard, Users, Settings, LogOut, ChevronRight, Menu, X, Activity } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 const NAV = [
-  { href: '/admin',          label: 'Dashboard',       icon: LayoutDashboard },
-  { href: '/admin/users',    label: 'User Management', icon: Users },
-  { href: '/admin/settings', label: 'Settings',        icon: Settings },
+  { href: '/admin',              label: 'Dashboard',       icon: LayoutDashboard },
+  { href: '/admin/users',        label: 'User Management', icon: Users },
+  { href: '/admin/api-usage',    label: 'API Usage',       icon: Activity },
+  { href: '/admin/settings',     label: 'Settings',        icon: Settings },
 ]
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
