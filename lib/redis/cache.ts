@@ -98,7 +98,7 @@ export async function cacheSet<T>(key: string, value: T, ttl: number): Promise<v
 // withCache — The main helper used in every API route
 // Usage:
 //   const data = await withCache('quotes:all', TTL_SECONDS.LIVE_QUOTES, () => {
-//     return csGet(CS_ENDPOINTS.ALL_QUOTES)
+//     return csUatGet(CS_ENDPOINTS.QUOTES_LIST)
 //   })
 //
 // This pattern means:

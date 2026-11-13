@@ -1,47 +1,5 @@
 import { NextResponse }          from 'next/server'
 import { withCache, TTL_SECONDS } from '@/lib/redis/cache'
-import { csGet }                  from '@/lib/capitalstake/client'
-
-const CS_BASE = process.env.CAPITAL_STAKE_BASE_URL ?? 'https://stockifyy.capitalstake.com'
-
-interface EconItem {
-  indicator: string
-  period: string
-  current: number | string
-  previous: number | string
-  format: string
-  currency?: boolean
-  prefix?: string
-}
-
-async function fetchEconomyData(): Promise<{
-  policyRate: { value: number; change: number; period: string }
-  ncpi:       { value: number; change: number; period: string }
-  spi:        { value: number; change: number; period: string }
-  gdp:        { value: number; change: number; period: string }
-}> {
-  const raw: EconItem[] = await csGet<EconItem[]>(`${CS_BASE}/api/v3/economy-data`)
-  const find = (name: string) => raw.find(r => r.indicator === name)
-
-  const pr  = find('Policy Rate')
-  const cpi = find('NCPI')
-  const spi = find('SPI')
-  const gdp = find('GDP (Rs mn)')
-
-  const pct  = (v: number | string) => typeof v === 'number' ? +(v * 100).toFixed(2) : 0
-  const chg  = (cur: number | string, prev: number | string) => {
-    const c = typeof cur === 'number' ? cur : 0
-    const p = typeof prev === 'number' ? prev : 0
-    return p !== 0 ? +((c - p) / Math.abs(p) * 100).toFixed(2) : 0
-  }
-
-  return {
-    policyRate: { value: pct(pr?.current  ?? 0), change: chg(pr?.current  ?? 0, pr?.previous  ?? 0), period: pr?.period  ?? '' },
-    ncpi:       { value: pct(cpi?.current ?? 0), change: chg(cpi?.current ?? 0, cpi?.previous ?? 0), period: cpi?.period ?? '' },
-    spi:        { value: pct(spi?.current ?? 0), change: chg(spi?.current ?? 0, spi?.previous ?? 0), period: spi?.period ?? '' },
-    gdp:        { value: typeof gdp?.current === 'number' ? gdp.current : 0, change: chg(gdp?.current ?? 0, gdp?.previous ?? 0), period: gdp?.period ?? '' },
-  }
-}
 
 // ── IMF DataMapper helper ─────────────────────────────────────────────────────
 // Fast, no-auth, returns annual data for Pakistan.
@@ -162,7 +120,7 @@ export async function GET() {
   //   RA         = Reserve assets, total incl gold (USD billions)
   //   BM_TRF     = Net secondary income / personal transfers (USD billions) — remittances proxy
 
-  const [usdPkr, brent, wti, gdpGrowth, inflation, currentAcct, econData] =
+  const [usdPkr, brent, wti, gdpGrowth, inflation, currentAcct] =
     await Promise.allSettled([
       withCache('macro:usdpkr', TTL, fetchUsdPkr),
       withCache('macro:brent',  TTL, () => fetchYahooFuture('BZ=F')),
@@ -170,7 +128,6 @@ export async function GET() {
       withCache('macro:imf2:gdp',         TTL_1D, () => fetchIMF('NGDP_RPCH')),
       withCache('macro:imf2:inflation',   TTL_1D, () => fetchIMF('PCPIPCH')),
       withCache('macro:imf2:currentacct', TTL_1D, () => fetchIMF('BCA')),
-      withCache('macro:cs:economy',       TTL,    fetchEconomyData),
     ])
 
   function val<T>(r: PromiseSettledResult<T>, label: string): T | null {
@@ -179,8 +136,6 @@ export async function GET() {
     return null
   }
 
-  const econ = val(econData, 'econData')
-
   return NextResponse.json({
     usdPkr:      val(usdPkr,      'usdPkr'),
     brent:       val(brent,       'brent'),
@@ -188,11 +143,10 @@ export async function GET() {
     gdpGrowth:   val(gdpGrowth,   'gdpGrowth'),
     inflation:   val(inflation,   'inflation'),
     currentAcct: val(currentAcct, 'currentAcct'),
-    // Live Capital Stake economy-data (more current than IMF)
-    policyRate:  econ?.policyRate  ?? null,
-    ncpi:        econ?.ncpi        ?? null,
-    spi:         econ?.spi         ?? null,
-    csGdp:       econ?.gdp         ?? null,
+    policyRate:  null,
+    ncpi:        null,
+    spi:         null,
+    csGdp:       null,
     fetchedAt:   new Date().toISOString(),
   })
 }

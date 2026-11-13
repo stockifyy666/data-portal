@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { TrendingUp, TrendingDown, Activity, RefreshCw } from 'lucide-react'
 import { cachedFetch } from '@/lib/utils/clientCache'
 import { useTheme } from '@/components/providers/ThemeProvider'
+import { formatVolume, formatCompactMC } from '@/lib/utils/format'
 import type { StockQuote } from '@/types/market'
 
 // ─── Sector palette — Gold & Amber brand tones (31 colors) ──────────────────
@@ -889,7 +890,7 @@ export default function IndicesPage() {
                 },
                 {
                   label: 'Volume',
-                  value: kse.totalVol.toLocaleString('en-PK'),
+                  value: formatVolume(kse.totalVol),
                   sub: 'shares',
                   color: '#60a5fa',
                   Icon: Activity,
@@ -950,7 +951,7 @@ export default function IndicesPage() {
                     {[
                       ['Stocks',     String(selData.stocks.length),                                                              'var(--text-primary)'],
                       ['Avg Change', `${selData.pctChange >= 0 ? '+' : ''}${selData.pctChange.toFixed(2)}%`,                    selData.pctChange >= 0 ? '#4ade80' : '#f87171'],
-                      ['Mkt Cap',    `Rs ${selData.marketCap.toLocaleString('en-PK')}`, '#60a5fa'],
+                      ['Mkt Cap',    formatCompactMC(selData.marketCap), '#60a5fa'],
                     ].map(([l, v, c]) => (
                       <div key={String(l)}>
                         <div style={{ fontSize: 9, color: 'var(--text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 2 }}>{l}</div>

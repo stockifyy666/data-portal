@@ -88,8 +88,9 @@
   }
 
   .font-number {
-    font-family: var(--font-mono), 'Courier New', monospace;
+    font-family: var(--font-mono), system-ui, sans-serif;
     font-variant-numeric: tabular-nums;
+    font-weight: 500;
   }
 
   .animate-data {

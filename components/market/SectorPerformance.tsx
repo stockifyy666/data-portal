@@ -237,7 +237,7 @@ type SectorRow = {
 export default function SectorPerformance({ indexFilter }: { indexFilter?: string }) {
   const [quotes,       setQuotes]       = useState<StockQuote[]>([])
   const [loading,      setLoading]      = useState(true)
-  const [idxFilt,      setIdxFilt]      = useState(indexFilter ?? '')
+  const [idxFilt,      setIdxFilt]      = useState(indexFilter ?? 'KSE100')
   const [activeSector, setActiveSector] = useState<ActiveSector | null>(null)
 
   useEffect(() => {

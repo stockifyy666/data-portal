@@ -142,6 +142,11 @@ export default function StockBrowser() {
   const filtered = useMemo(() => {
     let list = stocks
 
+    // Hide right shares by default unless user is searching or filtering
+    if (!indexKey && !sectorCode && !search.trim()) {
+      list = list.filter(s => !/R\d*$/.test(s.symbol))
+    }
+
     if (indexKey)   list = list.filter(s => s.listed_in?.includes(indexKey))
     if (sectorCode) list = list.filter(s => s.sector === sectorCode)
 

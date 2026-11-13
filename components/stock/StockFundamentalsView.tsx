@@ -11,13 +11,12 @@
 // =============================================================================
 
 import { useState, useEffect } from 'react'
+import type { Overview } from './stock-detail-types'
 
 type StatementData = {
   periods:  Array<{ year: string; quarter?: string; period_end: string }>
   fields:   Array<{ label: string; values: (number | null)[]; is_heading?: boolean }>
 }
-
-type Overview = Record<string, number | string>
 
 type FundGroup = { heading: string; rows: Array<{ label: string; values: (number | null)[] }> }
 type MetricRow = { label: string; values: (number | null)[] }
@@ -26,11 +25,15 @@ type MetricPeriod = { period_end: string; year: string | number; quarter?: strin
 function fmtFundVal(label: string, val: number | null): string {
   if (val == null) return '—'
   const lbl = label.toLowerCase()
-  const isRatio = lbl.includes('cover') || lbl.includes('dividend cover')
+  const isRatio = lbl.includes('cover') || lbl.includes('ratio (times)') || lbl.includes('(times)')
   if (isRatio) return `${val.toFixed(2)}x`
-  const isPct = lbl.includes('margin') || lbl.includes('yield') ||
+  // New UAT API: pct fields already in % form (e.g. 10.27 = 10.27%), detected by label suffix
+  const isAlreadyPct = lbl.includes('(%)') || lbl.includes('percent')
+  if (isAlreadyPct) return `${val.toFixed(2)}%`
+  // Legacy API: pct fields as fractions (0–1)
+  const isFracPct = lbl.includes('margin') || lbl.includes('yield') ||
     lbl.includes('return on') || lbl.includes('retention') || lbl.includes('payout')
-  if (isPct) return `${(val * 100).toFixed(2)}%`
+  if (isFracPct && Math.abs(val) <= 1) return `${(val * 100).toFixed(2)}%`
   if (Math.abs(val) >= 1_000_000) return `${(val / 1_000_000).toFixed(2)}M`
   if (Math.abs(val) >= 1_000)     return `${(val / 1_000).toFixed(1)}K`
   return val.toFixed(2)

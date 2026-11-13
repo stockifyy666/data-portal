@@ -35,15 +35,19 @@ class CSWebSocketManager {
   private connecting:   boolean = false
 
   private get wsUrl(): string {
-    const base = (process.env.CAPITAL_STAKE_BASE_URL ?? 'https://stockifyy.capitalstake.com')
+    const base = (process.env.CAPITAL_STAKE_UAT_URL ?? 'https://uat.csapis.com')
       .replace(/^https/, 'wss')
       .replace(/^http/, 'ws')
       .replace(/\/$/, '')
-    return `${base}/2.0/market/feed/full`
+    return `${base}/3.0/market/feed/full`
   }
 
   private get token(): string {
-    return process.env.CAPITAL_STAKE_BEARER_TOKEN ?? ''
+    return (
+      process.env.CAPITAL_STAKE_CHART_BEARER_TOKEN ||
+      process.env.CAPITAL_STAKE_BEARER_TOKEN ||
+      ''
+    )
   }
 
   private connect() {

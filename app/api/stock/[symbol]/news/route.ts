@@ -1,10 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { csPost }                    from '@/lib/capitalstake/client'
+import { csUatGet }                  from '@/lib/capitalstake/client'
 import { CS_ENDPOINTS }              from '@/lib/capitalstake/endpoints'
 import { withCache, TTL_SECONDS }    from '@/lib/redis/cache'
-import { trackCSAPICall }            from '@/lib/utils/rateLimit'
+import { trackChartAPICall }         from '@/lib/utils/rateLimit'
+import { getContent, saveContent }   from '@/lib/supabase/content'
 
 const SYMBOL_RE = /^[A-Z0-9]{2,10}$/
+
+type NewsItem = {
+  title:       string
+  date:        string
+  description: string
+  link:        string
+  image:       string
+  source:      string
+  source_url:  string
+}
+
+function normalize(item: any): NewsItem {
+  return {
+    title:       item.title ?? '',
+    date:        item.date  ?? '',
+    description: (item.description ?? '').replace(/<[^>]*>/g, '').slice(0, 300),
+    link:        item.link  ?? '',
+    image:       item.image ?? '',
+    source:      item.source     ?? 'PSX News',
+    source_url:  item.source_url ?? '',
+  }
+}
 
 export async function GET(
   _req: NextRequest,
@@ -18,41 +41,31 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid symbol' }, { status: 400 })
     }
 
-    const data = await withCache(
-      `stock:news:${symbol}`,
+    // 1. Supabase DB first (nightly synced, free for all users)
+    const cached = await getContent<NewsItem>(symbol, 'news')
+    if (cached) return NextResponse.json({ data: cached })
+
+    // 2. DB miss — fetch from CS UAT, persist to DB
+    const raw2 = await withCache(
+      `stock:news:uat:${symbol}`,
       TTL_SECONDS.ANNOUNCEMENTS,
       async () => {
-        const url = CS_ENDPOINTS.NEWS(symbol)
-        await trackCSAPICall(url)
-        return csPost(url, '')
+        const url = CS_ENDPOINTS.COMPANY_NEWS(symbol)
+        await trackChartAPICall(url)
+        return csUatGet<{ status: string; data: any[] }>(url)
       }
     )
 
-    const rawData = data as any
-    const list: any[] = Array.isArray(rawData) ? rawData : Array.isArray(rawData?.data) ? rawData.data : []
-    const news = list.map((item: any) => {
-      const rawImage =
-        item.image ?? item.thumbnail ?? item.image_url ?? item.imageUrl ??
-        item.img ?? item.img_url ?? item.featured_image ?? item.banner ??
-        item.cover ?? item.photo ?? item.media_url ?? ''
-      let image = rawImage
-      if (!image && typeof item.description === 'string') {
-        const m = item.description.match(/<img[^>]+src="([^"]+)"/i)
-        if (m) image = m[1]
-      }
-      return {
-        title:       item.title       ?? item.heading  ?? '',
-        date:        item.date        ?? item.created_at ?? '',
-        description: (item.description ?? item.summary ?? '').replace(/<[^>]*>/g, '').slice(0, 300),
-        link:        item.link        ?? item.url       ?? '',
-        image,
-        source:      item.source      ?? item.publisher ?? 'PSX News',
-      }
-    }).filter((n: any) => n.title)
+    const news = ((raw2 as any)?.data ?? [])
+      .filter((item: any) => item.title)
+      .map(normalize)
+
+    if (news.length > 0) saveContent(symbol, 'news', news).catch(() => {})
+
     return NextResponse.json({ data: news })
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unknown error'
     console.error('[API /stock/news]', msg)
-    return NextResponse.json({ error: msg }, { status: 500 })
+    return NextResponse.json({ data: [] })
   }
 }

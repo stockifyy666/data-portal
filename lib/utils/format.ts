@@ -86,6 +86,20 @@ export function formatMarketCap(value: number | null | undefined): string {
 }
 
 // =============================================================================
+// formatCompactMC — Format market cap in B / M / K (international short scale)
+// Example: formatCompactMC(913_712_741_915) → "Rs 913.71B"
+//          formatCompactMC(45_000_000)      → "Rs 45.00M"
+// =============================================================================
+export function formatCompactMC(value: number | null | undefined): string {
+  if (value === null || value === undefined || isNaN(value)) return '—'
+  if (value >= 1_000_000_000_000) return `Rs ${(value / 1_000_000_000_000).toFixed(2)}T`
+  if (value >= 1_000_000_000)     return `Rs ${(value / 1_000_000_000).toFixed(2)}B`
+  if (value >= 1_000_000)         return `Rs ${(value / 1_000_000).toFixed(2)}M`
+  if (value >= 1_000)             return `Rs ${(value / 1_000).toFixed(1)}K`
+  return `Rs ${value.toFixed(0)}`
+}
+
+// =============================================================================
 // getChangeColor — Return a Tailwind CSS color class based on positive/negative
 // Use this to color price changes — green for up, red for down, gray for flat
 // =============================================================================

@@ -85,7 +85,7 @@ export default async function StockDetailPage({ params }: { params: Promise<Para
 
       {/* Tabbed detail view */}
       <Suspense>
-        <StockDetailClient symbol={symbol} overview={overview as Record<string, number | string> | null} />
+        <StockDetailClient symbol={symbol} overview={overview as import('@/components/stock/stock-detail-types').Overview | null} />
       </Suspense>
     </div>
   )

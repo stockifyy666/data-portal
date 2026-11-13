@@ -39,7 +39,7 @@ export function StockReportTab({ symbol, overview, snapFunds, profile, anns }: P
     return snapFunds?.fields.find(f => !f.is_heading && pattern.test(f.label.trim()))?.values[0] ?? null
   }
 
-  const eps    = pickR(/earnings per share|eps/i)    ?? Number(overview?.eps) ?? 0
+  const eps    = pickR(/earnings per share|eps/i)    ?? 0
   const bvps   = pickR(/book value per share|bvps/i) ?? 0
   const roe    = pickR(/return on equity|roe/i)      ?? 0
   const npm    = pickR(/net profit margin/i)         ?? 0

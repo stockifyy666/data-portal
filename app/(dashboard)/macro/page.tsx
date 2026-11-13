@@ -122,7 +122,7 @@ function KpiCard({ id, d, loading }: { id: string; d: { value: number; change: n
   const isLive    = LIVE_IDS.has(id)
   const dirColor  = up ? '#16a34a' : '#dc2626'
 
-  const bgColor  = up ? '#dcfce7' : isNeutral ? 'var(--bg-card)' : '#fee2e2'
+  const bgColor  = up ? 'rgba(22,163,74,0.12)' : isNeutral ? 'var(--bg-card)' : 'rgba(220,38,38,0.12)'
   const bdrColor = up ? 'rgba(22,163,74,0.35)' : isNeutral ? 'var(--bg-border)' : 'rgba(220,38,38,0.35)'
 
   return (
@@ -669,7 +669,7 @@ export default function MacroDashboard() {
                   ] as const).map((s,i) => (
                     <div key={i} className="rounded-xl p-4 flex flex-col gap-2"
                       style={{
-                        background: s.accent ? 'linear-gradient(135deg,#f0fdf4,#dcfce7)' : 'var(--bg-hover)',
+                        background: s.accent ? 'rgba(22,163,74,0.12)' : 'var(--bg-hover)',
                         border: `1px solid ${s.accent ? 'rgba(22,163,74,0.2)' : 'var(--bg-border)'}`,
                       }}>
                       <div className="flex items-center justify-between">

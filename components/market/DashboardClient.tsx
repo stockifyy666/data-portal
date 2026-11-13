@@ -164,7 +164,7 @@ export default function DashboardClient() {
           const idx  = INDICES[selectedIdx]
           const data = indexData(idx.key)
           const isUp = data ? data.change > 0 : null
-          const bgColor  = isUp === true ? '#dcfce7' : isUp === false ? '#fee2e2' : 'var(--bg-card)'
+          const bgColor  = isUp === true ? 'rgba(22,163,74,0.12)' : isUp === false ? 'rgba(220,38,38,0.12)' : 'var(--bg-card)'
           const bdrColor = isUp === true ? 'rgba(22,163,74,0.35)' : isUp === false ? 'rgba(220,38,38,0.35)' : 'var(--bg-border)'
           return (
             <div className="rounded-xl overflow-hidden"
@@ -237,7 +237,7 @@ export default function DashboardClient() {
           const data   = indexData(idx.key)
           const active = selectedIdx === i
           const isUp   = data ? data.change > 0 : null
-          const bgColor  = isUp === true ? '#dcfce7' : isUp === false ? '#fee2e2' : 'var(--bg-card)'
+          const bgColor  = isUp === true ? 'rgba(22,163,74,0.12)' : isUp === false ? 'rgba(220,38,38,0.12)' : 'var(--bg-card)'
           const bdrColor = isUp === true ? 'rgba(22,163,74,0.35)' : isUp === false ? 'rgba(220,38,38,0.35)' : 'var(--bg-border)'
 
           return (

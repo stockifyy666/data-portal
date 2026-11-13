@@ -5,15 +5,22 @@ import type { Overview, StatementData } from '../stock-detail-types'
 import type { StockQuote } from '@/types/market'
 import { SectionHeading } from '../stock-detail-helpers'
 
+type PeerData = {
+  symbol: string; name: string; price: number; volume: number
+  marketCap: number; eps: number | null; divYield: number | null
+  roe: number | null; pb: number | null; de: number | null
+}
+
 type Props = {
   symbol:    string
   overview:  Overview | null
-  peers:     StockQuote[]
+  snapFunds: StatementData | null
+  peers:     PeerData[]
   peersLoad: boolean
   allQuotes: StockQuote[]
 }
 
-export function StockCompareTab({ symbol, overview, peers, peersLoad, allQuotes }: Props) {
+export function StockCompareTab({ symbol, overview, snapFunds, peers, peersLoad }: Props) {
   const [cmpSearch,         setCmpSearch]         = useState('')
   const [cmpDropOpen,       setCmpDropOpen]        = useState(false)
   const [cmpSelected,       setCmpSelected]        = useState<string[]>([])
@@ -31,11 +38,16 @@ export function StockCompareTab({ symbol, overview, peers, peersLoad, allQuotes 
     )
   }
 
-  // Pool: self + all peers
-  const selfQ   = allQuotes.find(q => q.symbol === symbol)
+  // Pick a value from self's snapFunds by regex
+  function pickSelf(pattern: RegExp): number | null {
+    return snapFunds?.fields.find(f => !f.is_heading && pattern.test(f.label.trim()))?.values[0] ?? null
+  }
+
+  // Pool: self + all peers (from UAT stocks + quote + fundamentals)
+  const peerMap = new Map(peers.map(p => [p.symbol, p]))
   const allPool = [
-    { symbol, name: String(overview?.name ?? symbol), q: selfQ },
-    ...peers.map(p => ({ symbol: p.symbol, name: p.name, q: p as StockQuote })),
+    { symbol, name: String(overview?.name ?? symbol) },
+    ...peers.map(p => ({ symbol: p.symbol, name: p.name })),
   ]
 
   const searchLow = cmpSearch.trim().toLowerCase()
@@ -47,23 +59,33 @@ export function StockCompareTab({ symbol, overview, peers, peersLoad, allQuotes 
   type CmpStock = {
     symbol: string; name: string; color: string
     price: number; volume: number; eps: number; pe: number
-    dps: number; divY: number; mc: number; roe: number; pb: number
+    dps: number; divY: number; mc: number; roe: number; pb: number; de: number
   }
   const COLORS = ['#FEA500','#3b82f6','#16a34a','#a855f7']
 
   function buildStock(sym: string, color: string): CmpStock {
-    const q    = allPool.find(p => p.symbol === sym)?.q
-    const eps  = sym === symbol ? Number(overview?.eps ?? q?.eps ?? 0) : (q?.eps ?? 0)
-    const price= sym === symbol ? Number(overview?.price ?? q?.price ?? 0) : (q?.price ?? 0)
-    const pe   = eps > 0 ? price / eps : 0
-    const dps  = q?.dps ?? 0
-    const divY = dps > 0 && price > 0 ? (dps / price) * 100 : 0
+    const peer  = peerMap.get(sym)
+    const isSelf = sym === symbol
+
+    // For self: use overview (UAT market data) + snapFunds (UAT fundamentals)
+    // For peers: use peerData (which comes from UAT quote + fundamentals APIs)
+    const price   = isSelf ? (overview?.price ?? 0)     : (peer?.price     ?? 0)
+    const volume  = isSelf ? (overview?.volume ?? 0)    : (peer?.volume    ?? 0)
+    const mc      = isSelf ? (overview?.marketCap ?? 0) : (peer?.marketCap ?? 0)
+    const eps     = isSelf ? (pickSelf(/\beps\b|earnings per share/i) ?? 0)     : (peer?.eps     ?? 0)
+    const divY    = isSelf ? (pickSelf(/dividend yield/i)              ?? 0)     : (peer?.divYield ?? 0)
+    const roe     = isSelf ? (pickSelf(/return on equity|roe\b/i)      ?? 0)     : (peer?.roe     ?? 0)
+    const pb      = isSelf ? (pickSelf(/price.?book|p\/b\b/i)          ?? 0)     : (peer?.pb      ?? 0)
+    const de      = isSelf ? (pickSelf(/debt.?to.?equity|de ratio/i)   ?? 0)     : (peer?.de      ?? 0)
+    const pe      = eps > 0 ? price / eps : 0
+
     return {
       symbol: sym,
-      name: allPool.find(p => p.symbol === sym)?.name ?? sym,
+      name:   allPool.find(p => p.symbol === sym)?.name ?? sym,
       color,
-      price, volume: q?.volume ?? 0, eps, pe, dps, divY,
-      mc: q?.mc ?? 0, roe: 0, pb: 0,
+      price, volume, eps, pe,
+      dps: 0, divY,
+      mc, roe, pb, de,
     }
   }
 
@@ -112,10 +134,11 @@ export function StockCompareTab({ symbol, overview, peers, peersLoad, allQuotes 
   }
 
   const METRIC_GROUPS = [
-    { label: 'General',      items: ['Revenue','Net Revenue','Gross Profit','Operating Profit','EBITDA','Net Profit','Total Assets','Total Equity','Total Debt','Cash & Equivalents'] },
-    { label: 'Banking',      items: ['Advances','Deposits','Net Interest Income','Investments','Markup Income','NPL'] },
-    { label: 'Cement / Mfg',items: ['Cost of Sales','Depreciation','Capital Expenditure','Inventory'] },
-    { label: 'Energy',       items: ['Other Income','Finance Cost','Tax Expense','Retained Earnings'] },
+    { label: 'Income Statement', items: ['Revenue','Net Revenue','Gross Profit','Operating Profit','EBITDA','Net Profit','Finance Cost','Tax Expense','Other Income','Depreciation'] },
+    { label: 'Balance Sheet',    items: ['Total Assets','Total Equity','Total Debt','Cash & Equivalents','Inventory','Retained Earnings','Capital Expenditure','Total Liabilities'] },
+    { label: 'Cash Flow',        items: ['Operating Cash Flow','Investing Cash Flow','Financing Cash Flow','Free Cash Flow','Net Cash Flow'] },
+    { label: 'Key Ratios',       items: ['EPS','Book Value Per Share','Dividend Per Share','Dividend Yield','P/E Ratio','Price Book Ratio','Return on Equity','Return on Assets','Net Profit Margin','Debt to Equity'] },
+    { label: 'Banking',          items: ['Advances','Deposits','Net Interest Income','Investments','Markup Income','NPL','Net Interest Margin'] },
   ]
 
   function toggleMetric(m: string) {
@@ -238,9 +261,9 @@ export function StockCompareTab({ symbol, overview, peers, peersLoad, allQuotes 
                               <p className="text-[10px] truncate" style={{ color:'var(--text-muted)' }}>{item.name}</p>
                             </div>
                           </div>
-                          {item.q && (
+                          {peerMap.get(item.symbol)?.price != null && (
                             <span className="text-[10px] font-semibold tabular-nums shrink-0" style={{ color:'var(--text-secondary)' }}>
-                              Rs {item.q.price.toFixed(2)}
+                              Rs {peerMap.get(item.symbol)!.price.toFixed(2)}
                             </span>
                           )}
                         </button>
@@ -381,27 +404,99 @@ export function StockCompareTab({ symbol, overview, peers, peersLoad, allQuotes 
             setCmpMetricLoading(true)
             setCmpMetricData({})
             const allSyms = [symbol, ...selected]
-            const fetches = allSyms.map(sym =>
-              fetch(`/api/stock/${sym}/statement?type=fundamentals&interval=annual`)
-                .then(r => r.json())
-                .then(j => ({ sym, data: (j?.data ?? null) as StatementData | null }))
-                .catch(() => ({ sym, data: null as StatementData | null }))
-            )
-            const raw = await Promise.all(fetches)
+
+            type SD = import('../stock-detail-types').StatementData
+
+            // Fetch all statement types (income, balance, cashflow annual + quarterly, fundamentals)
+            // per company in parallel, then merge all fields into one lookup
+            const STMT_TYPES = [
+              { type: 'income',       interval: 'annual'    },
+              { type: 'balance',      interval: 'annual'    },
+              { type: 'cashflow',     interval: 'annual'    },
+              { type: 'income',       interval: 'quarterly' },
+              { type: 'balance',      interval: 'quarterly' },
+              { type: 'cashflow',     interval: 'quarterly' },
+              { type: 'fundamentals', interval: 'annual'    },
+            ] as const
+
+            async function fetchMergedFields(sym: string): Promise<{
+              sym: string
+              annual: SD | null
+              quarterly: SD | null
+              fundamentals: SD | null
+            }> {
+              const results = await Promise.all(
+                STMT_TYPES.map(({ type, interval }) =>
+                  fetch(`/api/stock/${sym}/statement?type=${type}&interval=${interval}`)
+                    .then(r => r.json())
+                    .then(j => ({ type, interval, data: (j?.data ?? null) as SD | null }))
+                    .catch(() => ({ type, interval, data: null as SD | null }))
+                )
+              )
+
+              // Merge annual statement fields (income + balance + cashflow) into one StatementData
+              const annualStatements = results.filter(r => r.interval === 'annual' && r.type !== 'fundamentals')
+              let annualMerged: SD | null = null
+              for (const r of annualStatements) {
+                if (!r.data) continue
+                if (!annualMerged) {
+                  annualMerged = { periods: r.data.periods, fields: [...r.data.fields] }
+                } else {
+                  // Extend periods to longest
+                  if (r.data.periods.length > annualMerged.periods.length) {
+                    annualMerged = { periods: r.data.periods, fields: annualMerged.fields }
+                  }
+                  for (const f of r.data.fields) {
+                    if (!annualMerged.fields.some(e => e.label.toLowerCase() === f.label.toLowerCase())) {
+                      annualMerged.fields.push(f)
+                    }
+                  }
+                }
+              }
+
+              // Merge quarterly statement fields
+              const quarterlyStatements = results.filter(r => r.interval === 'quarterly')
+              let quarterlyMerged: SD | null = null
+              for (const r of quarterlyStatements) {
+                if (!r.data) continue
+                if (!quarterlyMerged) {
+                  quarterlyMerged = { periods: r.data.periods, fields: [...r.data.fields] }
+                } else {
+                  if (r.data.periods.length > quarterlyMerged.periods.length) {
+                    quarterlyMerged = { periods: r.data.periods, fields: quarterlyMerged.fields }
+                  }
+                  for (const f of r.data.fields) {
+                    if (!quarterlyMerged.fields.some(e => e.label.toLowerCase() === f.label.toLowerCase())) {
+                      quarterlyMerged.fields.push(f)
+                    }
+                  }
+                }
+              }
+
+              const fundsResult = results.find(r => r.type === 'fundamentals')
+              return { sym, annual: annualMerged, quarterly: quarterlyMerged, fundamentals: fundsResult?.data ?? null }
+            }
+
+            const perSym = await Promise.all(allSyms.map(fetchMergedFields))
+
             const nested: Record<string,Record<string,{year:string;value:number}[]>> = {}
             for (const metric of effectiveMetrics) {
               nested[metric] = {}
-              for (const { sym, data } of raw) {
-                if (!data) continue
-                const field = data.fields.find(f =>
-                  !f.is_heading &&
-                  f.label.toLowerCase().includes(metric.toLowerCase())
-                )
-                if (field) {
-                  nested[metric][sym] = data.periods
-                    .map((p, i) => ({ year: String(p.year), value: (field.values[i] ?? 0) as number }))
-                    .filter(r => r.value != null && r.value !== 0)
-                    .slice(0, 5)
+              for (const { sym, annual, quarterly, fundamentals } of perSym) {
+                // Search annual first, then fundamentals, then quarterly
+                const sources = [annual, fundamentals, quarterly].filter(Boolean) as SD[]
+                for (const data of sources) {
+                  const field = data.fields.find(f =>
+                    !f.is_heading &&
+                    f.label.toLowerCase().includes(metric.toLowerCase())
+                  )
+                  if (field) {
+                    nested[metric][sym] = data.periods
+                      .map((p, i) => ({ year: String(p.year), value: (field.values[i] ?? 0) as number }))
+                      .filter(r => r.value != null && r.value !== 0)
+                      .slice(0, 8)
+                    break
+                  }
                 }
               }
             }
@@ -634,7 +729,8 @@ export function StockCompareTab({ symbol, overview, peers, peersLoad, allQuotes 
                     const v = s[key] as number
                     if (key === 'volume') return v > 0 ? v.toLocaleString() : '-'
                     if (key === 'mc')     return fmtMC(v)
-                    if (key === 'roe' || key === 'pb') return '-'
+                    if (key === 'roe')    return v !== 0 ? `${v.toFixed(2)}%` : '-'
+                    if (key === 'pb')     return v !== 0 ? `${v.toFixed(2)}x` : '-'
                     return v !== 0 ? v.toFixed(2) : '-'
                   }
 
@@ -681,15 +777,15 @@ export function StockCompareTab({ symbol, overview, peers, peersLoad, allQuotes 
                   <table className="w-full text-xs">
                     <tbody>
                       {[
-                        { label:'Price',     value: s.price>0 ? `Rs ${s.price.toFixed(2)}` : '-' },
-                        { label:'Volume',    value: s.volume>0 ? s.volume.toLocaleString() : '-' },
-                        { label:'EPS',       value: s.eps!==0 ? s.eps.toFixed(2) : '-' },
-                        { label:'P/E',       value: s.pe>0 ? s.pe.toFixed(1) : '-' },
-                        { label:'DPS',       value: s.dps>0 ? s.dps.toFixed(2) : '-' },
-                        { label:'Div Yield', value: s.divY>0 ? `${s.divY.toFixed(2)}%` : '-' },
+                        { label:'Price',     value: s.price>0  ? `Rs ${s.price.toFixed(2)}`  : '-' },
+                        { label:'Volume',    value: s.volume>0 ? s.volume.toLocaleString()    : '-' },
+                        { label:'EPS',       value: s.eps!==0  ? `Rs ${s.eps.toFixed(2)}`    : '-' },
+                        { label:'P/E',       value: s.pe>0     ? s.pe.toFixed(1)              : '-' },
+                        { label:'Div Yield', value: s.divY>0   ? `${s.divY.toFixed(2)}%`     : '-' },
+                        { label:'ROE',       value: s.roe!==0  ? `${s.roe.toFixed(2)}%`      : '-' },
+                        { label:'P/B',       value: s.pb!==0   ? `${s.pb.toFixed(2)}x`       : '-' },
+                        { label:'D/E',       value: s.de!==0   ? `${s.de.toFixed(2)}x`       : '-' },
                         { label:'Mkt Cap',   value: fmtMC(s.mc) },
-                        { label:'ROE',       value: '-' },
-                        { label:'P/B',       value: '-' },
                       ].map((row,ri,arr) => (
                         <tr key={row.label} style={{ borderBottom: ri<arr.length-1 ? '1px solid var(--bg-border)' : 'none' }}>
                           <td className="py-2 px-3 font-medium" style={{ color:'var(--text-muted)' }}>{row.label}</td>

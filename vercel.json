@@ -1,0 +1,16 @@
+{
+  "crons": [
+    {
+      "path": "/api/sync/financials",
+      "schedule": "0 21 * * *"
+    },
+    {
+      "path": "/api/sync/content",
+      "schedule": "30 21 * * *"
+    },
+    {
+      "path": "/api/sync/live-content",
+      "schedule": "0 * * * *"
+    }
+  ]
+}

@@ -22,7 +22,7 @@ const NAV_ITEMS = [
   { icon: Activity,          label: 'Indices',           href: '/indices'    },
   { icon: Grid2x2,           label: 'Heatmap',          href: '/heatmap'    },
   { icon: SlidersHorizontal, label: 'Screener',         href: '/screener'   },
-  { icon: ArrowUpDown,       label: 'FIPI / LIPI',      href: '/fipi'       },
+  // { icon: ArrowUpDown,       label: 'FIPI / LIPI',      href: '/fipi'       },
   // { icon: Bell,              label: 'Alerts',           href: '/alerts'     },
   // { icon: Calculator,        label: 'Tools',            href: '/tools'      },
   // { icon: BookOpen,          label: 'Reports',          href: '/reports'    },

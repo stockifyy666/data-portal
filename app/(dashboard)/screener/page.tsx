@@ -87,7 +87,7 @@ export default function ScreenerPage() {
   }
 
   useEffect(() => {
-    cachedFetch<{ quotes: StockQuote[] }>('/api/market/quotes')
+    cachedFetch<{ quotes: StockQuote[] }>('/api/market/screener', 60 * 60_000)
       .then(json => { if (json.quotes) setQuotes(json.quotes) })
       .catch(() => {})
       .finally(() => setLoading(false))
@@ -280,7 +280,7 @@ export default function ScreenerPage() {
           </label>
         </div>
         <p className="text-[10px] mt-3" style={{ color: 'var(--text-muted)' }}>
-          P/E = Price ÷ EPS · EPS and DPS sourced from Capital Stake market data
+          P/E = Price ÷ EPS · EPS and DPS sourced from annual fundamentals (Capital Stake)
         </p>
       </div>
 

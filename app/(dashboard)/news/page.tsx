@@ -79,8 +79,25 @@ function NewsCard({ item }: { item: NewsItem }) {
             src={item.image}
             alt={item.title}
             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-            onError={e => { (e.currentTarget.parentElement as HTMLElement).style.display = 'none' }}
+            onError={e => {
+              const img = e.currentTarget
+              img.style.display = 'none'
+              const placeholder = img.parentElement?.querySelector('.img-placeholder') as HTMLElement | null
+              if (placeholder) placeholder.style.display = 'flex'
+            }}
           />
+          {/* shown when image fails to load */}
+          <div
+            className="img-placeholder absolute inset-0 items-end pb-3 px-3"
+            style={{
+              display: 'none',
+              background: 'linear-gradient(135deg,#1a1a2e,#16213e)',
+            }}
+          >
+            <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: 'rgba(255,255,255,.5)' }}>
+              {item.source}
+            </span>
+          </div>
           <span
             className="absolute top-2 left-2 text-[9px] font-semibold px-2 py-0.5 rounded-full"
             style={{ backgroundColor: 'rgba(0,0,0,.55)', color: '#fff', backdropFilter: 'blur(4px)' }}

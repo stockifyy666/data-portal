@@ -51,15 +51,17 @@ export default function StockTicker() {
 
   /* fetch KMI tickers */
   useEffect(() => {
-    async function load() {
+    async function load(bypass = false) {
       try {
-        const json = await cachedFetch<{ tickers: TickerItem[] }>('/api/market/tickers', 5 * 60_000)
+        const json = bypass
+          ? await fetch('/api/market/tickers').then(r => r.json())
+          : await cachedFetch<{ tickers: TickerItem[] }>('/api/market/tickers', 5 * 60_000)
         const list = json?.tickers ?? []
         if (list.length) setItems(list)
       } catch { /* silently ignore */ }
     }
     load()
-    const id = setInterval(load, 5 * 60_000)
+    const id = setInterval(() => load(true), 5 * 60_000)
     return () => clearInterval(id)
   }, [])
 

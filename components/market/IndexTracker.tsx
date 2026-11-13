@@ -54,7 +54,7 @@ export default function IndexTracker() {
         const isUp = index.change >= 0
         return (
           <div key={index.key} className="card" style={{
-              backgroundColor: isUp ? '#dcfce7' : '#fee2e2',
+              backgroundColor: isUp ? 'rgba(22,163,74,0.12)' : 'rgba(220,38,38,0.12)',
               borderColor:     isUp ? 'rgba(22,163,74,0.3)' : 'rgba(220,38,38,0.3)',
               position: 'relative', overflow: 'hidden',
             }}>

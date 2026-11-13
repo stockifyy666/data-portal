@@ -3,6 +3,7 @@ import { csUatGet }                           from '@/lib/capitalstake/client'
 import { CS_ENDPOINTS }                       from '@/lib/capitalstake/endpoints'
 import { withCache, CACHE_KEYS, TTL_SECONDS } from '@/lib/redis/cache'
 import { trackChartAPICall }                  from '@/lib/utils/rateLimit'
+import { PSX_TTL }                            from '@/lib/utils/marketHours'
 import type { RawStock }                      from '@/types/capitalstake'
 
 interface RawTicker {
@@ -26,7 +27,7 @@ export async function GET() {
     const [tickers, stocks] = await Promise.all([
       withCache<RawTicker[]>(
         CACHE_KEYS.tickers(),
-        TTL_SECONDS.TICKERS,
+        PSX_TTL.TICKERS(),
         async () => {
           await trackChartAPICall('GET /3.0/market/tickers')
           const res = await csUatGet<{ status: string; data: RawTicker[] }>(CS_ENDPOINTS.TICKERS)

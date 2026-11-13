@@ -88,7 +88,7 @@ export async function GET(
       '15min': CS_ENDPOINTS.CHART_15MIN(symbol),
       '30min': CS_ENDPOINTS.CHART_30MIN(symbol),
       '1h':    CS_ENDPOINTS.CHART_1H(symbol),
-      'eod':   CS_ENDPOINTS.EOD_ADJUSTED(symbol),
+      'eod':   CS_ENDPOINTS.CHART_1H(symbol),
     }
 
     const ttlMap: Record<Timeframe, number> = {

@@ -108,7 +108,7 @@ export default function CombinedHeatmap() {
   const [quotes,     setQuotes]     = useState<StockQuote[]>([])
   const [loading,    setLoading]    = useState(true)
   const [error,      setError]      = useState('')
-  const [index,      setIndex]      = useState('ALLSHR')
+  const [index,      setIndex]      = useState('KSE100')
   const [containerW, setContainerW] = useState(800)
 
   useEffect(() => {
