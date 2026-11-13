@@ -4,6 +4,7 @@ import { createServerClient } from '@supabase/ssr'
 import { createServiceClient } from '@/lib/supabase/service'
 import RoleSelect              from './RoleSelect'
 import CreateUserModal         from './CreateUserModal'
+import DeleteUserButton        from './DeleteUserButton'
 
 export default async function UsersPage() {
   const cookieStore = await cookies()
@@ -14,6 +15,7 @@ export default async function UsersPage() {
   )
   const { data: { user } } = await supabase.auth.getUser()
   const currentRole = user?.app_metadata?.role as string | undefined
+  const currentId   = user?.id ?? ''
   if (!user || (currentRole !== 'admin' && currentRole !== 'superadmin')) redirect('/dashboard')
 
   const service = createServiceClient()
@@ -57,7 +59,7 @@ export default async function UsersPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--bg-border)' }}>
-                {['Name', 'Email', 'Provider', 'Role', 'Status', 'Last Sign In', 'Joined'].map(h => (
+                {['Name', 'Email', 'Provider', 'Role', 'Status', 'Last Sign In', 'Joined', ''].map(h => (
                   <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: 11, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
@@ -89,10 +91,19 @@ export default async function UsersPage() {
                   <td style={{ padding: '12px 16px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                     {new Date(u.created_at).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </td>
+                  <td style={{ padding: '12px 16px' }}>
+                    <DeleteUserButton
+                      userId={u.id}
+                      userEmail={u.email}
+                      viewerRole={currentRole!}
+                      targetRole={u.role}
+                      viewerId={currentId}
+                    />
+                  </td>
                 </tr>
               ))}
               {users.length === 0 && (
-                <tr><td colSpan={7} style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)' }}>No users found</td></tr>
+                <tr><td colSpan={8} style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)' }}>No users found</td></tr>
               )}
             </tbody>
           </table>
