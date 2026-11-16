@@ -17,8 +17,9 @@ type IndexItem = {
 }
 
 export default function IndexTracker() {
-  const [indices, setIndices] = useState<IndexItem[]>([])
-  const [loading, setLoading] = useState(true)
+  const [indices,  setIndices]  = useState<IndexItem[]>([])
+  const [loading,  setLoading]  = useState(true)
+  const [selected, setSelected] = useState(0)
 
   async function fetchIndices() {
     try {
@@ -50,46 +51,100 @@ export default function IndexTracker() {
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-      {indices.map(index => {
-        const isUp = index.change >= 0
+      {indices.map((index, i) => {
+        const isUp  = index.change >= 0
+        const isSel = i === selected
+        const upClr = '#16a34a'
+        const dnClr = '#dc2626'
+        const tint  = isUp ? upClr : dnClr
+
         return (
-          <div key={index.key} className="card" style={{
-              backgroundColor: isUp ? 'rgba(22,163,74,0.12)' : 'rgba(220,38,38,0.12)',
-              borderColor:     isUp ? 'rgba(22,163,74,0.3)' : 'rgba(220,38,38,0.3)',
+          <div
+            key={index.key}
+            onClick={() => setSelected(i)}
+            style={{
               position: 'relative', overflow: 'hidden',
-            }}>
-            {/* decorative circle */}
+              borderRadius: 14, padding: '14px 16px',
+              cursor: 'pointer',
+              backgroundColor: 'var(--bg-card)',
+              border: isSel
+                ? `1.5px solid #FEA500`
+                : `1px solid var(--bg-border)`,
+              boxShadow: isSel
+                ? '0 0 0 3px rgba(254,165,0,0.18), 0 4px 20px rgba(254,165,0,0.25), 0 2px 8px rgba(0,0,0,0.15)'
+                : `0 0 12px ${tint}22, 0 1px 4px rgba(0,0,0,0.06)`,
+              transition: 'transform .2s ease, box-shadow .2s ease, border-color .2s ease',
+            }}
+            onMouseEnter={e => {
+              const el = e.currentTarget as HTMLDivElement
+              el.style.transform = 'translateY(-4px)'
+              if (!isSel) el.style.boxShadow = `0 8px 28px rgba(0,0,0,0.18), 0 0 20px ${tint}44`
+            }}
+            onMouseLeave={e => {
+              const el = e.currentTarget as HTMLDivElement
+              el.style.transform = 'translateY(0)'
+              el.style.boxShadow = isSel
+                ? '0 0 0 3px rgba(254,165,0,0.18), 0 4px 20px rgba(254,165,0,0.25), 0 2px 8px rgba(0,0,0,0.15)'
+                : `0 0 12px ${tint}22, 0 1px 4px rgba(0,0,0,0.06)`
+            }}
+          >
+            {/* colored top accent bar */}
             <div style={{
-              position: 'absolute', top: -18, right: -18,
-              width: 80, height: 80, borderRadius: '50%',
-              backgroundColor: isUp ? 'rgba(22,163,74,0.15)' : 'rgba(220,38,38,0.12)',
+              position: 'absolute', top: 0, left: 0, right: 0,
+              height: 3, borderRadius: '14px 14px 0 0',
+              background: isSel
+                ? 'linear-gradient(90deg, #FEA500, #f59e0b)'
+                : `linear-gradient(90deg, ${tint}, ${tint}80)`,
               pointerEvents: 'none',
             }} />
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-semibold uppercase tracking-wide"
-                    style={{ color: isUp ? '#15803d' : '#b91c1c' }}>
+
+            {/* bg tint */}
+            <div style={{
+              position: 'absolute', inset: 0,
+              background: isSel
+                ? 'radial-gradient(ellipse at top right, rgba(254,165,0,0.06) 0%, transparent 65%)'
+                : `radial-gradient(ellipse at top right, ${tint}10 0%, transparent 65%)`,
+              pointerEvents: 'none',
+            }} />
+
+            {/* header row */}
+            <div className="flex items-center justify-between mb-2" style={{ position:'relative' }}>
+              <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: '#ffffff', opacity: 1 }}>
                 {index.label}
               </span>
-              {isUp
-                ? <TrendingUp  size={13} style={{ color: '#16a34a' }} className="shrink-0" />
-                : <TrendingDown size={13} style={{ color: '#dc2626' }} className="shrink-0" />
-              }
+              <span style={{ display:'flex', alignItems:'center', gap:3, fontSize:9, fontWeight:600, color:'#16a34a' }}>
+                <span style={{ width:5, height:5, borderRadius:'50%', backgroundColor:'#16a34a', display:'inline-block', boxShadow:'0 0 4px #16a34a' }}/>
+                LIVE
+              </span>
             </div>
 
-            <p className="text-lg font-bold font-number leading-tight"
-               style={{ color: isUp ? '#15803d' : '#b91c1c' }}>
+            {/* value */}
+            <p style={{ position:'relative', fontSize: 21, fontWeight: 800, color: '#ffffff', lineHeight: 1, fontVariantNumeric: 'tabular-nums', marginBottom: 7, textShadow: '0 1px 8px rgba(255,255,255,0.15)' }}>
               {index.current > 0 ? formatPrice(index.current, 2) : '—'}
             </p>
 
-            <p className="text-xs font-number font-semibold mt-1"
-               style={{ color: isUp ? '#16a34a' : '#dc2626' }}>
-              {index.change !== 0 ? formatChange(index.change) : '—'}
-              {index.changePct !== 0 && (
-                <span className="font-normal ml-1 opacity-80">
-                  ({formatPercent(index.changePct / 100)})
-                </span>
-              )}
-            </p>
+            {/* change row */}
+            <div className="flex items-center gap-1" style={{ position:'relative' }}>
+              <span style={{
+                display:'inline-flex', alignItems:'center', justifyContent:'center',
+                width: 16, height: 16, borderRadius: 4,
+                backgroundColor: `${tint}20`,
+                flexShrink: 0,
+              }}>
+                {isUp
+                  ? <TrendingUp  size={10} style={{ color: upClr }} />
+                  : <TrendingDown size={10} style={{ color: dnClr }} />
+                }
+              </span>
+              <span style={{ fontSize: 12, fontWeight: 800, color: tint, fontVariantNumeric: 'tabular-nums' }}>
+                {index.change !== 0 ? formatChange(index.change) : '—'}
+                {index.changePct !== 0 && (
+                  <span style={{ fontWeight: 700, opacity: 1 }}>
+                    {' '}({formatPercent(index.changePct / 100)})
+                  </span>
+                )}
+              </span>
+            </div>
           </div>
         )
       })}

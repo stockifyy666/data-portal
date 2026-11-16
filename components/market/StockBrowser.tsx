@@ -245,7 +245,7 @@ export default function StockBrowser() {
                     style={{ borderBottom: '1px solid var(--bg-border)' }}
                     onMouseDown={e => e.preventDefault()}>
                     <div className="flex items-center gap-3">
-                      <SymbolLogo symbol={s.symbol} size={28} />
+                      <SymbolLogo symbol={s.symbol} size={36} />
                       <div>
                         <div className="flex items-center gap-1">
                           <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{s.symbol}</p>
@@ -347,7 +347,7 @@ export default function StockBrowser() {
                 >
                   <td className="py-2 px-2">
                     <div className="flex items-center gap-2">
-                      <SymbolLogo symbol={s.symbol} size={24} />
+                      <SymbolLogo symbol={s.symbol} size={34} />
                       <div className="flex items-center gap-1">
                         <Link href={`/stocks/${s.symbol}`}
                               prefetch={false}

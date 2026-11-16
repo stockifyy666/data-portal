@@ -49,7 +49,7 @@ export default async function UsersPage() {
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>User Management</h1>
-          <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>{users.length} {users.length === 1 ? 'user' : 'users'} registered</p>
+          <p style={{ fontSize: 13, color: 'var(--text-subtitle)', marginTop: 4 }}>{users.length} {users.length === 1 ? 'user' : 'users'} registered</p>
         </div>
         <CreateUserModal viewerRole={currentRole!} />
       </div>

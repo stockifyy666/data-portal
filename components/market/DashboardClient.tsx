@@ -7,6 +7,7 @@ import { formatPrice, formatChange, formatPercent, formatVolume, getChangeColor 
 import { cachedFetch } from '@/lib/utils/clientCache'
 import type { StockQuote } from '@/types/market'
 import KMIBadge, { isKMI } from '@/components/ui/KMIBadge'
+import { useTheme } from '@/components/providers/ThemeProvider'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -73,6 +74,8 @@ function IndexChart({ symbol }: { symbol: string }) {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function DashboardClient() {
+  const { theme } = useTheme()
+  const isDark = theme === 'dark'
   const [selectedIdx, setSelectedIdx] = useState(0)
   const [indices,     setIndices]     = useState<IndexItem[]>([])
   const [quotes,      setQuotes]      = useState<StockQuote[]>([])
@@ -164,8 +167,8 @@ export default function DashboardClient() {
           const idx  = INDICES[selectedIdx]
           const data = indexData(idx.key)
           const isUp = data ? data.change > 0 : null
-          const bgColor  = isUp === true ? 'rgba(22,163,74,0.12)' : isUp === false ? 'rgba(220,38,38,0.12)' : 'var(--bg-card)'
-          const bdrColor = isUp === true ? 'rgba(22,163,74,0.35)' : isUp === false ? 'rgba(220,38,38,0.35)' : 'var(--bg-border)'
+          const bgColor  = isDark ? (isUp === true ? 'rgba(22,163,74,0.12)' : isUp === false ? 'rgba(220,38,38,0.12)' : 'var(--bg-card)') : 'var(--bg-card)'
+          const bdrColor = isDark ? (isUp === true ? 'rgba(22,163,74,0.35)' : isUp === false ? 'rgba(220,38,38,0.35)' : 'var(--bg-border)') : 'var(--bg-border)'
           return (
             <div className="rounded-xl overflow-hidden"
               style={{ backgroundColor: bgColor, border: `2px solid #FEA500`, boxShadow: '0 0 0 3px rgba(254,165,0,0.12)', position: 'relative' }}>
@@ -188,7 +191,7 @@ export default function DashboardClient() {
                       {idx.label}
                     </span>
                     {!indLoading && (isUp
-                      ? <TrendingUp  size={12} className="text-green-600" />
+                      ? <TrendingUp  size={12} className="text-green-800" />
                       : <TrendingDown size={12} className="text-red-500" />
                     )}
                   </div>
@@ -199,7 +202,7 @@ export default function DashboardClient() {
                     </div>
                   ) : data ? (
                     <>
-                      <p className="text-xl font-bold font-number" style={{ color: isUp ? '#15803d' : '#b91c1c' }}>
+                      <p className="text-xl font-bold font-number" style={{ color: 'var(--text-primary)', letterSpacing: '0.03em' }}>
                         {formatPrice(data.current, 2)}
                       </p>
                       <p className={`text-xs font-number font-semibold mt-0.5 ${isUp ? 'text-green-600' : 'text-red-500'}`}>
@@ -237,32 +240,61 @@ export default function DashboardClient() {
           const data   = indexData(idx.key)
           const active = selectedIdx === i
           const isUp   = data ? data.change > 0 : null
-          const bgColor  = isUp === true ? 'rgba(22,163,74,0.12)' : isUp === false ? 'rgba(220,38,38,0.12)' : 'var(--bg-card)'
-          const bdrColor = isUp === true ? 'rgba(22,163,74,0.35)' : isUp === false ? 'rgba(220,38,38,0.35)' : 'var(--bg-border)'
+          const bgColor  = isDark ? (isUp === true ? 'rgba(22,163,74,0.12)' : isUp === false ? 'rgba(220,38,38,0.12)' : 'var(--bg-card)') : 'var(--bg-card)'
+          const bdrColor = isDark ? (isUp === true ? 'rgba(22,163,74,0.35)' : isUp === false ? 'rgba(220,38,38,0.35)' : 'var(--bg-border)') : 'var(--bg-border)'
+          const glowClr  = 'transparent'
 
           return (
             <button key={idx.key} onClick={() => setSelectedIdx(i)}
-              className="card text-left transition-all cursor-pointer"
-              style={active ? {
-                backgroundColor: bgColor, border: '2px solid #FEA500',
-                boxShadow: '0 0 0 3px rgba(254,165,0,0.15)', position: 'relative', overflow: 'hidden',
-              } : {
-                backgroundColor: bgColor, border: `1px solid ${bdrColor}`,
+              className="card text-left cursor-pointer"
+              style={{
+                ...(active ? {
+                  backgroundColor: bgColor, border: '2px solid #FEA500',
+                  boxShadow: '0 0 0 3px rgba(254,165,0,0.18), 0 8px 32px rgba(254,165,0,0.2), 0 4px 16px rgba(0,0,0,0.2)',
+                } : {
+                  backgroundColor: bgColor, border: `1px solid ${bdrColor}`,
+                  boxShadow: `0 4px 12px rgba(0,0,0,0.1)`,
+                }),
                 position: 'relative', overflow: 'hidden',
-              }}>
-              {isUp !== null && (
-                <div style={{ position: 'absolute', top: -16, right: -16, width: 72, height: 72,
-                  borderRadius: '50%', backgroundColor: isUp ? 'rgba(22,163,74,0.15)' : 'rgba(220,38,38,0.12)',
+                transformStyle: 'preserve-3d',
+                transition: 'box-shadow .2s ease, border-color .2s ease',
+                willChange: 'transform',
+              }}
+              onMouseMove={e => {
+                const el = e.currentTarget
+                const r  = el.getBoundingClientRect()
+                const x  = (e.clientX - r.left) / r.width  - 0.5
+                const y  = (e.clientY - r.top)  / r.height - 0.5
+                el.style.transform = `perspective(600px) rotateY(${x * 14}deg) rotateX(${-y * 14}deg) scale3d(1.04,1.04,1.04)`
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.transform = 'perspective(600px) rotateY(0deg) rotateX(0deg) scale3d(1,1,1)'
+              }}
+            >
+              {/* shimmer layer — dark mode only */}
+              {isDark && <div style={{
+                position: 'absolute', inset: 0, borderRadius: 'inherit', pointerEvents: 'none',
+                background: 'linear-gradient(135deg, rgba(255,255,255,0.08) 0%, transparent 60%)',
+                zIndex: 1,
+              }} />}
+
+              {isDark && isUp !== null && (
+                <div style={{ position: 'absolute', top: -16, right: -16, width: 90, height: 90,
+                  borderRadius: '50%',
+                  background: isUp ? 'radial-gradient(circle, rgba(22,163,74,0.25) 0%, transparent 70%)' : 'radial-gradient(circle, rgba(220,38,38,0.2) 0%, transparent 70%)',
                   pointerEvents: 'none' }} />
               )}
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-bold uppercase tracking-wide"
-                      style={{ color: active ? '#FEA500' : 'var(--text-muted)' }}>{idx.label}</span>
-                {indLoading
-                  ? <div className="w-3 h-3 rounded animate-pulse" style={{ backgroundColor: 'var(--bg-border)' }} />
-                  : isUp ? <TrendingUp size={13} className="text-green-600 shrink-0" />
-                         : <TrendingDown size={13} className="text-red-500 shrink-0" />}
+              {/* header */}
+              <div className="flex items-center justify-between" style={{ marginBottom: 6 }}>
+                <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', color: active ? '#FEA500' : 'var(--text-primary)' }}>
+                  {idx.label}
+                </span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 9, fontWeight: 700, color: '#16a34a' }}>
+                  <span style={{ width: 5, height: 5, borderRadius: '50%', backgroundColor: '#22c55e', flexShrink: 0 }} />
+                  LIVE
+                </span>
               </div>
+
               {indLoading ? (
                 <>
                   <div className="h-5 w-20 rounded animate-pulse mb-1" style={{ backgroundColor: 'var(--bg-border)' }} />
@@ -270,12 +302,14 @@ export default function DashboardClient() {
                 </>
               ) : data ? (
                 <>
-                  <p className="text-lg font-bold font-number leading-tight" style={{ color: isUp ? '#15803d' : '#b91c1c' }}>
+                  <p className="font-number" style={{ color: 'var(--text-primary)', fontWeight: 700, fontSize: 20, letterSpacing: '0.02em', lineHeight: 1, marginBottom: 6 }}>
                     {formatPrice(data.current, 2)}
                   </p>
-                  <p className={`text-xs font-number font-semibold mt-0.5 ${isUp ? 'text-green-600' : 'text-red-500'}`}>
-                    {formatChange(data.change)} <span className="font-normal opacity-80">({formatPercent(data.changePct / 100)})</span>
-                  </p>
+                  <span style={{ fontSize: 11, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 3, color: isUp ? '#16a34a' : '#dc2626' }}>
+                    {isUp ? <TrendingUp size={10}/> : <TrendingDown size={10}/>}
+                    {formatChange(data.change)}
+                    <span style={{ fontWeight: 500, opacity: 0.85 }}>({formatPercent(data.changePct / 100)})</span>
+                  </span>
                 </>
               ) : <p className="text-xs" style={{ color: 'var(--text-muted)' }}>—</p>}
             </button>

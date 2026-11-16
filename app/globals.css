@@ -11,7 +11,8 @@
   --bg-hover:       #f8fafc;
   --text-primary:   #0f172a;
   --text-secondary: #475569;
-  --text-muted:     #94a3b8;
+  --text-muted:     #6b7280;
+  --text-subtitle:  #6b7280;
   --color-up:       #16a34a;
   --color-down:     #dc2626;
   --brand:          #FEA500;
@@ -28,6 +29,7 @@
   --text-primary:   #e2e8f0;
   --text-secondary: #94a3b8;
   --text-muted:     #475569;
+  --text-subtitle:  #9ca3af;
   --color-up:       #22c55e;
   --color-down:     #ef4444;
   --brand:          #FEA500;
@@ -70,8 +72,9 @@
 
 /* ── Utility Classes ─────────────────────────────────────────────── */
 @layer utilities {
-  .text-up   { color: var(--color-up); }
-  .text-down { color: var(--color-down); }
+  .text-up       { color: var(--color-up); }
+  .text-down     { color: var(--color-down); }
+  .text-subtitle { color: var(--text-subtitle); }
 
   .card {
     background-color: var(--bg-card);

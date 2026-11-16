@@ -25,13 +25,17 @@ function labelFor(endpoint: string): string {
 export async function trackChartAPICall(endpoint: string): Promise<number> {
   try {
     const label = labelFor(endpoint)
-    const [count] = await Promise.all([
-      redis.incr(UAT_KEY),
-      redis.hincrby(UAT_ENDPOINTS_KEY, label, 1),
-    ])
-    if (count === 1) await redis.expire(UAT_KEY, DAY_SECONDS)
-    // Keep endpoints hash TTL in sync
-    await redis.expire(UAT_ENDPOINTS_KEY, DAY_SECONDS)
+    const count = await redis.incr(UAT_KEY)
+
+    if (count === 1) {
+      // New 24h window — reset stale endpoint stats and set TTLs together
+      await redis.expire(UAT_KEY, DAY_SECONDS)
+      await redis.del(UAT_ENDPOINTS_KEY)
+      await redis.hset(UAT_ENDPOINTS_KEY, { [label]: 1 })
+      await redis.expire(UAT_ENDPOINTS_KEY, DAY_SECONDS)
+    } else {
+      await redis.hincrby(UAT_ENDPOINTS_KEY, label, 1)
+    }
 
     console.log(`[CS UAT] Call #${count}/${UAT_MAX_PER_DAY} today → ${endpoint}`)
 

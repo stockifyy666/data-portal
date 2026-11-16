@@ -14,12 +14,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="flex flex-col h-screen overflow-hidden" style={{ backgroundColor: 'var(--bg-page)' }}>
 
-      {/* ── Top bar: logo (desktop) + ticker ─────────────────────────────── */}
+      {/* ── Top bar ─────────────────────────────────────────────────────── */}
       <header
         className="flex shrink-0 sticky top-0 z-40 border-b"
-        style={{ borderColor: 'var(--bg-border)', height: 48 }}
+        style={{ borderColor: 'var(--bg-border)', height: 56 }}
       >
-        {/* Logo cell — matches sidebar width on desktop */}
+        {/* Logo cell — desktop sidebar width */}
         <div
           className="hidden md:flex w-56 shrink-0 items-center px-4 border-r"
           style={{ backgroundColor: 'var(--bg-sidebar)', borderColor: 'var(--bg-border)' }}
@@ -29,21 +29,34 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </Link>
         </div>
 
-        {/* Mobile hamburger cell */}
+        {/* Mobile: hamburger + centered logo */}
         <div
-          className="flex md:hidden items-center px-4"
+          className="flex md:hidden items-center px-4 relative w-full"
           style={{ backgroundColor: 'var(--bg-sidebar)' }}
         >
           <button onClick={() => setOpen(true)} className="p-1 rounded" style={{ color: 'var(--text-primary)' }}>
             <Menu size={22} />
           </button>
+          <div className="absolute left-1/2 -translate-x-1/2">
+            <Link href="/dashboard">
+              <Image src={logo} alt="Stockifyy" width={150} height={150} />
+            </Link>
+          </div>
         </div>
 
-        {/* Ticker — fills remaining width */}
-        <div className="flex-1 overflow-hidden">
+        {/* Ticker — desktop only */}
+        <div className="hidden md:flex flex-1 overflow-hidden">
           <StockTicker />
         </div>
       </header>
+
+      {/* Mobile ticker bar — below navbar */}
+      <div
+        className="md:hidden shrink-0 overflow-hidden"
+        style={{ height: 44, borderBottom: '1px solid var(--bg-border)', backgroundColor: 'var(--bg-sidebar)' }}
+      >
+        <StockTicker />
+      </div>
 
       {/* ── Below header: sidebar + main ─────────────────────────────────── */}
       <div className="flex flex-1 overflow-hidden">
@@ -71,10 +84,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             {children}
           </div>
 
-          {/* Capital Stake attribution — required by data agreement */}
-          <div className="w-full px-4 py-2 flex items-center gap-2"
-               style={{ borderTop: '1px solid var(--bg-border)' }}>
-            <span style={{ fontSize: 11, color: 'var(--text-muted)', letterSpacing: '0.01em' }}>
+          {/* Footer — attribution + disclaimer */}
+          <div className="w-full px-4 pt-3 pb-4" style={{ borderTop: '1px solid var(--bg-border)' }}>
+
+            {/* Attribution row */}
+            <p style={{ fontSize: 11, color: 'var(--text-muted)', letterSpacing: '0.01em', marginBottom: 10 }}>
               Market data provided by{' '}
               <a
                 href="https://capitalstake.com"
@@ -85,7 +99,26 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 Capital Stake
               </a>
               . Data is for informational purposes only.
-            </span>
+            </p>
+
+            {/* Disclaimer */}
+            <div style={{ borderTop: '1px solid var(--bg-border)', paddingTop: 10 }}>
+              <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>
+                Disclaimer
+              </p>
+              <p style={{ fontSize: 10, color: 'var(--text-muted)', lineHeight: 1.7 }}>
+                Stockifyy (Pvt.) Ltd. reserves the right to determine the criteria under which users may access its platform and services.
+                Stockifyy and its owners/affiliates shall not be liable for any damages arising from performance failures, errors, omissions,
+                interruptions, delays, computer viruses, communication failures, or unauthorized access to user accounts.
+                Users are solely responsible for maintaining the confidentiality of their credentials; Stockifyy is not responsible for any
+                loss or misuse resulting from compromised passwords. All content, data, and analysis presented on this platform represent
+                informational views only and should not be construed as investment advice. Users are advised to exercise independent judgment
+                when making investment decisions — investments discussed may not be suitable for all investors. Stockifyy does not warrant the
+                timeliness, accuracy, or completeness of data, nor does it guarantee any specific investment outcome, profit, or protection from loss.
+                Stockifyy reserves the right to suspend or terminate accounts of users who violate its terms of service or proprietary rights,
+                in addition to pursuing any necessary legal remedies.
+              </p>
+            </div>
           </div>
         </main>
       </div>

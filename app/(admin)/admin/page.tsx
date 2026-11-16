@@ -44,7 +44,7 @@ export default async function AdminDashboardPage() {
 
       <div>
         <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Overview</h1>
-        <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>Welcome back. Here's what's happening on Stockifyy.</p>
+        <p style={{ fontSize: 13, color: 'var(--text-subtitle)', marginTop: 4 }}>Welcome back. Here's what's happening on Stockifyy.</p>
       </div>
 
       {/* Stats */}

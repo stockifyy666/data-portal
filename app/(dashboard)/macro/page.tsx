@@ -2,6 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  ResponsiveContainer, Cell,
+} from 'recharts'
+import {
   DollarSign, Percent, Droplets, TrendingUp, TrendingDown,
   AlertCircle, Calendar, Shield, Building2, ArrowLeftRight,
   RefreshCw, Globe, Info,
@@ -55,24 +59,24 @@ const RESERVES_DATA = [
 ]
 
 const CPEC_STOCKS = [
-  { symbol: 'HUBC',  name: 'Hub Power Co.',          sector: 'Power',       exposure: 'High',   note: 'CPEC power projects' },
-  { symbol: 'NCPL',  name: 'Nishat Chunian Power',   sector: 'Power',       exposure: 'High',   note: 'Under CPEC framework' },
-  { symbol: 'LUCK',  name: 'Lucky Cement',            sector: 'Cement',      exposure: 'High',   note: 'CPEC infrastructure demand' },
-  { symbol: 'PIOC',  name: 'Pioneer Cement',          sector: 'Cement',      exposure: 'High',   note: 'Infrastructure projects' },
-  { symbol: 'CHCC',  name: 'Cherat Cement',           sector: 'Cement',      exposure: 'Medium', note: 'Construction demand' },
-  { symbol: 'FFBL',  name: 'Fauji Fertilizer Bin Q.',sector: 'Fertilizer',  exposure: 'Medium', note: 'Agricultural development' },
-  { symbol: 'NRSL',  name: 'Nishat Ruby Ltd.',        sector: 'Textile',     exposure: 'Low',    note: 'Export corridor benefit' },
-  { symbol: 'PKGS',  name: 'Packages Ltd.',           sector: 'Paper',       exposure: 'Low',    note: 'Industrial growth' },
+  { symbol: 'HUBC',  name: 'Hub Power Co.',          sector: 'Power',       exposure: 'High',   shariah: true,  note: 'CPEC power projects' },
+  { symbol: 'NCPL',  name: 'Nishat Chunian Power',   sector: 'Power',       exposure: 'High',   shariah: false, note: 'Under CPEC framework' },
+  { symbol: 'LUCK',  name: 'Lucky Cement',            sector: 'Cement',      exposure: 'High',   shariah: true,  note: 'CPEC infrastructure demand' },
+  { symbol: 'PIOC',  name: 'Pioneer Cement',          sector: 'Cement',      exposure: 'High',   shariah: true,  note: 'Infrastructure projects' },
+  { symbol: 'CHCC',  name: 'Cherat Cement',           sector: 'Cement',      exposure: 'Medium', shariah: true,  note: 'Construction demand' },
+  { symbol: 'FFBL',  name: 'Fauji Fertilizer Bin Q.',sector: 'Fertilizer',  exposure: 'Medium', shariah: true,  note: 'Agricultural development' },
+  { symbol: 'NRSL',  name: 'Nishat Ruby Ltd.',        sector: 'Textile',     exposure: 'Low',    shariah: false, note: 'Export corridor benefit' },
+  { symbol: 'PKGS',  name: 'Packages Ltd.',           sector: 'Paper',       exposure: 'Low',    shariah: true,  note: 'Industrial growth' },
 ]
 
 const PKR_IMPACT = [
-  { symbol: 'ENGRO', type: 'Exporter',  impact5pct: '+3.2%', note: 'Revenue in USD' },
-  { symbol: 'LUCK',  type: 'Exporter',  impact5pct: '+2.8%', note: 'Export earnings' },
-  { symbol: 'TGL',   type: 'Exporter',  impact5pct: '+2.1%', note: 'Glass exports' },
-  { symbol: 'PSO',   type: 'Importer',  impact5pct: '-4.1%', note: 'Oil import costs rise' },
-  { symbol: 'HCAR',  type: 'Importer',  impact5pct: '-3.6%', note: 'CKD parts imported' },
-  { symbol: 'ICI',   type: 'Importer',  impact5pct: '-2.9%', note: 'Raw material imports' },
-  { symbol: 'ATRL',  type: 'Importer',  impact5pct: '-2.4%', note: 'Crude oil input' },
+  { symbol: 'ENGRO', type: 'Exporter',  shariah: true,  impact5pct: '+3.2%', note: 'Revenue in USD' },
+  { symbol: 'LUCK',  type: 'Exporter',  shariah: true,  impact5pct: '+2.8%', note: 'Export earnings' },
+  { symbol: 'TGL',   type: 'Exporter',  shariah: true,  impact5pct: '+2.1%', note: 'Glass exports' },
+  { symbol: 'PSO',   type: 'Importer',  shariah: true,  impact5pct: '-4.1%', note: 'Oil import costs rise' },
+  { symbol: 'HCAR',  type: 'Importer',  shariah: true,  impact5pct: '-3.6%', note: 'CKD parts imported' },
+  { symbol: 'ICI',   type: 'Importer',  shariah: true,  impact5pct: '-2.9%', note: 'Raw material imports' },
+  { symbol: 'ATRL',  type: 'Importer',  shariah: true,  impact5pct: '-2.4%', note: 'Crude oil input' },
 ]
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -143,7 +147,7 @@ function KpiCard({ id, d, loading }: { id: string; d: { value: number; change: n
       <div className="flex sm:hidden items-center justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '.05em' }}>
+            <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '.05em' }}>
               {d.label}
             </span>
             {isLive && (
@@ -167,7 +171,7 @@ function KpiCard({ id, d, loading }: { id: string; d: { value: number; change: n
 
       {/* Desktop: vertical layout */}
       <div className="hidden sm:flex items-center justify-between">
-        <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '.05em' }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '.05em' }}>
           {d.label}
         </span>
         {isLive && (
@@ -180,7 +184,7 @@ function KpiCard({ id, d, loading }: { id: string; d: { value: number; change: n
           </span>
         )}
       </div>
-      <p className="hidden sm:block" style={{ fontSize: 28, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
+      <p className="hidden sm:block" style={{ fontSize: 24, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
         {formatVal(id, d.value)}
       </p>
       <div className="hidden sm:block" style={{ marginTop: 2 }}>
@@ -204,18 +208,18 @@ function Section({ title, subtitle, icon: Icon, children }: {
   return (
     <div className="rounded-2xl overflow-hidden"
       style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--bg-border)' }}>
-      <div className="px-5 py-4 flex items-center gap-3"
+      <div className="px-4 py-3 sm:px-5 sm:py-4 flex items-center gap-3"
         style={{ borderBottom: '1px solid var(--bg-border)' }}>
-        <div className="w-8 h-8 rounded-xl flex items-center justify-center"
+        <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
           style={{ background: 'linear-gradient(135deg,#FEA500,#986300)' }}>
           <Icon size={14} className="text-white" />
         </div>
-        <div>
-          <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{title}</p>
-          <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{subtitle}</p>
+        <div className="min-w-0">
+          <p className="text-sm font-bold truncate" style={{ color: 'var(--text-primary)' }}>{title}</p>
+          <p className="text-[11px] truncate" style={{ color: 'var(--text-subtitle)' }}>{subtitle}</p>
         </div>
       </div>
-      <div className="p-5">{children}</div>
+      <div className="p-3 sm:p-5">{children}</div>
     </div>
   )
 }
@@ -237,10 +241,10 @@ function ReservesBar({ data }: { data: typeof RESERVES_DATA }) {
               style={{ backgroundColor: 'var(--bg-hover)' }}>
               {/* total bar */}
               <div className="absolute left-0 top-0 h-full rounded-md"
-                style={{ width: `${totW}%`, backgroundColor: '#3b82f620' }} />
+                style={{ width: `${totW}%`, backgroundColor: 'var(--bg-hover)' }} />
               {/* sbp bar */}
               <div className="absolute left-0 top-0 h-full rounded-md transition-all"
-                style={{ width: `${sbpW}%`, backgroundColor: isLast ? '#FEA500' : '#3b82f6' }} />
+                style={{ width: `${sbpW}%`, backgroundColor: isLast ? '#FEA500' : 'var(--text-secondary)' }} />
             </div>
             <span className="text-[10px] w-16 text-right font-number font-semibold"
               style={{ color: isLast ? '#FEA500' : 'var(--text-primary)' }}>
@@ -251,11 +255,11 @@ function ReservesBar({ data }: { data: typeof RESERVES_DATA }) {
       })}
       <div className="flex items-center gap-4 mt-3 pt-3" style={{ borderTop: '1px solid var(--bg-border)' }}>
         <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#3b82f6' }}/>
+          <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: 'var(--text-secondary)' }}/>
           <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>SBP Reserves</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#3b82f620', border: '1px solid #3b82f6' }}/>
+          <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: 'var(--bg-hover)', border: '1px solid var(--bg-border)' }}/>
           <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Total (SBP + Banks)</span>
         </div>
       </div>
@@ -419,10 +423,10 @@ export default function MacroDashboard() {
         style={{ backgroundColor: '#f59e0b12', border: '1px solid #f59e0b40' }}>
         <AlertCircle size={18} style={{ color: '#d97706', flexShrink: 0 }} />
         <div className="flex-1">
-          <p className="text-sm font-bold" style={{ color: '#92400e' }}>
+          <p className="text-sm font-bold" style={{ color: '#d97706' }}>
             IMF 7th Tranche Review In Progress — $1.3B Expected Sep 2026
           </p>
-          <p className="text-[11px] mt-0.5" style={{ color: '#b45309' }}>
+          <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-secondary)' }}>
             Banking, Cement, and Fertilizer stocks historically rally on tranche approvals.
             SBP reserves at $17.1B (Aug 2026) — highest since 2022, supported by IMF tranches.
           </p>
@@ -430,21 +434,21 @@ export default function MacroDashboard() {
       </div>
 
       {/* 2-col grid */}
-      <div className="grid grid-cols-1 gap-5">
+      <div className="grid grid-cols-1 gap-4 sm:gap-5">
 
         {/* ── IMF Program Tracker ─────────────────────────────────────────── */}
         <Section title="IMF Program Tracker" subtitle="Extended Fund Facility (EFF) · $7.0B · 2023–2027" icon={Shield}>
 
           {/* ── 4 KPI stats ── */}
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))', gap:1, marginBottom:20, borderRadius:12, overflow:'hidden', border:'1px solid var(--bg-border)' }}>
+          <div className="grid grid-cols-1 min-[380px]:grid-cols-2 lg:grid-cols-4" style={{ gap:10, marginBottom:20 }}>
             {[
               { label:'Total Program', value:'$7.0B',   sub:'EFF commitment',   color:'var(--text-primary)' },
               { label:'Disbursed',     value:'$6.5B',   sub:'6 of 8 tranches',  color:'#16a34a' },
               { label:'Remaining',     value:'$0.5B',   sub:'2 tranches left',  color:'#f59e0b' },
               { label:'Program End',   value:'Mar 2027', sub:'~16 months away', color:'var(--text-secondary)' },
-            ].map((k, i, arr) => (
-              <div key={k.label} style={{ padding:'16px 18px', backgroundColor:'var(--bg-hover)', borderRight: i < arr.length-1 ? '1px solid var(--bg-border)' : 'none' }}>
-                <p style={{ fontSize:10, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.07em', marginBottom:8 }}>{k.label}</p>
+            ].map((k) => (
+              <div key={k.label} className="card" style={{ padding:'16px 18px' }}>
+                <p style={{ fontSize:10, fontWeight:700, color:'var(--text-primary)', textTransform:'uppercase', letterSpacing:'.07em', marginBottom:8 }}>{k.label}</p>
                 <p style={{ fontSize:22, fontWeight:800, color:k.color, lineHeight:1, fontVariantNumeric:'tabular-nums' }}>{k.value}</p>
                 <p style={{ fontSize:10, color:'var(--text-muted)', marginTop:5 }}>{k.sub}</p>
               </div>
@@ -471,7 +475,7 @@ export default function MacroDashboard() {
           {/* ── Tranche timeline ── */}
           <div style={{ borderTop:'1px solid var(--bg-border)', paddingTop:16 }}>
             <p style={{ fontSize:11, fontWeight:600, color:'var(--text-secondary)', marginBottom:12, textTransform:'uppercase', letterSpacing:'.06em' }}>Tranche Timeline</p>
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(8,1fr)', gap:6 }}>
+            <div className="grid grid-cols-2 min-[480px]:grid-cols-4 xl:grid-cols-8" style={{ gap:6, gridAutoRows:'1fr' }}>
               {IMF_TRANCHES.map((t, i) => {
                 const received = t.status === 'received'
                 const isNext   = t.status === 'upcoming'
@@ -479,18 +483,18 @@ export default function MacroDashboard() {
                 const amtC     = received ? '#16a34a' : isNext ? '#f59e0b' : 'var(--text-muted)'
                 const dotColor = received ? '#16a34a' : isNext ? '#f59e0b' : 'var(--bg-border)'
                 return (
-                  <div key={i} style={{ opacity: isFuture ? .45 : 1 }}>
+                  <div key={i} style={{ opacity: isFuture ? .45 : 1, display:'flex', flexDirection:'column' }}>
                     {/* Connector line */}
                     <div style={{ display:'flex', alignItems:'center', marginBottom:8 }}>
                       <div style={{ width:12, height:12, borderRadius:'50%', backgroundColor: dotColor, flexShrink:0, border: isFuture ? '2px solid var(--bg-border)' : 'none', boxSizing:'border-box' }}/>
                       {i < 7 && <div style={{ flex:1, height:1, backgroundColor:'var(--bg-border)' }}/>}
                     </div>
                     {/* Card */}
-                    <div style={{ padding:'10px 10px 10px', borderRadius:10, backgroundColor:'var(--bg-hover)', border:'1px solid var(--bg-border)' }}>
+                    <div className="macro-card" style={{ padding:'10px', borderRadius:10, backgroundColor:'var(--bg-hover)', border:'1px solid var(--bg-border)', flex:1, display:'flex', flexDirection:'column' }}>
                       <p style={{ fontSize:9, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:5 }}>{t.tranche}</p>
                       <p style={{ fontSize:14, fontWeight:800, color:amtC, fontVariantNumeric:'tabular-nums', lineHeight:1, marginBottom:4 }}>{t.amount}</p>
                       <p style={{ fontSize:9, color: isNext ? '#f59e0b' : 'var(--text-muted)', fontWeight: isNext ? 700 : 400, marginBottom:4 }}>{t.date}</p>
-                      <p style={{ fontSize:8.5, color:'var(--text-muted)', lineHeight:1.4 }}>{t.note}</p>
+                      <p style={{ fontSize:8.5, color:'var(--text-muted)', lineHeight:1.4, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>{t.note}</p>
                     </div>
                   </div>
                 )
@@ -507,140 +511,65 @@ export default function MacroDashboard() {
         <Section title="SBP Policy Rate History" subtitle="Monetary Policy Committee · Jul 2025 – present" icon={Calendar}>
 
           {/* ── Stats strip ── */}
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(120px,1fr))', gap:1, marginBottom:20, borderRadius:12, overflow:'hidden', border:'1px solid var(--bg-border)' }}>
+          <div className="grid grid-cols-1 min-[380px]:grid-cols-2 lg:grid-cols-4" style={{ gap:10, marginBottom:20 }}>
             {[
               { label:'Current Rate',  value:'11.50%',         sub:'As of Jun 2026',   color:'var(--text-primary)' },
               { label:'Total Easing',  value:'−350bps',        sub:'4 cuts since Jul 25', color:'#16a34a' },
               { label:'Next MPC',      value:'Sep 22, 2026',   sub:`${daysToMPC} days away`, color:'#f59e0b' },
               { label:'Market Expects',value:'Cut',            sub:'50–100bps expected', color:'#16a34a' },
-            ].map((k, i, arr) => (
-              <div key={k.label} style={{ padding:'14px 16px', backgroundColor:'var(--bg-hover)', borderRight: i < arr.length-1 ? '1px solid var(--bg-border)' : 'none' }}>
-                <p style={{ fontSize:10, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.07em', marginBottom:7 }}>{k.label}</p>
+            ].map((k) => (
+              <div key={k.label} className="card" style={{ padding:'14px 16px' }}>
+                <p style={{ fontSize:10, fontWeight:700, color:'var(--text-primary)', textTransform:'uppercase', letterSpacing:'.07em', marginBottom:7 }}>{k.label}</p>
                 <p style={{ fontSize:20, fontWeight:800, color:k.color, lineHeight:1, fontVariantNumeric:'tabular-nums' }}>{k.value}</p>
                 <p style={{ fontSize:10, color:'var(--text-muted)', marginTop:5 }}>{k.sub}</p>
               </div>
             ))}
           </div>
 
-          {/* ── Cascade waterfall ── */}
-          <div style={{ marginBottom:20 }}>
-            <p style={{ fontSize:10, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.07em', marginBottom:14 }}>Rate at each MPC meeting</p>
-
-            {/* Horizontal waterfall — each row = one MPC meeting */}
-            {[
-              { date:'Jul 2025', rate:14.0, prev:null,  bps:null,  status:'past',    note:'Easing cycle begins' },
-              { date:'Sep 2025', rate:13.0, prev:14.0,  bps:-100,  status:'past',    note:'First cut of cycle'  },
-              { date:'Jan 2026', rate:13.0, prev:13.0,  bps:0,     status:'past',    note:'Hold — watched inflation' },
-              { date:'Mar 2026', rate:12.5, prev:13.0,  bps:-50,   status:'past',    note:'Smaller calibrated cut' },
-              { date:'Apr 2026', rate:11.5, prev:12.5,  bps:-100,  status:'past',    note:'Aggressive easing' },
-              { date:'Jun 2026', rate:11.5, prev:11.5,  bps:0,     status:'current', note:'Current rate — held' },
-              { date:'Sep 2026', rate:null, prev:11.5,  bps:null,  status:'next',    note:'Expected cut 50–100bps' },
-            ].map((m, i) => {
-              const maxRate = 14
-              const isCut     = m.bps !== null && m.bps < 0
-              const isHold    = m.bps === 0
-              const isNext    = m.status === 'next'
-              const isCurrent = m.status === 'current'
-              const barW  = m.rate ? (m.rate / maxRate) * 100 : 80
-              const prevW = m.prev ? (m.prev / maxRate) * 100 : 0
-              const cutW  = isCut ? prevW - barW : 0
-
-              return (
-                <div key={i} className="grid gap-2 sm:gap-3"
-                  style={{ gridTemplateColumns:'80px 1fr 60px', alignItems:'center',
-                    padding:'8px 0', borderBottom:'1px solid var(--bg-border)', opacity: isNext ? .55 : 1 }}>
-
-                  {/* Date */}
-                  <span style={{ fontSize:11, fontVariantNumeric:'tabular-nums', flexShrink:0, fontWeight: isCurrent ? 700 : 400,
-                    color: isNext ? '#f59e0b' : isCurrent ? 'var(--text-primary)' : 'var(--text-muted)' }}>{m.date}</span>
-
-                  {/* Bar track + rate label outside */}
-                  <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                    <div style={{ flex:1, position:'relative', height:14, borderRadius:4, backgroundColor:'var(--bg-border)', overflow:'hidden' }}>
-                      {/* Rate bar */}
-                      <div style={{ position:'absolute', left:0, top:0, height:'100%', width:`${barW}%`,
-                        background: isCurrent ? 'linear-gradient(90deg,#FEA500aa,#FEA500)' : isNext ? '#f59e0b30' : '#FEA50040',
-                        borderRadius:4 }}/>
-                      {/* Cut gap highlight */}
-                      {isCut && (
-                        <div style={{ position:'absolute', left:`${barW}%`, top:0, height:'100%', width:`${cutW}%`,
-                          backgroundColor:'#16a34a25', borderLeft:'1.5px solid #16a34a50' }}/>
-                      )}
+          {/* ── MPC meeting table ── */}
+          <div style={{ borderTop:'1px solid var(--bg-border)', overflowX:'auto' }}>
+            <div style={{ minWidth:340 }}>
+              <div className="grid" style={{ gridTemplateColumns:'1fr 100px 70px 0fr 60px',
+                padding:'8px 0', borderBottom:'1px solid var(--bg-border)', marginBottom:2 }}>
+                {['Date','Decision','Rate','','Change'].map((h,i) => (
+                  <span key={i} className={i === 3 ? 'hidden sm:block' : ''} style={{ fontSize:9, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.07em', fontWeight:700,
+                    textAlign: i >= 4 ? 'right' : 'left', gridColumn: i + 1 }}>{h}</span>
+                ))}
+              </div>
+              {MPC_MEETINGS.map((m,i) => {
+                const isNext   = m.status === 'next'
+                const isFuture = m.status === 'future'
+                const isCut    = m.decision.includes('Cut')
+                const bps      = (m.decision.match(/(\d+)bps/)||[])[1]
+                const rateVal  = m.rate !== '?' ? parseFloat(m.rate) : null
+                const barPct   = rateVal ? Math.min(((rateVal - 10) / 5) * 100, 100) : 20
+                return (
+                  <div key={i} className="grid" style={{ gridTemplateColumns:'1fr 100px 70px 0fr 60px',
+                    padding:'9px 0', borderBottom:'1px solid var(--bg-border)',
+                    opacity: isFuture ? .35 : 1,
+                    backgroundColor: isNext ? '#f59e0b08' : 'transparent' }}>
+                    <span style={{ fontSize:11, fontVariantNumeric:'tabular-nums',
+                      color: isNext ? '#f59e0b' : 'var(--text-secondary)', fontWeight: isNext ? 700 : 600 }}>{m.date}</span>
+                    <span style={{ fontSize:11, fontWeight:600,
+                      color: isCut ? '#16a34a' : isNext ? '#f59e0b' : 'var(--text-muted)' }}>{m.decision}</span>
+                    <span style={{ fontSize:13, fontWeight:800, fontVariantNumeric:'tabular-nums',
+                      color: 'var(--text-primary)' }}>{m.rate}{m.rate !== '?' ? '%' : ''}</span>
+                    {/* mini bar — hidden on mobile */}
+                    <div className="hidden sm:flex" style={{ alignItems:'center', paddingRight:12, minWidth:80, gridColumn:4 }}>
+                      <div style={{ flex:1, height:5, borderRadius:999, backgroundColor:'var(--bg-border)', overflow:'hidden' }}>
+                        <div style={{ width:`${barPct}%`, height:'100%', borderRadius:999,
+                          backgroundColor: isCut ? '#FEA500' : isNext ? '#f59e0b' : 'var(--bg-border)',
+                          opacity: m.rate === '?' ? .3 : 1 }}/>
+                      </div>
                     </div>
-                    {/* Rate label outside bar */}
-                    <span style={{ fontSize:11, fontWeight:800, fontVariantNumeric:'tabular-nums', flexShrink:0, minWidth:38, textAlign:'right',
-                      color: isCurrent ? '#FEA500' : isNext ? '#f59e0b' : 'var(--text-secondary)' }}>
-                      {m.rate ? `${m.rate}%` : '~?%'}
+                    <span style={{ fontSize:11, fontWeight:700, textAlign:'right', fontVariantNumeric:'tabular-nums', gridColumn:5,
+                      color: isCut ? '#16a34a' : isNext ? '#f59e0b' : 'var(--text-muted)' }}>
+                      {isCut ? `−${bps}bps` : isNext ? 'upcoming' : '—'}
                     </span>
                   </div>
-
-                  {/* BPS badge */}
-                  <div style={{ textAlign:'center' }}>
-                    {isCut ? (
-                      <span style={{ fontSize:10, fontWeight:800, color:'#16a34a', backgroundColor:'#16a34a15',
-                        padding:'2px 7px', borderRadius:999, display:'inline-block', whiteSpace:'nowrap' }}>{m.bps}bps</span>
-                    ) : isHold ? (
-                      <span style={{ fontSize:9, fontWeight:600, color:'var(--text-muted)', backgroundColor:'var(--bg-hover)',
-                        padding:'2px 7px', borderRadius:999, display:'inline-block' }}>Hold</span>
-                    ) : (
-                      <span style={{ fontSize:9, color:'#f59e0b', fontWeight:600 }}>?</span>
-                    )}
-                  </div>
-
-                </div>
-              )
-            })}
-
-            {/* Total easing summary */}
-            <div style={{ display:'flex', alignItems:'center', justifyContent:'flex-end', gap:20, marginTop:10, paddingTop:8 }}>
-              <span style={{ fontSize:10, color:'var(--text-muted)' }}>Total easing cycle</span>
-              <span style={{ fontSize:14, fontWeight:900, color:'#16a34a', fontVariantNumeric:'tabular-nums' }}>−350bps</span>
-              <span style={{ fontSize:10, color:'var(--text-muted)' }}>14.00% → 11.50%</span>
+                )
+              })}
             </div>
-          </div>
-
-          {/* ── MPC meeting table ── */}
-          <div style={{ borderTop:'1px solid var(--bg-border)' }}>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 110px 80px 1fr 70px', gap:0,
-              padding:'8px 0', borderBottom:'1px solid var(--bg-border)', marginBottom:2 }}>
-              {['Date','Decision','Rate','','Change'].map((h,i) => (
-                <span key={i} style={{ fontSize:9, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.07em', fontWeight:700,
-                  textAlign: i >= 3 ? 'right' : 'left' }}>{h}</span>
-              ))}
-            </div>
-            {MPC_MEETINGS.map((m,i) => {
-              const isNext   = m.status === 'next'
-              const isFuture = m.status === 'future'
-              const isCut    = m.decision.includes('Cut')
-              const bps      = (m.decision.match(/(\d+)bps/)||[])[1]
-              const rateVal  = m.rate !== '?' ? parseFloat(m.rate) : null
-              const barPct   = rateVal ? Math.min(((rateVal - 10) / 5) * 100, 100) : 20
-              return (
-                <div key={i} style={{ display:'grid', gridTemplateColumns:'1fr 110px 80px 1fr 70px',
-                  padding:'9px 0', borderBottom:'1px solid var(--bg-border)',
-                  opacity: isFuture ? .35 : 1,
-                  backgroundColor: isNext ? '#f59e0b08' : 'transparent' }}>
-                  <span style={{ fontSize:11, fontVariantNumeric:'tabular-nums',
-                    color: isNext ? '#f59e0b' : 'var(--text-secondary)', fontWeight: isNext ? 600 : 400 }}>{m.date}</span>
-                  <span style={{ fontSize:11, fontWeight:600,
-                    color: isCut ? '#16a34a' : isNext ? '#f59e0b' : 'var(--text-muted)' }}>{m.decision}</span>
-                  <span style={{ fontSize:13, fontWeight:800, fontVariantNumeric:'tabular-nums',
-                    color: 'var(--text-primary)' }}>{m.rate}{m.rate !== '?' ? '%' : ''}</span>
-                  {/* mini bar */}
-                  <div style={{ display:'flex', alignItems:'center', paddingRight:12 }}>
-                    <div style={{ flex:1, height:5, borderRadius:999, backgroundColor:'var(--bg-border)', overflow:'hidden' }}>
-                      <div style={{ width:`${barPct}%`, height:'100%', borderRadius:999,
-                        backgroundColor: isCut ? '#FEA500' : isNext ? '#f59e0b' : 'var(--bg-border)',
-                        opacity: m.rate === '?' ? .3 : 1 }}/>
-                    </div>
-                  </div>
-                  <span style={{ fontSize:11, fontWeight:700, textAlign:'right', fontVariantNumeric:'tabular-nums',
-                    color: isCut ? '#16a34a' : isNext ? '#f59e0b' : 'var(--text-muted)' }}>
-                    {isCut ? `−${bps}bps` : isNext ? 'upcoming' : '—'}
-                  </span>
-                </div>
-              )
-            })}
           </div>
 
           <p style={{ fontSize:10, marginTop:10, color:'var(--text-muted)', display:'flex', alignItems:'center', gap:4 }}>
@@ -651,153 +580,138 @@ export default function MacroDashboard() {
         {/* ── Foreign Reserves Monitor ─────────────────────────────────────── */}
         <Section title="Foreign Reserves Monitor" subtitle="SBP weekly data — USD billions" icon={Building2}>
           {(() => {
-            const maxTotal = Math.max(...RESERVES_DATA.map(d => d.total))
-            const latest   = RESERVES_DATA[RESERVES_DATA.length - 1]
-            const first    = RESERVES_DATA[0]
-            const gain6m   = +(latest.sbp - first.sbp).toFixed(1)
+            const maxTotal     = Math.max(...RESERVES_DATA.map(d => d.total))
+            const latest       = RESERVES_DATA[RESERVES_DATA.length - 1]
+            const first        = RESERVES_DATA[0]
+            const gain6m       = +(latest.sbp - first.sbp).toFixed(1)
             const banksPortion = +(latest.total - latest.sbp).toFixed(1)
+            const sbpPct       = +((latest.sbp / latest.total) * 100).toFixed(1)
+            const bankPct      = +(100 - sbpPct).toFixed(1)
 
             return (
               <>
-                {/* ── Top KPI strip ── */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-7">
-                  {([
-                    { label:'SBP Holdings',   value:`$${latest.sbp}B`,    sub:`Latest — ${latest.month}`,        icon:'🏦', accent:false },
-                    { label:'Total Reserves', value:`$${latest.total}B`,  sub:'SBP + commercial banks',          icon:'💰', accent:false },
-                    { label:'Import Cover',   value:'~3 months',           sub:'Comfortable buffer',              icon:'🛡️', accent:true  },
-                    { label:'6-Month Gain',   value:`+$${gain6m}B`,       sub:`${first.month} → ${latest.month}`,icon:'📈', accent:true  },
-                  ] as const).map((s,i) => (
-                    <div key={i} className="rounded-xl p-4 flex flex-col gap-2"
-                      style={{
-                        background: s.accent ? 'rgba(22,163,74,0.12)' : 'var(--bg-hover)',
-                        border: `1px solid ${s.accent ? 'rgba(22,163,74,0.2)' : 'var(--bg-border)'}`,
-                      }}>
-                      <div className="flex items-center justify-between">
-                        <span style={{ fontSize:10, fontWeight:700, color: s.accent ? '#15803d' : 'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.06em' }}>
-                          {s.label}
-                        </span>
-                        <span style={{ fontSize:14 }}>{s.icon}</span>
-                      </div>
-                      <span style={{ fontSize:22, fontWeight:800, color: s.accent ? '#15803d' : 'var(--text-primary)', lineHeight:1, fontVariantNumeric:'tabular-nums' }}>
-                        {s.value}
-                      </span>
-                      <span style={{ fontSize:10, color: s.accent ? '#16a34a' : 'var(--text-muted)' }}>{s.sub}</span>
+                {/* ── KPI row ── */}
+                <div className="grid grid-cols-1 min-[380px]:grid-cols-2 lg:grid-cols-4" style={{ gap:10, marginBottom:24 }}>
+                  {[
+                    { label:'SBP Holdings',   value:`$${latest.sbp}B`,   sub:`${latest.month}`,             accent: false },
+                    { label:'Total Reserves', value:`$${latest.total}B`, sub:'SBP + commercial banks',      accent: false },
+                    { label:'Import Cover',   value:'~3 months',          sub:'Adequate buffer',             accent: true  },
+                    { label:'6-Month Change', value:`+$${gain6m}B`,      sub:`${first.month} → ${latest.month}`, accent: true  },
+                  ].map((k) => (
+                    <div key={k.label} className="card" style={{ padding:'16px 20px' }}>
+                      <p style={{ fontSize:10, color:'var(--text-primary)', textTransform:'uppercase', letterSpacing:'.07em', marginBottom:10, fontWeight:700 }}>{k.label}</p>
+                      <p style={{ fontSize:22, fontWeight:700, lineHeight:1, fontVariantNumeric:'tabular-nums', color: k.accent ? '#16a34a' : 'var(--text-primary)', marginBottom:6 }}>{k.value}</p>
+                      <p style={{ fontSize:11, color: k.accent ? '#16a34a' : 'var(--text-muted)' }}>{k.sub}</p>
                     </div>
                   ))}
                 </div>
 
-                {/* ── Composition pill (SBP vs Banks) ── */}
-                <div className="mb-6 p-4 rounded-xl" style={{ background:'var(--bg-hover)', border:'1px solid var(--bg-border)' }}>
-                  <div className="flex items-center justify-between mb-3">
-                    <span style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.06em' }}>
+                {/* ── Reserve Composition ── */}
+                <div style={{ marginBottom:24 }}>
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, marginBottom:12, flexWrap:'wrap' }}>
+                    <span style={{ fontSize:11, fontWeight:600, color:'var(--text-secondary)', textTransform:'uppercase', letterSpacing:'.06em' }}>
                       Reserve Composition — {latest.month}
                     </span>
-                    <span style={{ fontSize:11, color:'var(--text-muted)' }}>Total: <strong style={{ color:'var(--text-primary)' }}>${latest.total}B</strong></span>
+                    <span style={{ fontSize:12, color:'var(--text-muted)', flexShrink:0 }}>
+                      Total <strong style={{ color:'var(--text-primary)', fontVariantNumeric:'tabular-nums' }}>${latest.total}B</strong>
+                    </span>
                   </div>
-                  {/* Stacked bar */}
-                  <div className="relative h-8 rounded-lg overflow-hidden mb-3" style={{ background:'var(--bg-border)' }}>
-                    <div className="absolute left-0 top-0 h-full flex items-center justify-center rounded-lg transition-all"
-                      style={{ width:`${(latest.sbp/latest.total)*100}%`, background:'linear-gradient(90deg,#1d4ed8,#2563eb)', minWidth:60 }}>
-                      <span style={{ fontSize:10, fontWeight:700, color:'white' }}>SBP ${latest.sbp}B</span>
-                    </div>
-                    <div className="absolute top-0 h-full flex items-center justify-center"
-                      style={{ left:`${(latest.sbp/latest.total)*100}%`, width:`${(banksPortion/latest.total)*100}%` }}>
-                      <span style={{ fontSize:10, fontWeight:600, color:'var(--text-muted)' }}>Banks ${banksPortion}B</span>
-                    </div>
+                  {/* Segmented bar */}
+                  <div style={{ display:'flex', height:10, borderRadius:6, overflow:'hidden', gap:2, marginBottom:14 }}>
+                    <div style={{ width:`${sbpPct}%`, background:'#FEA500', borderRadius:'6px 0 0 6px', transition:'width .4s' }}/>
+                    <div style={{ flex:1, background:'var(--bg-border)', borderRadius:'0 6px 6px 0' }}/>
                   </div>
-                  <div className="flex items-center gap-6">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-sm" style={{ background:'#2563eb' }}/>
-                      <span style={{ fontSize:10, color:'var(--text-muted)' }}>SBP Holdings <strong style={{ color:'var(--text-primary)' }}>{((latest.sbp/latest.total)*100).toFixed(0)}%</strong></span>
+                  {/* Legend */}
+                  <div style={{ display:'flex', gap:28 }}>
+                    <div>
+                      <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:2 }}>
+                        <div style={{ width:10, height:10, borderRadius:2, background:'#FEA500', flexShrink:0 }}/>
+                        <span style={{ fontSize:11, color:'var(--text-muted)' }}>SBP Holdings</span>
+                      </div>
+                      <p style={{ fontSize:18, fontWeight:700, color:'var(--text-primary)', fontVariantNumeric:'tabular-nums', paddingLeft:16 }}>${latest.sbp}B <span style={{ fontSize:12, fontWeight:400, color:'var(--text-muted)' }}>{sbpPct}%</span></p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-sm" style={{ background:'var(--bg-border)', border:'1px solid var(--text-muted)' }}/>
-                      <span style={{ fontSize:10, color:'var(--text-muted)' }}>Commercial Banks <strong style={{ color:'var(--text-primary)' }}>{((banksPortion/latest.total)*100).toFixed(0)}%</strong></span>
+                    <div style={{ width:1, background:'var(--bg-border)' }}/>
+                    <div>
+                      <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:2 }}>
+                        <div style={{ width:10, height:10, borderRadius:2, background:'var(--bg-border)', flexShrink:0, border:'1px solid var(--text-muted)' }}/>
+                        <span style={{ fontSize:11, color:'var(--text-muted)' }}>Commercial Banks</span>
+                      </div>
+                      <p style={{ fontSize:18, fontWeight:700, color:'var(--text-primary)', fontVariantNumeric:'tabular-nums', paddingLeft:16 }}>${banksPortion}B <span style={{ fontSize:12, fontWeight:400, color:'var(--text-muted)' }}>{bankPct}%</span></p>
                     </div>
                   </div>
                 </div>
 
-                {/* ── Monthly bar chart ── */}
+                {/* ── Monthly Trend chart ── */}
                 <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <span style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.06em' }}>Monthly Trend</span>
-                    <div className="flex items-center gap-5">
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-sm" style={{ background:'#2563eb' }}/>
-                        <span style={{ fontSize:10, color:'var(--text-muted)' }}>SBP</span>
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, marginBottom:12, flexWrap:'wrap' }}>
+                    <span style={{ fontSize:11, fontWeight:600, color:'var(--text-secondary)', textTransform:'uppercase', letterSpacing:'.06em' }}>
+                      Monthly Trend
+                    </span>
+                    <div style={{ display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:5 }}>
+                        <div style={{ width:10, height:10, borderRadius:2, background:'#FEA500' }}/>
+                        <span style={{ fontSize:10, color:'var(--text-muted)' }}>SBP Holdings</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-sm" style={{ background:'#bfdbfe' }}/>
-                        <span style={{ fontSize:10, color:'var(--text-muted)' }}>Banks</span>
+                      <div style={{ display:'flex', alignItems:'center', gap:5 }}>
+                        <div style={{ width:10, height:10, borderRadius:2, background:'var(--text-secondary)', opacity:.5 }}/>
+                        <span style={{ fontSize:10, color:'var(--text-muted)' }}>Commercial Banks</span>
                       </div>
                     </div>
                   </div>
-
-                  <div className="space-y-2">
-                    {RESERVES_DATA.map((d,i) => {
-                      const isLast   = i === RESERVES_DATA.length - 1
-                      const prev     = i > 0 ? RESERVES_DATA[i-1] : null
-                      const chg      = prev ? +(d.sbp - prev.sbp).toFixed(1) : null
-                      const sbpW     = (d.sbp   / maxTotal) * 100
-                      const banksW   = ((d.total - d.sbp) / maxTotal) * 100
-                      const sbpCol   = isLast ? '#d97706' : '#2563eb'
-                      const bankCol  = isLast ? '#fde68a' : '#bfdbfe'
-
-                      return (
-                        <div key={d.month} className="flex items-center gap-3 group px-3 py-2 rounded-lg transition-colors"
-                          style={{ background: isLast ? 'rgba(217,119,6,0.06)' : 'transparent' }}>
-
-                          {/* Month */}
-                          <span className="shrink-0 text-right" style={{ width:46, fontSize:11, fontWeight: isLast?700:500, color: isLast?'#d97706':'var(--text-muted)' }}>
-                            {d.month}
-                          </span>
-
-                          {/* Stacked bar */}
-                          <div className="flex-1 relative h-6 rounded-md overflow-hidden" style={{ background:'var(--bg-hover)' }}>
-                            {/* banks portion */}
-                            <div className="absolute left-0 top-0 h-full rounded-md transition-all"
-                              style={{ width:`${sbpW+banksW}%`, background: bankCol }}/>
-                            {/* sbp portion */}
-                            <div className="absolute left-0 top-0 h-full rounded-md flex items-center pl-2 transition-all"
-                              style={{ width:`${sbpW}%`, background: sbpCol }}>
-                              {sbpW > 20 && (
-                                <span style={{ fontSize:9, fontWeight:700, color:'white', whiteSpace:'nowrap' }}>${d.sbp}B</span>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* SBP value */}
-                          <span className="shrink-0 text-right font-number" style={{ width:44, fontSize:11, fontWeight: isLast?700:400, color: isLast?'var(--text-primary)':'var(--text-secondary)', fontVariantNumeric:'tabular-nums' }}>
-                            ${d.sbp}B
-                          </span>
-
-                          {/* Total */}
-                          <span className="hidden sm:block shrink-0 text-right font-number" style={{ width:44, fontSize:11, color:'var(--text-muted)', fontVariantNumeric:'tabular-nums' }}>
-                            ${d.total}B
-                          </span>
-
-                          {/* Change */}
-                          <span className="shrink-0 text-right font-number" style={{ width:48, fontSize:11, fontWeight:600, fontVariantNumeric:'tabular-nums',
-                            color: chg===null?'var(--text-muted)': chg>0?'#16a34a':'#dc2626' }}>
-                            {chg===null ? '—' : `${chg>0?'+':''}${chg}`}
-                          </span>
-                        </div>
-                      )
-                    })}
-                  </div>
-
-                  {/* Column labels */}
-                  <div className="flex items-center gap-3 mt-2 px-3">
-                    <span style={{ width:46, fontSize:9, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.05em' }}/>
-                    <div className="flex-1"/>
-                    <span className="text-right" style={{ width:44, fontSize:9, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.05em' }}>SBP</span>
-                    <span className="hidden sm:block text-right" style={{ width:44, fontSize:9, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.05em' }}>Total</span>
-                    <span className="text-right" style={{ width:48, fontSize:9, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.05em' }}>Δ MoM</span>
-                  </div>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <BarChart
+                      data={RESERVES_DATA.map((d, i) => ({
+                        month:   d.month,
+                        sbp:     d.sbp,
+                        banks:   +(d.total - d.sbp).toFixed(1),
+                        isLast:  i === RESERVES_DATA.length - 1,
+                      }))}
+                      margin={{ top:4, right:0, left:-8, bottom:0 }}
+                      barCategoryGap="20%"
+                    >
+                      <CartesianGrid vertical={false} stroke="var(--bg-border)" strokeDasharray="3 3" />
+                      <XAxis
+                        dataKey="month"
+                        tick={{ fontSize:10, fill:'var(--text-muted)' } as React.SVGProps<SVGTextElement>}
+                        axisLine={false} tickLine={false}
+                      />
+                      <YAxis
+                        tick={{ fontSize:10, fill:'var(--text-muted)' } as React.SVGProps<SVGTextElement>}
+                        axisLine={false} tickLine={false}
+                        tickFormatter={(v: number) => `$${v}B`}
+                        domain={[0, 'auto']}
+                        tickCount={5}
+                      />
+                      <Tooltip
+                        cursor={{ fill:'var(--bg-hover)', radius: 4 }}
+                        contentStyle={{
+                          background:'var(--bg-card)', border:'1px solid var(--bg-border)',
+                          borderRadius:6, fontSize:11, color:'var(--text-primary)', boxShadow:'0 4px 12px rgba(0,0,0,.08)',
+                        }}
+                        formatter={(value: number, name: string) => [
+                          `$${value}B`,
+                          name === 'sbp' ? 'SBP Holdings' : 'Commercial Banks',
+                        ]}
+                        labelStyle={{ fontWeight:700, marginBottom:6, color:'var(--text-primary)', fontSize:12 }}
+                      />
+                      <Bar dataKey="sbp" stackId="a" radius={[0,0,3,3]} maxBarSize={48}>
+                        {RESERVES_DATA.map((d, i) => {
+                          const isLast = i === RESERVES_DATA.length - 1
+                          return <Cell key={d.month} fill={isLast ? '#FEA500' : '#FEA500'} fillOpacity={isLast ? 1 : 0.55} />
+                        })}
+                      </Bar>
+                      <Bar dataKey="banks" stackId="a" radius={[3,3,0,0]} maxBarSize={48}>
+                        {RESERVES_DATA.map((d, i) => {
+                          const isLast = i === RESERVES_DATA.length - 1
+                          return <Cell key={d.month} fill="#64748b" fillOpacity={isLast ? 0.7 : 0.35} />
+                        })}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
                 </div>
 
-                <p style={{ fontSize:10, marginTop:16, color:'var(--text-muted)', display:'flex', alignItems:'center', gap:4 }}>
-                  <Info size={9}/> Low reserves = market stress signal. Watch for improvement after IMF tranche.
+                <p style={{ fontSize:10, marginTop:14, color:'var(--text-muted)', display:'flex', alignItems:'center', gap:4 }}>
+                  <Info size={9}/> Below 3 months import cover = market stress signal.
                 </p>
               </>
             )
@@ -805,61 +719,81 @@ export default function MacroDashboard() {
         </Section>
 
         {/* ── Rupee Impact Analysis ────────────────────────────────────────── */}
-        <Section title="Rupee Impact Analysis" subtitle="Estimated impact of 5% PKR depreciation" icon={ArrowLeftRight}>
-          <div className="grid grid-cols-1 sm:grid-cols-[1fr_1px_1fr] gap-0">
-            {/* Exporters */}
-            <div className="sm:pr-7">
-              <p style={{ fontSize:10, fontWeight:700, color:'#16a34a', textTransform:'uppercase',
-                letterSpacing:'.07em', marginBottom:16, display:'flex', alignItems:'center', gap:6 }}>
-                <TrendingUp size={11}/> Exporters — gain on PKR drop
-              </p>
-              {PKR_IMPACT.filter(s=>s.type==='Exporter').map(s=>{
-                const val=Math.abs(parseFloat(s.impact5pct))
-                return(
-                  <div key={s.symbol} style={{ marginBottom:16 }}>
-                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6 }}>
-                      <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                        <span style={{ fontSize:12, fontWeight:900, color:'#FEA500',
-                          fontVariantNumeric:'tabular-nums', letterSpacing:'.02em', minWidth:40 }}>{s.symbol}</span>
-                        <span style={{ fontSize:11, color:'var(--text-muted)' }}>{s.note}</span>
-                      </div>
-                      <span style={{ fontSize:14, fontWeight:800, color:'#16a34a', fontVariantNumeric:'tabular-nums' }}>{s.impact5pct}</span>
-                    </div>
-                    <div style={{ height:10, borderRadius:4, background:'var(--bg-hover)', overflow:'hidden' }}>
-                      <div style={{ width:`${(val/5)*100}%`, height:'100%', borderRadius:4, background:'#16a34a' }}/>
-                    </div>
-                  </div>
-                )
-              })}
+        <Section title="Rupee Impact Analysis" subtitle="Estimated earnings impact of a 5% PKR depreciation" icon={ArrowLeftRight}>
+
+          {/* Exporters */}
+          <div style={{ marginBottom:20 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:12 }}>
+              <TrendingUp size={10} color="#16a34a"/>
+              <span style={{ fontSize:9, fontWeight:700, color:'#16a34a', textTransform:'uppercase', letterSpacing:'.08em' }}>Exporters — Gain on PKR Drop</span>
             </div>
-            <div className="hidden sm:block" style={{ width:1, background:'var(--bg-border)' }}/>
-            {/* Importers */}
-            <div className="sm:pl-7 border-t sm:border-t-0 pt-5 sm:pt-0" style={{ borderColor:'var(--bg-border)' }}>
-              <p style={{ fontSize:10, fontWeight:700, color:'#dc2626', textTransform:'uppercase',
-                letterSpacing:'.07em', marginBottom:16, display:'flex', alignItems:'center', gap:6 }}>
-                <TrendingDown size={11}/> Importers — lose on PKR drop
-              </p>
-              {PKR_IMPACT.filter(s=>s.type==='Importer').map(s=>{
-                const val=Math.abs(parseFloat(s.impact5pct))
-                return(
-                  <div key={s.symbol} style={{ marginBottom:16 }}>
-                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6 }}>
-                      <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                        <span style={{ fontSize:12, fontWeight:900, color:'#FEA500',
-                          fontVariantNumeric:'tabular-nums', letterSpacing:'.02em', minWidth:40 }}>{s.symbol}</span>
-                        <span style={{ fontSize:11, color:'var(--text-muted)' }}>{s.note}</span>
+            <div className="grid grid-cols-1 min-[480px]:grid-cols-2 lg:grid-cols-3" style={{ gap:10 }}>
+              {PKR_IMPACT.filter(s => s.type === 'Exporter').map(s => {
+                const val = Math.abs(parseFloat(s.impact5pct))
+                return (
+                  <div key={s.symbol} className="card" style={{
+                    padding:'14px 16px', borderRadius:6,
+                    display:'flex', flexDirection:'column', gap:8,
+                    cursor:'pointer', transition:'border-color .15s, background .15s',
+                  }}>
+                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:5 }}>
+                        <span style={{ fontSize:13, fontWeight:700, color:'#FEA500' }}>{s.symbol}</span>
+                        {s.shariah && (
+                          <span style={{ fontSize:8, fontWeight:700, color:'#16a34a', background:'rgba(22,163,74,0.1)',
+                            border:'1px solid rgba(22,163,74,0.25)', padding:'1px 5px', borderRadius:999,
+                            letterSpacing:'.04em', textTransform:'uppercase', lineHeight:1.6 }}>Shariah</span>
+                        )}
                       </div>
-                      <span style={{ fontSize:14, fontWeight:800, color:'#dc2626', fontVariantNumeric:'tabular-nums' }}>{s.impact5pct}</span>
+                      <span style={{ fontSize:14, fontWeight:700, color:'#16a34a', fontVariantNumeric:'tabular-nums' }}>{s.impact5pct}</span>
                     </div>
-                    <div style={{ height:10, borderRadius:4, background:'var(--bg-hover)', overflow:'hidden' }}>
-                      <div style={{ width:`${(val/5)*100}%`, height:'100%', borderRadius:4, background:'#dc2626' }}/>
+                    <div style={{ height:3, borderRadius:2, background:'var(--bg-border)', overflow:'hidden' }}>
+                      <div style={{ width:`${(val/5)*100}%`, height:'100%', borderRadius:2, background:'#16a34a' }}/>
                     </div>
+                    <span style={{ fontSize:10, color:'var(--text-muted)' }}>{s.note}</span>
                   </div>
                 )
               })}
             </div>
           </div>
-          <p style={{ fontSize:10, marginTop:12, color:'var(--text-muted)', display:'flex', alignItems:'center', gap:4 }}>
+
+          {/* Importers */}
+          <div>
+            <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:12 }}>
+              <TrendingDown size={10} color="#dc2626"/>
+              <span style={{ fontSize:9, fontWeight:700, color:'#dc2626', textTransform:'uppercase', letterSpacing:'.08em' }}>Importers — Lose on PKR Drop</span>
+            </div>
+            <div className="grid grid-cols-1 min-[480px]:grid-cols-2 lg:grid-cols-4" style={{ gap:10 }}>
+              {PKR_IMPACT.filter(s => s.type === 'Importer').map(s => {
+                const val = Math.abs(parseFloat(s.impact5pct))
+                return (
+                  <div key={s.symbol} className="card" style={{
+                    padding:'14px 16px', borderRadius:6,
+                    display:'flex', flexDirection:'column', gap:8,
+                    cursor:'pointer', transition:'border-color .15s, background .15s',
+                  }}>
+                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:5 }}>
+                        <span style={{ fontSize:13, fontWeight:700, color:'#FEA500' }}>{s.symbol}</span>
+                        {s.shariah && (
+                          <span style={{ fontSize:8, fontWeight:700, color:'#16a34a', background:'rgba(22,163,74,0.1)',
+                            border:'1px solid rgba(22,163,74,0.25)', padding:'1px 5px', borderRadius:999,
+                            letterSpacing:'.04em', textTransform:'uppercase', lineHeight:1.6 }}>Shariah</span>
+                        )}
+                      </div>
+                      <span style={{ fontSize:14, fontWeight:700, color:'#dc2626', fontVariantNumeric:'tabular-nums', flexShrink:0 }}>{s.impact5pct}</span>
+                    </div>
+                    <div style={{ height:3, borderRadius:2, background:'var(--bg-border)', overflow:'hidden' }}>
+                      <div style={{ width:`${(val/5)*100}%`, height:'100%', borderRadius:2, background:'#dc2626' }}/>
+                    </div>
+                    <span style={{ fontSize:10, color:'var(--text-muted)' }}>{s.note}</span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          <p style={{ fontSize:10, marginTop:14, color:'var(--text-muted)', display:'flex', alignItems:'center', gap:4 }}>
             <Info size={9}/> Estimated. Exporters gain, importers lose on PKR depreciation.
           </p>
         </Section>
@@ -867,50 +801,51 @@ export default function MacroDashboard() {
 
       {/* ── CPEC Beneficiary Stocks ──────────────────────────────────────────── */}
       <Section title="CPEC Beneficiary Stocks" subtitle="Companies with significant CPEC revenue exposure" icon={TrendingUp}>
-        {/* Column headers — mobile */}
-        <div className="sm:hidden grid gap-0 px-3 py-2 mb-0.5"
-          style={{ gridTemplateColumns:'80px 1fr 70px', borderBottom:'2px solid var(--bg-border)' }}>
-          {['Symbol','Company','Exp.'].map(h=>(
-            <span key={h} style={{ fontSize:10, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.06em', fontWeight:600 }}>{h}</span>
-          ))}
-        </div>
-        {/* Column headers — desktop */}
-        <div className="hidden sm:grid gap-0 px-3 py-2 mb-0.5"
-          style={{ gridTemplateColumns:'80px 1fr 80px 70px 1fr', borderBottom:'2px solid var(--bg-border)' }}>
-          {['Symbol','Company','Sector','Exposure','CPEC Role'].map(h=>(
-            <span key={h} style={{ fontSize:10, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.06em', fontWeight:600 }}>{h}</span>
-          ))}
-        </div>
-        {CPEC_STOCKS.map(s=>{
-          const sectorColor: Record<string,string>={
-            Power:'#2563eb', Cement:'#d97706', Fertilizer:'#16a34a', Textile:'#7c3aed', Paper:'#0891b2'
-          }
-          const col=sectorColor[s.sector]||'#94a3b8'
-          return(
-            <div key={s.symbol}>
-              {/* Mobile row */}
-              <div className="sm:hidden grid items-center gap-0 px-3 py-2.5"
-                style={{ gridTemplateColumns:'80px 1fr 70px', borderBottom:'1px solid var(--bg-border)', borderLeft:`3px solid ${col}` }}>
-                <span style={{ fontSize:13, fontWeight:800, color:'#FEA500', letterSpacing:'.01em' }}>{s.symbol}</span>
-                <div>
-                  <span style={{ fontSize:12, fontWeight:600, color:'var(--text-primary)' }}>{s.name}</span>
-                  <p style={{ fontSize:10, color:col, fontWeight:600, marginTop:1 }}>{s.sector}</p>
+        <div className="grid grid-cols-1 min-[480px]:grid-cols-2 lg:grid-cols-4" style={{ gap:10 }}>
+          {CPEC_STOCKS.map(s => {
+            const sectorColor: Record<string,string> = {
+              Power:'#FEA500', Cement:'#f59e0b', Fertilizer:'#16a34a', Textile:'var(--text-secondary)', Paper:'var(--text-muted)'
+            }
+            const col = sectorColor[s.sector] || 'var(--text-muted)'
+            const expColor = s.exposure === 'High' ? '#16a34a' : s.exposure === 'Medium' ? '#f59e0b' : 'var(--text-muted)'
+            const expBg    = s.exposure === 'High' ? 'rgba(22,163,74,0.1)' : s.exposure === 'Medium' ? 'rgba(245,158,11,0.1)' : 'var(--bg-hover)'
+            const expBdr   = s.exposure === 'High' ? 'rgba(22,163,74,0.25)' : s.exposure === 'Medium' ? 'rgba(245,158,11,0.25)' : 'var(--bg-border)'
+            return (
+              <div key={s.symbol} className="card" style={{
+                padding:'16px', borderRadius:6,
+                display:'flex', flexDirection:'column', gap:10,
+                cursor:'pointer', transition:'border-color .15s, background .15s',
+              }}>
+                {/* Symbol + exposure */}
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                  <span style={{ fontSize:14, fontWeight:700, color:'#FEA500', letterSpacing:'.02em' }}>{s.symbol}</span>
+                  <span style={{ fontSize:9, fontWeight:700, padding:'2px 8px', borderRadius:999,
+                    color: expColor, background: expBg, border:`1px solid ${expBdr}`,
+                    textTransform:'uppercase', letterSpacing:'.06em' }}>
+                    {s.exposure}
+                  </span>
                 </div>
-                <ExposureBadge level={s.exposure}/>
+                {/* Company name */}
+                <div>
+                  <p style={{ fontSize:11, fontWeight:600, color:'var(--text-primary)', marginBottom:3, lineHeight:1.3 }}>{s.name}</p>
+                  <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                    <p style={{ fontSize:10, fontWeight:600, color:col }}>{s.sector}</p>
+                    {s.shariah && (
+                      <span style={{ fontSize:8, fontWeight:700, color:'#16a34a', background:'rgba(22,163,74,0.1)',
+                        border:'1px solid rgba(22,163,74,0.25)', padding:'1px 5px', borderRadius:999,
+                        letterSpacing:'.04em', textTransform:'uppercase', lineHeight:1.6 }}>
+                        Shariah
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {/* Role note */}
+                <p style={{ fontSize:10, color:'var(--text-muted)', lineHeight:1.4, borderTop:'1px solid var(--bg-border)', paddingTop:8, marginTop:'auto' }}>{s.note}</p>
               </div>
-              {/* Desktop row */}
-              <div className="hidden sm:grid items-center gap-0 px-3 py-2.5"
-                style={{ gridTemplateColumns:'80px 1fr 80px 70px 1fr', borderBottom:'1px solid var(--bg-border)', borderLeft:`3px solid ${col}` }}>
-                <span style={{ fontSize:13, fontWeight:800, color:'#FEA500', letterSpacing:'.01em' }}>{s.symbol}</span>
-                <span style={{ fontSize:12, fontWeight:600, color:'var(--text-primary)' }}>{s.name}</span>
-                <span style={{ fontSize:11, fontWeight:600, color:col }}>{s.sector}</span>
-                <ExposureBadge level={s.exposure}/>
-                <span style={{ fontSize:11, color:'var(--text-secondary)' }}>{s.note}</span>
-              </div>
-            </div>
-          )
-        })}
-        <p className="text-[10px] mt-4 flex items-center gap-1" style={{ color:'var(--text-muted)' }}>
+            )
+          })}
+        </div>
+        <p style={{ fontSize:10, marginTop:14, color:'var(--text-muted)', display:'flex', alignItems:'center', gap:4 }}>
           <Info size={9}/> Exposure ratings are estimates based on publicly available project information.
         </p>
       </Section>
