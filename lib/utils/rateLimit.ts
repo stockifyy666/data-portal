@@ -5,27 +5,41 @@
 import { redis } from '@/lib/redis/client'
 
 const UAT_KEY            = 'cs:uat:call-count'
+const UAT_ENDPOINTS_KEY  = 'cs:uat:endpoints'   // Redis hash: endpoint label → count
 const UAT_MAX_PER_DAY    = 10_000
 const UAT_WARN_THRESHOLD = 8_000
 const DAY_SECONDS        = 86_400
 
+// Shorten a full URL to a readable label like "GET /3.0/market/quotes"
+function labelFor(endpoint: string): string {
+  try {
+    const path = new URL(endpoint).pathname + new URL(endpoint).search
+    // Trim query params to keep label short
+    const base = path.split('?')[0]
+    return base
+  } catch {
+    return endpoint.length > 60 ? endpoint.slice(0, 60) + '…' : endpoint
+  }
+}
+
 export async function trackChartAPICall(endpoint: string): Promise<number> {
   try {
-    const count = await redis.incr(UAT_KEY)
+    const label = labelFor(endpoint)
+    const [count] = await Promise.all([
+      redis.incr(UAT_KEY),
+      redis.hincrby(UAT_ENDPOINTS_KEY, label, 1),
+    ])
     if (count === 1) await redis.expire(UAT_KEY, DAY_SECONDS)
+    // Keep endpoints hash TTL in sync
+    await redis.expire(UAT_ENDPOINTS_KEY, DAY_SECONDS)
 
     console.log(`[CS UAT] Call #${count}/${UAT_MAX_PER_DAY} today → ${endpoint}`)
 
     if (count >= UAT_WARN_THRESHOLD) {
-      console.warn(
-        `[CS UAT] WARNING: ${count}/${UAT_MAX_PER_DAY} requests used today. ` +
-        `Overage is PKR 10/request. Consider raising cache TTLs.`
-      )
+      console.warn(`[CS UAT] WARNING: ${count}/${UAT_MAX_PER_DAY} requests used today. Overage is PKR 10/request.`)
     }
     if (count > UAT_MAX_PER_DAY) {
-      console.error(
-        `[CS UAT] LIMIT EXCEEDED: ${count} calls today — overage charges apply. Endpoint: ${endpoint}`
-      )
+      console.error(`[CS UAT] LIMIT EXCEEDED: ${count} calls today — overage charges apply. Endpoint: ${endpoint}`)
     }
 
     return count
@@ -34,15 +48,33 @@ export async function trackChartAPICall(endpoint: string): Promise<number> {
   }
 }
 
-export async function getCSAPIUsage(): Promise<{ used: number; remaining: number; resetIn: number }> {
+export type EndpointStat = { endpoint: string; count: number }
+
+export async function getCSAPIUsage(): Promise<{
+  used:      number
+  remaining: number
+  resetIn:   number
+  endpoints: EndpointStat[]
+}> {
   try {
-    const [count, ttl] = await Promise.all([
+    const [count, ttl, endpointHash] = await Promise.all([
       redis.get<number>(UAT_KEY),
       redis.ttl(UAT_KEY),
+      redis.hgetall(UAT_ENDPOINTS_KEY),
     ])
     const used = count ?? 0
-    return { used, remaining: Math.max(0, UAT_MAX_PER_DAY - used), resetIn: ttl > 0 ? ttl : DAY_SECONDS }
+
+    const endpoints: EndpointStat[] = Object.entries(endpointHash ?? {})
+      .map(([endpoint, c]) => ({ endpoint, count: Number(c) }))
+      .sort((a, b) => b.count - a.count)
+
+    return {
+      used,
+      remaining: Math.max(0, UAT_MAX_PER_DAY - used),
+      resetIn:   ttl > 0 ? ttl : DAY_SECONDS,
+      endpoints,
+    }
   } catch {
-    return { used: 0, remaining: UAT_MAX_PER_DAY, resetIn: DAY_SECONDS }
+    return { used: 0, remaining: UAT_MAX_PER_DAY, resetIn: DAY_SECONDS, endpoints: [] }
   }
 }

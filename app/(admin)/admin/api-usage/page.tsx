@@ -3,7 +3,7 @@ import { redirect }           from 'next/navigation'
 import { createServerClient } from '@supabase/ssr'
 import { getCSAPIUsage }      from '@/lib/utils/rateLimit'
 import { createServiceClient } from '@/lib/supabase/service'
-import { Activity, Zap, Clock, AlertTriangle, CheckCircle, Database } from 'lucide-react'
+import { Activity, Zap, Clock, AlertTriangle, CheckCircle, Database, List } from 'lucide-react'
 
 export const revalidate = 0
 
@@ -102,6 +102,56 @@ export default async function APIUsagePage() {
           {isDanger && (
             <Stat icon={AlertTriangle} label="Overage cost"
               value={`PKR ${((usage.used - 10_000) * 10).toLocaleString()}`} color="#ef4444" />
+          )}
+        </div>
+      </div>
+
+      {/* Per-endpoint breakdown */}
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+          <List size={15} color="var(--text-muted)" />
+          <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>Endpoint Breakdown</span>
+          <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 4 }}>today · resets with daily counter</span>
+        </div>
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--bg-border)', borderRadius: 5, overflow: 'hidden' }}>
+          {usage.endpoints.length === 0 ? (
+            <div style={{ padding: '24px', textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>
+              No API calls recorded yet today
+            </div>
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--bg-border)' }}>
+                  <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>Endpoint</th>
+                  <th style={{ padding: '10px 16px', textAlign: 'right', fontSize: 11, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>Calls</th>
+                  <th style={{ padding: '10px 16px', textAlign: 'right', fontSize: 11, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>Share</th>
+                  <th style={{ padding: '10px 16px', width: 160 }}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {usage.endpoints.map((e, i) => {
+                  const share = usage.used > 0 ? (e.count / usage.used) * 100 : 0
+                  return (
+                    <tr key={e.endpoint} style={{ borderBottom: i < usage.endpoints.length - 1 ? '1px solid var(--bg-border)' : 'none' }}>
+                      <td style={{ padding: '10px 16px', color: 'var(--text-primary)', fontFamily: 'monospace', fontSize: 12 }}>
+                        {e.endpoint}
+                      </td>
+                      <td style={{ padding: '10px 16px', textAlign: 'right', fontWeight: 700, color: '#FEA500', fontVariantNumeric: 'tabular-nums' }}>
+                        {e.count.toLocaleString()}
+                      </td>
+                      <td style={{ padding: '10px 16px', textAlign: 'right', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+                        {share.toFixed(1)}%
+                      </td>
+                      <td style={{ padding: '10px 16px' }}>
+                        <div style={{ height: 6, background: 'var(--bg-hover)', borderRadius: 99, overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: `${share}%`, background: '#FEA500', borderRadius: 99 }} />
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
           )}
         </div>
       </div>
