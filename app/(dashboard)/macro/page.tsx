@@ -672,11 +672,11 @@ export default function MacroDashboard() {
                       <CartesianGrid vertical={false} stroke="var(--bg-border)" strokeDasharray="3 3" />
                       <XAxis
                         dataKey="month"
-                        tick={{ fontSize:10, fill:'var(--text-muted)' } as React.SVGProps<SVGTextElement>}
+                        tick={{ fontSize:10, fill:'var(--text-muted)' }}
                         axisLine={false} tickLine={false}
                       />
                       <YAxis
-                        tick={{ fontSize:10, fill:'var(--text-muted)' } as React.SVGProps<SVGTextElement>}
+                        tick={{ fontSize:10, fill:'var(--text-muted)' }}
                         axisLine={false} tickLine={false}
                         tickFormatter={(v: number) => `$${v}B`}
                         domain={[0, 'auto']}
@@ -688,7 +688,7 @@ export default function MacroDashboard() {
                           background:'var(--bg-card)', border:'1px solid var(--bg-border)',
                           borderRadius:6, fontSize:11, color:'var(--text-primary)', boxShadow:'0 4px 12px rgba(0,0,0,.08)',
                         }}
-                        formatter={(value: number, name: string) => [
+                        formatter={(value, name) => [
                           `$${value}B`,
                           name === 'sbp' ? 'SBP Holdings' : 'Commercial Banks',
                         ]}
