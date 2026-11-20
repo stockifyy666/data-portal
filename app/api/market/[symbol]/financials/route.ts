@@ -7,6 +7,9 @@ import { withCache, TTL_SECONDS }     from '@/lib/redis/cache'
 import { trackChartAPICall }          from '@/lib/utils/rateLimit'
 import type { StatementData }         from '@/components/stock/stock-detail-types'
 
+// Live / per-user data: always run on request, never prerender at build time
+export const dynamic = 'force-dynamic'
+
 const VALID_TYPES = ['ratios', 'income', 'balance', 'cashflow'] as const
 type FinancialType = typeof VALID_TYPES[number]
 

@@ -2,8 +2,12 @@ import { NextResponse }                       from 'next/server'
 import { csUatGet }                           from '@/lib/capitalstake/client'
 import { CS_ENDPOINTS }                       from '@/lib/capitalstake/endpoints'
 import { withCache, CACHE_KEYS, TTL_SECONDS } from '@/lib/redis/cache'
+import { PSX_TTL }                            from '@/lib/utils/marketHours'
 import { trackChartAPICall }                  from '@/lib/utils/rateLimit'
 import type { RawStock, RawQuote, MergedStock } from '@/types/capitalstake'
+
+// Live / per-user data: always run on request, never prerender at build time
+export const dynamic = 'force-dynamic'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -35,7 +39,7 @@ export async function GET() {
       ),
       withCache<RawQuote[]>(
         CACHE_KEYS.allQuotesUAT(),
-        TTL_SECONDS.QUOTES_UAT,
+        PSX_TTL.QUOTES(),
         async () => {
           await trackChartAPICall('GET /3.0/market/quotes')
           const map = await fetchQuotes()

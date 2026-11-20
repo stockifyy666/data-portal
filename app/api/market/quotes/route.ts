@@ -7,6 +7,9 @@ import { PSX_TTL }                                       from '@/lib/utils/marke
 import type { RawStock, RawQuote }                       from '@/types/capitalstake'
 import type { StockQuote }                               from '@/types/market'
 
+// Live / per-user data: always run on request, never prerender at build time
+export const dynamic = 'force-dynamic'
+
 async function getStocks(): Promise<RawStock[]> {
   const cached = await cacheGet<RawStock[]>(CACHE_KEYS.allStocks())
   if (cached) return cached

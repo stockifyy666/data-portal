@@ -28,25 +28,30 @@ export default function RoleSelect({ userId, currentRole, viewerRole }: {
     })
   }
 
-  const colors: Record<string, string> = {
-    superadmin: '#FEA500',
-    admin:      '#60a5fa',
-    user:       'var(--text-muted)',
+  const styles: Record<string, { fg: string; bg: string; bd: string }> = {
+    superadmin: { fg: '#FEA500', bg: 'rgba(254,165,0,0.12)',  bd: 'rgba(254,165,0,0.35)' },
+    admin:      { fg: '#60a5fa', bg: 'rgba(96,165,250,0.12)', bd: 'rgba(96,165,250,0.35)' },
+    user:       { fg: 'var(--text-primary)', bg: 'var(--bg-hover)', bd: 'var(--bg-border)' },
   }
+  const st = styles[role] ?? styles.user
 
   return (
     <select
       value={role}
       onChange={e => handleChange(e.target.value)}
       disabled={pending}
+      aria-label="User role"
+      className="capitalize"
       style={{
-        background: 'var(--bg-hover)', border: '1px solid var(--bg-border)',
-        color: colors[role] ?? 'var(--text-muted)',
-        fontSize: 12, fontWeight: 600, padding: '3px 8px',
+        background: st.bg, border: `1px solid ${st.bd}`, color: st.fg,
+        fontSize: 12, fontWeight: 700, padding: '5px 10px', borderRadius: 999,
         cursor: pending ? 'wait' : 'pointer', outline: 'none', fontFamily: 'inherit',
+        opacity: pending ? 0.6 : 1,
       }}
     >
-      {allowed.map(r => <option key={r} value={r}>{r}</option>)}
+      {allowed.map(r => (
+        <option key={r} value={r} style={{ background: 'var(--bg-card)', color: 'var(--text-primary)' }}>{r}</option>
+      ))}
     </select>
   )
 }

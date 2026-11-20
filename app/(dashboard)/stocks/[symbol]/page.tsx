@@ -9,6 +9,7 @@ import Link                 from 'next/link'
 import { ArrowLeft }        from 'lucide-react'
 import WatchlistButton   from '@/components/market/WatchlistButton'
 import StockDetailClient from '@/components/stock/StockDetailClient'
+import { getAllStocks } from '@/lib/news/sectorNews'
 import SymbolLogo        from '@/components/ui/SymbolLogo'
 
 type Params = { symbol: string }
@@ -40,6 +41,14 @@ export default async function StockDetailPage({ params }: { params: Promise<Para
     }
   } catch { /* renders without overview */ }
 
+  // Company name + index membership from the cached stock list (works without a
+  // user session, unlike the self-fetch above, which the auth middleware rejects)
+  let companyName = typeof overview?.name === 'string' ? overview.name : ''
+  try {
+    const listed = (await getAllStocks()).find(s => s.symbol === symbol)
+    if (listed?.name && !companyName) companyName = listed.name
+  } catch { /* name is optional */ }
+
   return (
     <div className="space-y-5 animate-data">
 
@@ -53,32 +62,37 @@ export default async function StockDetailPage({ params }: { params: Promise<Para
 
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-3 flex-wrap">
-            <SymbolLogo symbol={symbol} size={80} />
-            <h1 className="text-2xl font-black" style={{ color: 'var(--text-primary)' }}>
-              {symbol}
-            </h1>
-            {!!overview?.name && (
-              <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
-                {String(overview.name)}
-              </span>
-            )}
-            {!!overview?.indexKeys && (
-              <div className="flex gap-1 flex-wrap">
-                {(overview.indexKeys as string[]).slice(0, 3).map(k => (
-                  <span key={k}
-                        className="text-[9px] px-1.5 py-0.5 rounded font-semibold tracking-wide"
-                        style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-muted)' }}>
-                    {k}
-                  </span>
-                ))}
-              </div>
-            )}
+        {/* Logo on the left; symbol, company name and exchange stacked on the right */}
+        <div className="flex items-center gap-4 min-w-0">
+          <div className="shrink-0">
+            <SymbolLogo symbol={symbol} size={72} />
           </div>
-          <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-            Pakistan Stock Exchange
-          </p>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-2xl font-black leading-tight" style={{ color: 'var(--text-primary)' }}>
+                {symbol}
+              </h1>
+              {Array.isArray(overview?.indexKeys) && (
+                <div className="flex gap-1 flex-wrap">
+                  {(overview.indexKeys as string[]).slice(0, 3).map(k => (
+                    <span key={k}
+                          className="text-[10px] px-1.5 py-0.5 rounded font-semibold tracking-wide"
+                          style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-secondary)' }}>
+                      {k}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+            {!!companyName && (
+              <p className="text-sm font-semibold mt-0.5 truncate" style={{ color: 'var(--text-secondary)' }}>
+                {companyName}
+              </p>
+            )}
+            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+              Pakistan Stock Exchange
+            </p>
+          </div>
         </div>
         <WatchlistButton symbol={symbol} currentPrice={typeof overview?.price === 'number' ? overview.price : 0} />
       </div>

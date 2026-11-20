@@ -2,7 +2,11 @@ import { NextResponse }             from 'next/server'
 import { csUatGet }                  from '@/lib/capitalstake/client'
 import { CS_ENDPOINTS }              from '@/lib/capitalstake/endpoints'
 import { withCache, TTL_SECONDS }    from '@/lib/redis/cache'
+import { dedupeNews } from '@/lib/news/dedupe'
 import { trackChartAPICall }         from '@/lib/utils/rateLimit'
+
+// Live / per-user data: always run on request, never prerender at build time
+export const dynamic = 'force-dynamic'
 
 export async function GET() {
   try {
@@ -45,7 +49,7 @@ export async function GET() {
       }
     }).filter((n: any) => n.title)
 
-    return NextResponse.json({ data: news })
+    return NextResponse.json({ data: dedupeNews(news) })
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unknown error'
     console.error('[API /market/news]', msg)

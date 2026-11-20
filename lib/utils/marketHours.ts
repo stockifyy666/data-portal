@@ -16,16 +16,16 @@
 const PKT_OFFSET_MS = 5 * 60 * 60 * 1000
 
 /** Returns current time in PKT */
-function nowPKT(): Date {
-  return new Date(Date.now() + PKT_OFFSET_MS)
+function nowPKT(at = Date.now()): Date {
+  return new Date(at + PKT_OFFSET_MS)
 }
 
 /**
  * Returns true if PSX is currently in a live trading session.
  * Accounts for the Friday Jumu'ah break.
  */
-export function isPSXOpen(): boolean {
-  const pkt  = nowPKT()
+export function isPSXOpen(at = Date.now()): boolean {
+  const pkt  = nowPKT(at)
   const day  = pkt.getUTCDay()   // 0=Sun, 1=Mon … 5=Fri, 6=Sat
   const hour = pkt.getUTCHours()
   const min  = pkt.getUTCMinutes()
@@ -51,19 +51,32 @@ export function isPSXOpen(): boolean {
 }
 
 /**
- * Dynamic TTL for live price data (tickers / quotes).
- *
- * During market hours : OPEN_TTL  — fresh prices every minute
- * Off-hours / break   : OFF_TTL   — keep last-known price, reduce API calls
+ * Seconds until PSX next opens (0 if open now). Steps in 5-min increments,
+ * looking at most 4 days ahead (covers weekends + the Friday break).
  */
-export function liveDataTTL(openTTL: number, offTTL: number): number {
-  return isPSXOpen() ? openTTL : offTTL
+export function secondsUntilOpen(at = Date.now()): number {
+  if (isPSXOpen(at)) return 0
+  const STEP = 5 * 60 * 1000
+  const start = Math.ceil(at / STEP) * STEP
+  for (let t = start; t < at + 4 * 86_400_000; t += STEP) {
+    if (isPSXOpen(t)) return Math.ceil((t - at) / 1000)
+  }
+  return 12 * 3600
 }
 
-// Convenience presets (seconds)
+/**
+ * TTL for live price data (tickers / quotes / indices).
+ *
+ * Market open : 60s — refresh every minute.
+ * Closed      : until the next open — the last prices stay in Redis and no
+ *               API call is made after close (the first request after close
+ *               fetches the closing prices once, then they're held overnight).
+ */
+function liveTTL(): number {
+  return isPSXOpen() ? 60 : Math.max(60, secondsUntilOpen())
+}
+
 export const PSX_TTL = {
-  /** Tickers: 1 min live, 15 min off-hours */
-  TICKERS: () => liveDataTTL(60, 15 * 60),
-  /** Quotes: 1 min live, 15 min off-hours */
-  QUOTES:  () => liveDataTTL(60, 15 * 60),
+  TICKERS: liveTTL,
+  QUOTES:  liveTTL,
 } as const

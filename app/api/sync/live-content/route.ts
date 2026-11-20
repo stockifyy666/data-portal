@@ -1,6 +1,8 @@
-// Hourly sync — fetches general market news and stores in Supabase.
-// 1 CS call per run × 24 runs/day = 24 CS calls/day.
-// Called by Vercel Cron every hour.
+// HOURLY sync:
+//   1. General market news            → news (scope 'general')       1 call
+//   2. Market-wide announcements feed → announcements, per company   1–4 calls
+// ≈ 2–5 CS calls per run × 24 = ~50–120 calls/day.
+// Sector news has its own every-2-hours sync (/api/sync/sector-news).
 // Auth: Authorization: Bearer <CRON_SECRET>  or  ?secret=<CRON_SECRET>
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -8,42 +10,38 @@ import { csUatGet }                  from '@/lib/capitalstake/client'
 import { CS_ENDPOINTS }              from '@/lib/capitalstake/endpoints'
 import { saveContent }               from '@/lib/supabase/content'
 import { trackChartAPICall }         from '@/lib/utils/rateLimit'
+import { cronUnauthorized }          from '@/lib/utils/cronAuth'
+import { syncAllAnnouncements }      from '@/lib/announcements/sync'
 
-type GeneralNewsItem = {
-  symbol:      string
-  date:        string
-  title:       string
-  sector_code: string
-  description: string
-  link:        string
-  image:       string
-  source:      string
-  source_url:  string
-}
+// Live / per-user data: always run on request, never prerender at build time
+export const dynamic = 'force-dynamic'
+
+export const maxDuration = 120
 
 export async function GET(req: NextRequest) {
-  const authHeader  = req.headers.get('authorization') ?? ''
-  const querySecret = req.nextUrl.searchParams.get('secret') ?? ''
-  const cronSecret  = process.env.CRON_SECRET ?? ''
+  const denied = cronUnauthorized(req)
+  if (denied) return denied
 
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}` && querySecret !== cronSecret) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const out: Record<string, unknown> = { ok: true }
 
   try {
     await trackChartAPICall('GET /3.0/news/general [sync]')
-    const res = await csUatGet<{ status: string; data: GeneralNewsItem[] }>(
-      CS_ENDPOINTS.NEWS_GENERAL(0, 50)
-    )
+    const res   = await csUatGet<{ data: unknown[] }>(CS_ENDPOINTS.NEWS_GENERAL(0, 50))
     const items = res?.data ?? []
-    if (items.length > 0) {
-      await saveContent('MARKET', 'general_news', items)
-    }
-
-    return NextResponse.json({ ok: true, count: items.length })
+    if (items.length > 0) await saveContent('MARKET', 'general_news', items)
+    out.generalNews = items.length
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    console.error('[Sync] live-content error:', msg)
-    return NextResponse.json({ error: msg }, { status: 500 })
+    out.ok = false
+    out.generalNewsError = err instanceof Error ? err.message : String(err)
   }
+
+  try {
+    out.announcements = await syncAllAnnouncements()
+  } catch (err) {
+    out.ok = false
+    out.announcementsError = err instanceof Error ? err.message : String(err)
+  }
+
+  console.log('[Sync] live-content', out)
+  return NextResponse.json(out, { status: out.ok ? 200 : 500 })
 }

@@ -33,6 +33,8 @@ export const CS_ENDPOINTS = {
   // ── NEWS & ANNOUNCEMENTS ─────────────────────────────────────────────────────
   COMPANY_NEWS:      (symbol: string, offset = 0, count = 50) =>
     `${UAT_BASE}/3.0/news/company?symbol=${symbol}&offset=${offset}&count=${count}`,
+  NEWS_SECTOR:       (sectorCode: string, offset = 0, count = 100) =>
+    `${UAT_BASE}/3.0/news/sector?sector_code=${sectorCode}&offset=${offset}&count=${count}`,
   NEWS_GENERAL:      (offset = 0, count = 50) =>
     `${UAT_BASE}/3.0/news/general?offset=${offset}&count=${count}`,
   ANNOUNCEMENTS_UAT: (symbol: string, offset = 0, count = 50) =>

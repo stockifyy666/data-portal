@@ -2,21 +2,21 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import Link from 'next/link'
-import { TrendingUp, TrendingDown, Activity, RefreshCw } from 'lucide-react'
+import { TrendingUp, TrendingDown, Activity, RefreshCw, ArrowLeft, X } from 'lucide-react'
 import { cachedFetch } from '@/lib/utils/clientCache'
 import { useTheme } from '@/components/providers/ThemeProvider'
 import { formatVolume, formatCompactMC } from '@/lib/utils/format'
 import type { StockQuote } from '@/types/market'
 
-// ─── Sector palette — Gold & Amber brand tones (31 colors) ──────────────────
+// ─── Sector palette — corporate: gold lead + navy, teal, slate, bronze ─────
 const SECTOR_PALETTE = [
-  '#FEA500','#F59E0B','#D97706','#B45309','#92400E',
-  '#FBBF24','#F97316','#EA580C','#C2410C','#7C2D12',
-  '#FCD34D','#FDE68A','#CA8A04','#A16207','#78350F',
-  '#FDBA74','#FB923C','#F87171','#EF4444','#DC2626',
-  '#FED7AA','#FDE047','#EAB308','#A3E635','#86EFAC',
-  '#6EE7B7','#5EEAD4','#67E8F9','#93C5FD','#C4B5FD',
-  '#E879F9',
+  '#C9962B','#1F3A5F','#2E7D7A','#8A6A3B','#4A6C8C',
+  '#B5A07A','#3B4A5A','#6F8F7A','#A35D3D','#7D8C9B',
+  '#D4B26A','#28566E','#5B7F95','#9C8462','#46705E',
+  '#C27C4E','#2D4458','#88A3B5','#B98E4F','#5E6B78',
+  '#A7B8A0','#7A5230','#3F7F9A','#CDBB95','#53616E',
+  '#9FB3C8','#8E7356','#4C8A84','#B0B9C2','#6A5A48',
+  '#94A7A1',
 ]
 
 const PSX_ALL_SECTORS = [
@@ -77,7 +77,25 @@ interface SectorData {
   pctChange: number
 }
 
-// ─── Sector Wheel Chart (redesigned) ─────────────────────────────────────────
+// ─── Sector Wheel (SVG donut — modern corporate) ────────────────────────────
+// pctChange on SectorData is a fraction (0.0012 = 0.12%) — fmtPct scales it.
+const fmtPct = (f: number) => `${f >= 0 ? '+' : ''}${(f * 100).toFixed(2)}%`
+
+function arcPath(cx: number, cy: number, r0: number, r1: number, a0: number, a1: number) {
+  const large = a1 - a0 > Math.PI ? 1 : 0
+  const p = (r: number, a: number) => `${(cx + r * Math.cos(a)).toFixed(2)},${(cy + r * Math.sin(a)).toFixed(2)}`
+  return `M ${p(r1, a0)} A ${r1} ${r1} 0 ${large} 1 ${p(r1, a1)} L ${p(r0, a1)} A ${r0} ${r0} 0 ${large} 0 ${p(r0, a0)} Z`
+}
+
+// Market cap for a stock — same convention as the sector aggregation
+function stockCap(q: StockQuote) {
+  return (q.lastClose || 0) > 0 && (q.sharesOut || 0) > 0
+    ? q.lastClose * q.sharesOut
+    : q.mc > 0 ? q.mc : (q.price || 0) * (q.sharesOut || 0)
+}
+
+type Slice = { key: string; label: string; sub?: string; color: string; shade: number; chg: number; value: number; share: number; a0: number; a1: number; href?: string }
+
 function SectorWheel({
   sectors,
   allSectorNames,
@@ -89,11 +107,9 @@ function SectorWheel({
   selected: string | null
   onSelect: (s: string | null) => void
 }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const slicesRef = useRef<{ a0: number; a1: number; r0: number; r1: number; name: string }[]>([])
   const [hovered, setHovered] = useState<string | null>(null)
+  useEffect(() => { setHovered(null) }, [selected])
 
-  // Sorted active sectors by market cap (for the table)
   const activeSectors = useMemo(() =>
     allSectorNames
       .filter(n => sectors.has(n))
@@ -104,355 +120,172 @@ function SectorWheel({
     activeSectors.reduce((s, n) => s + (sectors.get(n)?.marketCap ?? 0), 0),
   [activeSectors, sectors])
 
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')!
-    const dpr = window.devicePixelRatio || 1
-    const W = canvas.offsetWidth, H = canvas.offsetHeight
-    canvas.width = W * dpr; canvas.height = H * dpr; ctx.scale(dpr, dpr)
-    ctx.clearRect(0, 0, W, H)
+  const selSd   = selected ? sectors.get(selected) ?? null : null
+  const drill   = !!selSd
 
-    const css = getComputedStyle(document.documentElement)
-    const textMut = css.getPropertyValue('--text-muted').trim() || '#6b7280'
-    // Normalize bgCard to always be a 6-char hex so appending 2-char alpha is safe.
-    // CSS vars can return 3-char shorthand (#fff) which makes #fffdd (5 chars = invalid).
-    const rawBgCard = css.getPropertyValue('--bg-card').trim() || '#0f1929'
-    const bgCard = rawBgCard.startsWith('#') && rawBgCard.length === 4
-      ? '#' + rawBgCard[1] + rawBgCard[1] + rawBgCard[2] + rawBgCard[2] + rawBgCard[3] + rawBgCard[3]
-      : rawBgCard
+  // Geometry
+  const S = 320, cx = S / 2, cy = S / 2, R1 = 150, R0 = 108, GAP = 0.012
 
-    const cx = W / 2, cy = H / 2
-    const Rout  = Math.min(W * 0.36, H / 2 - 30)
-    const Rhole = Rout * 0.52
-
-    // Proportional arcs by market cap; tiny floor for empty sectors
-    const MIN_EMPTY_FRAC = 0.003
-    const grandTotalMC = totalMktCap || allSectorNames.reduce((s, n) => s + (sectors.get(n)?.marketCap || 1), 0)
-    const emptyCount   = allSectorNames.filter(n => !sectors.has(n)).length
-    const emptyBudget  = grandTotalMC * MIN_EMPTY_FRAC
-    const grandTotal   = grandTotalMC + emptyBudget * emptyCount
-
-    const sliceAngles: { a0: number; a1: number }[] = []
-    let cursor = -Math.PI / 2
-    allSectorNames.forEach(name => {
-      const sd = sectors.get(name)
-      const w  = sd ? (sd.marketCap || 1) : emptyBudget
-      const sw = (w / grandTotal) * Math.PI * 2
-      sliceAngles.push({ a0: cursor, a1: cursor + sw })
-      cursor += sw
+  const slices: Slice[] = useMemo(() => {
+    const items = drill
+      ? selSd!.stocks.map(q => ({ key: q.symbol, label: q.symbol, sub: q.name, value: stockCap(q), chg: q.changePct || 0, color: selSd!.color, href: `/stocks/${q.symbol}` }))
+      : activeSectors.map(n => { const d = sectors.get(n)!; return { key: n, label: n, sub: undefined, value: d.marketCap, chg: d.pctChange, color: d.color, href: undefined } })
+    items.sort((x, y) => y.value - x.value)
+    const total = items.reduce((t, x) => t + x.value, 0) || 1
+    let cur = -Math.PI / 2
+    return items.map((it, i) => {
+      const sweep = (it.value / total) * Math.PI * 2
+      const a0 = cur, a1 = cur + sweep
+      cur = a1
+      const pad = items.length > 1 && sweep > GAP * 3 ? GAP / 2 : 0
+      // In drill mode every company is a shade of the sector colour
+      const shade = drill ? Math.max(0.35, 1 - (i / Math.max(1, items.length - 1)) * 0.65) : 1
+      return { ...it, shade, share: (it.value / total) * 100, a0: a0 + pad, a1: a1 - pad }
     })
+  }, [drill, selSd, activeSectors, sectors])
 
-    slicesRef.current = []
+  const totalValue  = drill ? selSd!.marketCap : totalMktCap
+  const focusSl     = hovered ? slices.find(x => x.key === hovered) ?? null : null
+  const weightedChg = useMemo(() => {
+    const t = slices.reduce((s, x) => s + x.value, 0)
+    return t ? slices.reduce((s, x) => s + x.chg * x.value, 0) / t : 0
+  }, [slices])
 
-    // Draw slices with gradient fills
-    allSectorNames.forEach((name, idx) => {
-      const { a0, a1 } = sliceAngles[idx]
-      const midA  = (a0 + a1) / 2
-      const sData = sectors.get(name)
-      const color = sData?.color ?? '#1e293b'
-      const isHov = hovered === name
-      const isSel = selected === name
-      const expand = isHov || isSel
+  const top = slices.slice(0, 8)
+  const restShare = slices.slice(8).reduce((s, x) => s + x.share, 0)
 
-      const rOuter = expand ? Rout + 10 : Rout
-      const rInner = expand ? Rhole - 3 : Rhole
-
-      ctx.save()
-      if (expand) {
-        ctx.shadowColor = color
-        ctx.shadowBlur  = 20
-      }
-
-      // Gradient per slice (radial: darker inside → lighter outside)
-      const grad = ctx.createRadialGradient(cx, cy, rInner, cx, cy, rOuter)
-      if (sData) {
-        const alpha = expand ? 'ff' : isSel ? 'ee' : 'cc'
-        grad.addColorStop(0, color + (expand ? 'bb' : '88'))
-        grad.addColorStop(1, color + alpha)
-      } else {
-        grad.addColorStop(0, '#0f172a')
-        grad.addColorStop(1, '#1e2d3d')
-      }
-
-      ctx.beginPath()
-      ctx.arc(cx, cy, rOuter, a0, a1)
-      ctx.arc(cx, cy, rInner, a1, a0, true)
-      ctx.closePath()
-      ctx.fillStyle = grad
-      ctx.fill()
-      ctx.restore()
-
-      // Thin separator stroke
-      ctx.strokeStyle = bgCard
-      ctx.lineWidth   = sData ? 1.5 : 0.5
-      ctx.beginPath()
-      ctx.arc(cx, cy, rOuter, a0, a1)
-      ctx.arc(cx, cy, rInner, a1, a0, true)
-      ctx.closePath()
-      ctx.stroke()
-
-      // Inline label for large slices (> 5% of total)
-      if (sData) {
-        const span = a1 - a0
-        const frac = span / (Math.PI * 2)
-        if (frac > 0.05) {
-          const lx = cx + Math.cos(midA) * (rInner + (rOuter - rInner) * 0.5)
-          const ly = cy + Math.sin(midA) * (rInner + (rOuter - rInner) * 0.5)
-          ctx.save()
-          ctx.translate(lx, ly)
-          ctx.rotate(midA + Math.PI / 2)
-          ctx.textAlign = 'center'
-          ctx.textBaseline = 'middle'
-          const fs = Math.min(11, Math.max(8, frac * 120))
-          ctx.font = `700 ${fs}px system-ui`
-          ctx.fillStyle = '#ffffff'
-          const short = name.split(' ').slice(0, 2).join(' ')
-          ctx.fillText(short, 0, 0)
-          ctx.restore()
-        }
-      }
-
-      slicesRef.current.push({ a0, a1, r0: Rhole - 3, r1: Rout + 14, name })
-    })
-
-    // Leader lines for top sectors only (> 2.5% market cap)
-    const LABEL_THRESHOLD = 0.01
-    const ELBOW_R = Rout + 18
-    const COL_R   = Rout + 60
-
-    interface LabelItem {
-      name: string; midA: number; color: string; pct: number
-      naturalY: number; finalY: number; onRight: boolean
-    }
-    const candidates: LabelItem[] = []
-    allSectorNames.forEach((name, idx) => {
-      const sd = sectors.get(name)
-      if (!sd) return
-      const frac = (sd.marketCap || 0) / (grandTotalMC || 1)
-      if (frac < LABEL_THRESHOLD) return
-      const { a0, a1 } = sliceAngles[idx]
-      const midA = (a0 + a1) / 2
-      candidates.push({
-        name, midA, color: sd.color, pct: sd.pctChange,
-        naturalY: cy + Math.sin(midA) * ELBOW_R,
-        finalY:   cy + Math.sin(midA) * ELBOW_R,
-        onRight:  Math.cos(midA) >= 0,
-      })
-    })
-
-    const spreadLabels = (items: LabelItem[]) => {
-      if (!items.length) return
-      items.sort((a, b) => a.naturalY - b.naturalY)
-      const GAP = 22
-      for (let p = 0; p < 15; p++) {
-        for (let i = 1; i < items.length; i++)
-          if (items[i].finalY < items[i-1].finalY + GAP) items[i].finalY = items[i-1].finalY + GAP
-        for (let i = items.length-2; i >= 0; i--)
-          if (items[i].finalY > items[i+1].finalY - GAP) items[i].finalY = items[i+1].finalY - GAP
-        const mn = items[0].finalY, mx = items[items.length-1].finalY
-        if (mn < 10) items.forEach(l => { l.finalY += 10 - mn })
-        if (mx > H-10) items.forEach(l => { l.finalY -= mx - (H-10) })
-      }
-    }
-    const R = candidates.filter(l =>  l.onRight)
-    const L = candidates.filter(l => !l.onRight)
-    spreadLabels(R); spreadLabels(L)
-
-    ;[...R, ...L].forEach(l => {
-      const isActive = hovered === l.name || selected === l.name
-      const ex = cx + Math.cos(l.midA) * ELBOW_R
-      const ey = cy + Math.sin(l.midA) * ELBOW_R
-      const sx = cx + Math.cos(l.midA) * (Rout + 2)
-      const sy = cy + Math.sin(l.midA) * (Rout + 2)
-      const colX = l.onRight ? cx + COL_R : cx - COL_R
-      const lineC = isActive ? l.color : l.color + '99'
-
-      ctx.strokeStyle = lineC
-      ctx.lineWidth   = isActive ? 1.5 : 0.9
-      ctx.setLineDash([])
-      ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke()
-      ctx.setLineDash([2, 3])
-      ctx.beginPath(); ctx.moveTo(ex, ey); ctx.lineTo(colX, l.finalY); ctx.stroke()
-      ctx.setLineDash([])
-
-      ctx.beginPath(); ctx.arc(ex, ey, 2.5, 0, Math.PI * 2)
-      ctx.fillStyle = l.color; ctx.fill()
-
-      // Tick mark at column
-      ctx.strokeStyle = l.color + '66'
-      ctx.lineWidth = 1
-      const tickDir = l.onRight ? 6 : -6
-      ctx.beginPath(); ctx.moveTo(colX, l.finalY); ctx.lineTo(colX + tickDir, l.finalY); ctx.stroke()
-
-      ctx.textAlign    = l.onRight ? 'left' : 'right'
-      ctx.textBaseline = 'middle'
-      const lbl = l.name.length > 20 ? l.name.slice(0, 18) + '…' : l.name
-      ctx.font      = isActive ? '700 10px system-ui' : '600 9.5px system-ui'
-      ctx.fillStyle = isActive ? l.color : (css.getPropertyValue('--text-primary').trim() || '#111827')
-      ctx.fillText(lbl, colX + (l.onRight ? 10 : -10), l.finalY - 5)
-      const pctStr = `${l.pct >= 0 ? '+' : ''}${l.pct.toFixed(2)}%`
-      ctx.font      = '8px system-ui'
-      ctx.fillStyle = l.pct >= 0 ? '#16a34a' : '#dc2626'
-      ctx.fillText(pctStr, colX + (l.onRight ? 10 : -10), l.finalY + 7)
-    })
-
-    // Center
-    ctx.beginPath(); ctx.arc(cx, cy, Rhole - 1, 0, Math.PI * 2)
-    const centerGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, Rhole)
-    centerGrad.addColorStop(0, bgCard)
-    // Only append hex alpha when bgCard is a 6-char hex; fall back to same color otherwise
-    centerGrad.addColorStop(1, /^#[0-9a-fA-F]{6}$/.test(bgCard) ? bgCard + 'dd' : bgCard)
-    ctx.fillStyle = centerGrad; ctx.fill()
-
-    // Center text is rendered as HTML overlay — no canvas text here
-  }, [sectors, allSectorNames, selected, hovered, activeSectors, totalMktCap])
-
-  function hitTest(e: React.MouseEvent<HTMLCanvasElement>): string | null {
-    const rect = e.currentTarget.getBoundingClientRect()
-    const mx = (e.clientX - rect.left) * (e.currentTarget.offsetWidth / rect.width)
-    const my = (e.clientY - rect.top)  * (e.currentTarget.offsetHeight / rect.height)
-    const canvas = canvasRef.current!
-    const cx = canvas.offsetWidth / 2, cy = canvas.offsetHeight / 2
-    const dx = mx - cx, dy = my - cy
-    const dist = Math.sqrt(dx * dx + dy * dy)
-    const raw   = Math.atan2(dy, dx)
-    const angle = raw < 0 ? raw + Math.PI * 2 : raw
-
-    for (const sl of slicesRef.current) {
-      if (dist < sl.r0 || dist > sl.r1) continue
-      let a0 = sl.a0 < 0 ? sl.a0 + Math.PI * 2 : sl.a0
-      let a1 = sl.a1 < 0 ? sl.a1 + Math.PI * 2 : sl.a1
-      if (a0 <= a1 ? (angle >= a0 && angle <= a1) : (angle >= a0 || angle <= a1)) return sl.name
-    }
-    return null
+  function clickSlice(sl: Slice) {
+    if (drill) { if (sl.href) window.location.href = sl.href }
+    else onSelect(sl.key)
   }
 
-  // Center overlay data — always reads latest sectors prop, never stale
-  const centerSd = (hovered && sectors.get(hovered)) || (selected && sectors.get(selected)) || null
-  const centerName = hovered || selected || null
-
   return (
-    <div>
-      {/* Donut canvas + HTML center overlay */}
-      <div style={{ position: 'relative' }}>
-        <canvas
-          ref={canvasRef}
-          onMouseMove={e => setHovered(hitTest(e))}
-          onMouseLeave={() => setHovered(null)}
-          onClick={e => { const h = hitTest(e); onSelect(h === selected ? null : h) }}
-          style={{ width: '100%', height: 520, display: 'block', cursor: hovered ? 'pointer' : 'default' }}
-        />
-        {/* Center label — HTML so it always reflects current data */}
-        <div style={{
-          position: 'absolute', top: '50%', left: '50%',
-          transform: 'translate(-50%, -50%)',
-          textAlign: 'center', pointerEvents: 'none',
-          width: 140,
-        }}>
-          {centerSd && centerName ? (
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,320px)_1fr] xl:grid-cols-[minmax(0,340px)_1fr] items-center">
+      {/* Donut */}
+      <div className="relative mx-auto w-full" style={{ maxWidth: 340, containerType: 'inline-size' }}>
+        <svg key={selected ?? 'all'} viewBox={`0 0 ${S} ${S}`} className="w-full h-auto block wheel-spin" role="img"
+          aria-label={drill ? `${selected} companies` : 'Sector allocation'}>
+          <circle cx={cx} cy={cy} r={(R0 + R1) / 2} fill="none" stroke="var(--bg-border)" strokeWidth={R1 - R0} opacity={0.5} />
+          {slices.map(sl => {
+            if (sl.a1 <= sl.a0) return null
+            const on  = hovered === sl.key
+            const dim = hovered && !on
+            const path = sl.a1 - sl.a0 >= Math.PI * 2 - 0.001
+              ? null
+              : arcPath(cx, cy, on ? R0 - 2 : R0, on ? R1 + 6 : R1, sl.a0, sl.a1)
+            return path ? (
+              <path key={sl.key} d={path} fill={sl.color} fillOpacity={sl.shade}
+                opacity={dim ? 0.35 : 1} style={{ cursor: 'pointer', transition: 'opacity .2s' }}
+                onMouseEnter={() => setHovered(sl.key)} onMouseLeave={() => setHovered(null)}
+                onClick={() => clickSlice(sl)}>
+                <title>{`${sl.label} · ${sl.share.toFixed(1)}%`}</title>
+              </path>
+            ) : (
+              <circle key={sl.key} cx={cx} cy={cy} r={(R0 + R1) / 2} fill="none" stroke={sl.color} strokeWidth={R1 - R0}
+                style={{ cursor: 'pointer' }} onMouseEnter={() => setHovered(sl.key)} onMouseLeave={() => setHovered(null)}
+                onClick={() => clickSlice(sl)} />
+            )
+          })}
+          <circle cx={cx} cy={cy} r={R0 - 14} fill="none" stroke="var(--bg-border)" strokeWidth={1} />
+          {drill && (
+            <circle cx={cx} cy={cy} r={R0 - 4} fill="transparent" style={{ cursor: 'pointer' }}
+              onClick={() => onSelect(null)}>
+              <title>Back to all sectors</title>
+            </circle>
+          )}
+        </svg>
+
+        {/* Centre read-out */}
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center pointer-events-none text-center" style={{ width: '54%', maxHeight: '54%' }}>
+          {focusSl ? (
             <>
-              <div style={{
-                fontSize: 11, fontWeight: 700, color: centerSd.color,
-                lineHeight: 1.3, marginBottom: 4,
-              }}>
-                {centerName.split(' ').slice(0, 3).join(' ')}
-              </div>
-              <div style={{
-                fontSize: 16, fontWeight: 800,
-                color: centerSd.pctChange >= 0 ? '#16a34a' : '#dc2626',
-                fontVariantNumeric: 'tabular-nums',
-              }}>
-                {centerSd.pctChange >= 0 ? '+' : ''}{centerSd.pctChange.toFixed(2)}%
-              </div>
-              <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>
-                {centerSd.stocks.length} stocks
-              </div>
+              <span style={{ width: 8, height: 8, borderRadius: 2, background: focusSl.color, opacity: focusSl.shade, marginBottom: 6 }} />
+              <p className="wheel-txt-label" style={{ fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>
+                {focusSl.label}
+              </p>
+              {focusSl.sub && <p className="wheel-txt-small truncate max-w-full" style={{ color: 'var(--text-muted)' }}>{focusSl.sub}</p>}
+              <p className="wheel-txt-big" style={{ fontWeight: 600, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
+                {focusSl.share.toFixed(1)}%
+              </p>
+              <p className="wheel-txt-small" style={{ fontWeight: 700, color: focusSl.chg >= 0 ? 'var(--color-up)' : 'var(--color-down)', fontVariantNumeric: 'tabular-nums' }}>
+                {fmtPct(focusSl.chg)}
+              </p>
             </>
           ) : (
             <>
-              <div style={{ fontSize: 20, fontWeight: 800, color: '#FEA500' }}>PSX</div>
-              <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 3 }}>
-                {activeSectors.length} sectors
-              </div>
-              <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>click a slice</div>
+              <p className="wheel-txt-label" style={{ fontWeight: 700, letterSpacing: '.08em', color: drill ? selSd!.color : 'var(--text-muted)', textTransform: 'uppercase' }}>
+                {drill ? selected : 'Market cap'}
+              </p>
+              <p className="wheel-txt-big" style={{ fontWeight: 600, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
+                {formatCompactMC(totalValue)}
+              </p>
+              <p className="wheel-txt-small" style={{ fontWeight: 700, color: weightedChg >= 0 ? 'var(--color-up)' : 'var(--color-down)', fontVariantNumeric: 'tabular-nums' }}>
+                {fmtPct(weightedChg)} today
+              </p>
+              <p className="wheel-txt-small" style={{ color: 'var(--text-muted)' }}>
+                {slices.length} {drill ? (slices.length === 1 ? 'company' : 'companies') : 'sectors'}
+              </p>
+              {drill && (
+                <p className="wheel-txt-small inline-flex items-center gap-1" style={{ color: 'var(--text-muted)', marginTop: 4, fontWeight: 600 }}>
+                  <ArrowLeft size={11} strokeWidth={2.5} /> Click to go back
+                </p>
+              )}
             </>
           )}
         </div>
       </div>
 
-      {/* Sector table — sorted by market cap, all sectors, click to drill down */}
-      <div style={{ marginTop: 16 }}>
-        {/* Header row — hide mini-bar col on mobile via CSS class trick */}
-        <div style={{
-          display: 'grid', gridTemplateColumns: '1fr auto auto auto',
-          gap: '0 0', padding: '0 20px 6px',
-          borderBottom: '1px solid var(--bg-border)',
-        }}>
-          {[
-            { label: 'Sector', w: undefined },
-            { label: 'Stks',   w: 40 },
-            { label: 'Mkt%',   w: 56 },
-            { label: 'Chg',    w: 68 },
-          ].map(({ label, w }) => (
-            <span key={label} style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em',
-              color: 'var(--text-muted)', textTransform: 'uppercase',
-              textAlign: label === 'Sector' ? 'left' : 'right',
-              width: w, flexShrink: 0 }}>{label}</span>
-          ))}
+      {/* Legend */}
+      <div className="min-w-0">
+        <div className="flex items-center justify-between pb-2 mb-1 gap-3" style={{ borderBottom: '1px solid var(--bg-border)' }}>
+          {drill ? (
+            <button onClick={() => onSelect(null)} className="inline-flex items-center gap-1.5 text-[11px] font-bold tracking-wide"
+              style={{ color: 'var(--text-secondary)' }}>
+              <ArrowLeft size={13} strokeWidth={2.5} /> ALL SECTORS
+              <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>/ {selected}</span>
+            </button>
+          ) : (
+            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.08em', color: 'var(--text-muted)' }}>TOP SECTORS BY WEIGHT</span>
+          )}
+          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.08em', color: 'var(--text-muted)' }}>CHG</span>
         </div>
-        <div style={{ maxHeight: 360, overflowY: 'auto' }}>
-          {activeSectors.map(name => {
-            const sd  = sectors.get(name)!
-            const isSel = selected === name
-            const up  = sd.pctChange >= 0
-            const pct = totalMktCap > 0 ? (sd.marketCap / totalMktCap) * 100 : 0
-            return (
-              <button
-                key={name}
-                onClick={() => onSelect(isSel ? null : name)}
-                style={{
-                  display: 'flex', alignItems: 'center',
-                  gap: 0, width: '100%', padding: '7px 20px',
-                  background: isSel ? sd.color + '14' : 'transparent',
-                  border: 'none', borderBottom: '1px solid var(--bg-border)',
-                  cursor: 'pointer', textAlign: 'left',
-                  transition: 'background 0.15s',
-                }}
-              >
-                {/* Sector name with color dot */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: 0 }}>
-                  <span style={{
-                    width: 7, height: 7, borderRadius: '50%',
-                    background: sd.color, flexShrink: 0,
-                    boxShadow: isSel ? `0 0 6px ${sd.color}` : 'none',
-                  }} />
-                  <span style={{
-                    fontSize: 11, fontWeight: isSel ? 700 : 600,
-                    color: isSel ? sd.color : 'var(--text-primary)',
-                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                  }}>{name}</span>
-                </div>
-                {/* Stock count */}
-                <span style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'right', width: 40, flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
-                  {sd.stocks.length}
+        {(drill ? slices : top).map(sl => {
+          const on = hovered === sl.key
+          const up = sl.chg >= 0
+          const lead = (drill ? slices : top)[0]?.share || 1
+          return (
+            <button key={sl.key}
+              onMouseEnter={() => setHovered(sl.key)} onMouseLeave={() => setHovered(null)}
+              onClick={() => clickSlice(sl)}
+              className="w-full text-left py-2 px-2 -mx-2 rounded-md transition-colors"
+              style={{ background: on ? 'var(--bg-hover)' : 'transparent' }}>
+              <div className="flex items-center gap-2.5">
+                <span style={{ width: 10, height: 10, borderRadius: 3, background: sl.color, opacity: sl.shade, flexShrink: 0 }} />
+                <span className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-baseline sm:gap-2" style={{ fontSize: 12, fontWeight: on ? 700 : 600, color: 'var(--text-primary)' }}>
+                  <span className="truncate">{sl.label}</span>
+                  {sl.sub && <span className="truncate text-[10px] sm:text-xs" style={{ fontWeight: 500, color: 'var(--text-muted)' }}>{sl.sub}</span>}
                 </span>
-                {/* Market cap % */}
-                <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums', textAlign: 'right', width: 56, flexShrink: 0 }}>
-                  {pct.toFixed(1)}%
+                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums', width: 44, textAlign: 'right', flexShrink: 0 }}>
+                  {sl.share.toFixed(1)}%
                 </span>
-                {/* % change */}
-                <span style={{
-                  fontSize: 11, fontWeight: 700, color: up ? '#16a34a' : '#dc2626',
-                  fontVariantNumeric: 'tabular-nums', textAlign: 'right',
-                  width: 68, flexShrink: 0,
-                }}>
-                  {up ? '+' : ''}{sd.pctChange.toFixed(2)}%
+                <span style={{ fontSize: 11, fontWeight: 700, color: up ? 'var(--color-up)' : 'var(--color-down)', fontVariantNumeric: 'tabular-nums', width: 56, textAlign: 'right', flexShrink: 0 }}>
+                  {fmtPct(sl.chg)}
                 </span>
-              </button>
-            )
-          })}
-        </div>
+              </div>
+              <div className="mt-1.5 ml-[18px] h-[3px] rounded-full overflow-hidden" style={{ background: 'var(--bg-border)' }}>
+                <div className="h-full rounded-full" style={{ width: `${Math.min(100, (sl.share / lead) * 100)}%`, background: sl.color, opacity: sl.shade }} />
+              </div>
+            </button>
+          )
+        })}
+        {!drill && restShare > 0 && (
+          <p className="pt-2" style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+            + {slices.length - top.length} other sectors · {restShare.toFixed(1)}% · click a slice to see its companies
+          </p>
+        )}
+        {drill && (
+          <p className="pt-2" style={{ fontSize: 11, color: 'var(--text-muted)' }}>Click a company to open its page</p>
+        )}
       </div>
     </div>
   )
@@ -476,6 +309,27 @@ function ContribHistogram({ bars }: { bars: ContribBar[] }) {
   const [tip, setTip] = useState<(ContribBar & { x: number; y: number; flipLeft: boolean }) | null>(null)
   const { theme } = useTheme()  // re-draw whenever dark/light toggles
 
+  // Re-draw on resize and browser zoom (zoom changes devicePixelRatio and the
+  // canvas CSS width) — otherwise the old bitmap is stretched and text distorts.
+  const [sizeTick, setSizeTick] = useState(0)
+  useEffect(() => {
+    const canvas = ref.current
+    if (!canvas) return
+    let raf = 0
+    const bump = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => setSizeTick(t => t + 1)) }
+    const ro = new ResizeObserver(bump)
+    ro.observe(canvas)
+    let mq: MediaQueryList | null = null
+    const watchDpr = () => {
+      mq?.removeEventListener('change', onDpr)
+      mq = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`)
+      mq.addEventListener('change', onDpr)
+    }
+    function onDpr() { bump(); watchDpr() }
+    watchDpr()
+    return () => { ro.disconnect(); mq?.removeEventListener('change', onDpr); cancelAnimationFrame(raf) }
+  }, [])
+
   // Split into mirrored gainers (above) and losers (below), each sorted descending
   const gainers = useMemo(() => bars.filter(b => b.pts >= 0).sort((a, b) => b.pts - a.pts),  [bars])
   const losers  = useMemo(() => bars.filter(b => b.pts <  0).sort((a, b) => a.pts - b.pts),  [bars])
@@ -496,7 +350,9 @@ function ContribHistogram({ bars }: { bars: ContribBar[] }) {
     const textPri = css.getPropertyValue('--text-primary').trim() || (isDark ? '#f1f5f9' : '#0f172a')
     const border  = css.getPropertyValue('--bg-border').trim()  || (isDark ? '#1e2232' : '#e2e8f0')
 
-    const PAD = { top: 52, right: 20, bottom: 60, left: 72 }
+    // Narrow screens: tighter padding and fewer columns so labels never overlap
+    const narrow = W < 640
+    const PAD = narrow ? { top: 44, right: 8, bottom: 52, left: 40 } : { top: 52, right: 20, bottom: 60, left: 72 }
     const cW = W - PAD.left - PAD.right
     const cH = H - PAD.top  - PAD.bottom
 
@@ -531,7 +387,9 @@ function ContribHistogram({ bars }: { bars: ContribBar[] }) {
     ctx.strokeStyle = 'rgba(254,165,0,0.55)'; ctx.lineWidth = 1.5; ctx.setLineDash([])
     ctx.beginPath(); ctx.moveTo(PAD.left, z0); ctx.lineTo(W - PAD.right, z0); ctx.stroke()
 
-    const gW = cW / totalCols
+    const MIN_COL = narrow ? 38 : 44                      // px per column needed for readable labels
+    const cols = Math.max(1, Math.min(totalCols, Math.floor(cW / MIN_COL)))
+    const gW = cW / cols
     const bW = Math.max(Math.min(gW * 0.78, 52), 10)
     hitRef.current = []
 
@@ -568,11 +426,11 @@ function ContribHistogram({ bars }: { bars: ContribBar[] }) {
       ctx.fillRect(bx + 1, barTop, bW - 2, 2)
 
       // Labels — all outside the bar, symbol uses theme primary color so it's always readable
-      const fs = Math.min(10, Math.max(7, gW / 3.2))
-      const sf = Math.max(7, fs - 1)
+      const fs = Math.min(10, Math.max(8, gW / 4.2))
+      const sf = Math.max(8, fs - 1)
       ctx.textAlign = 'center'
       const ptsStr = `${b.pts >= 0 ? '+' : ''}${b.pts.toFixed(2)}`
-      const pctStr = `${b.pct >= 0 ? '+' : ''}${b.pct.toFixed(2)}%`
+      const pctStr = fmtPct(b.pct)
 
       if (up) {
         // Green bars: symbol just above bar top, pts above symbol
@@ -592,14 +450,20 @@ function ContribHistogram({ bars }: { bars: ContribBar[] }) {
     }
 
     // Draw all gainers (above) then all losers (below) at paired column positions
-    gainers.forEach((b, i) => drawBar(b, i))
-    losers.forEach((b, i)  => drawBar(b, i))
+    gainers.slice(0, cols).forEach((b, i) => drawBar(b, i))
+    losers.slice(0, cols).forEach((b, i)  => drawBar(b, i))
 
     // Y-axis label
-    ctx.save(); ctx.translate(12, PAD.top + cH / 2); ctx.rotate(-Math.PI / 2)
+    if (!narrow) { ctx.save(); ctx.translate(12, PAD.top + cH / 2); ctx.rotate(-Math.PI / 2)
     ctx.fillStyle = textMut; ctx.font = '9px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
-    ctx.fillText('Index Points', 0, 0); ctx.restore()
-  }, [gainers, losers, totalCols, bars, theme])  // theme from useTheme() triggers redraw on dark/light switch
+    ctx.fillText('Index Points', 0, 0); ctx.restore() }
+
+    // Note how many are shown when the width forces a cut
+    if (cols < totalCols) {
+      ctx.fillStyle = textMut; ctx.font = '9px system-ui'; ctx.textAlign = 'right'; ctx.textBaseline = 'top'
+      ctx.fillText(`Top ${cols} of ${totalCols} shown`, W - PAD.right, 6)
+    }
+  }, [gainers, losers, totalCols, bars, theme, sizeTick])  // theme from useTheme() triggers redraw on dark/light switch
 
   function onMove(e: React.MouseEvent<HTMLCanvasElement>) {
     const rect = e.currentTarget.getBoundingClientRect()
@@ -632,7 +496,7 @@ function ContribHistogram({ bars }: { bars: ContribBar[] }) {
           </div>
           {[
             ['Index Points', `${tip.pts >= 0 ? '+' : ''}${tip.pts.toFixed(2)}`,  tip.pts >= 0 ? '#4ade80' : '#f87171'],
-            ['% Px Chg',     `${tip.pct >= 0 ? '+' : ''}${tip.pct.toFixed(2)}%`, tip.pct >= 0 ? '#4ade80' : '#f87171'],
+            ['% Px Chg',     fmtPct(tip.pct), tip.pct >= 0 ? '#4ade80' : '#f87171'],
             ['Weight',       `${tip.weight.toFixed(2)}%`,                          'var(--text-secondary)'],
             ['Mkt Cap (000s)', `PKR ${tip.mc.toLocaleString('en-PK')}`,            'var(--text-secondary)'],
             ['Sector',       tip.sector,                                            'var(--text-muted)'],
@@ -653,6 +517,14 @@ export default function IndicesPage() {
   const [quotes,      setQuotes]      = useState<StockQuote[]>([])
   const [indexLevels, setIndexLevels] = useState<Record<string, { prevClose: number; change: number }>>({})
   const [loading,     setLoading]     = useState(true)
+  // USD/PKR rate for showing market cap in dollars (from /api/market/macro —
+  // external FX source, cached; no Capital Stake calls)
+  const [usdPkr, setUsdPkr] = useState<number | null>(null)
+  useEffect(() => {
+    cachedFetch<{ usdPkr?: { value: number } | null }>('/api/market/macro', 60 * 60_000)
+      .then(j => { if (j?.usdPkr?.value) setUsdPkr(j.usdPkr.value) })
+      .catch(() => {})
+  }, [])
   const [indexKey,    setIndexKey]    = useState('KSE100')
   const [selected,    setSelected]    = useState<string | null>(null)
 
@@ -688,7 +560,7 @@ export default function IndicesPage() {
     const map = new Map<string, SectorData>()
     indexStocks.forEach(q => {
       const sName = normSector(q.sector ?? '')
-      const color = SECTOR_PALETTE[PSX_ALL_SECTORS.indexOf(sName) % SECTOR_PALETTE.length] ?? '#FEA500'
+      const color = SECTOR_PALETTE[PSX_ALL_SECTORS.indexOf(sName) % SECTOR_PALETTE.length] ?? '#7D8C9B'
       // Use previous-close market cap for stable sector weights (matches portal convention)
       const cap = (q.lastClose || 0) > 0 && (q.sharesOut || 0) > 0
         ? q.lastClose * q.sharesOut
@@ -743,7 +615,7 @@ export default function IndicesPage() {
         const pmc = q.mc > 0 ? q.mc : 0
         // Index points contribution = weight × index prevClose × pctChange/100
         const pts = totalPrevMC > 0 && prevIndexLevel > 0
-          ? (pmc / totalPrevMC) * prevIndexLevel * ((q.changePct ?? 0) / 100)
+          ? (pmc / totalPrevMC) * prevIndexLevel * (q.changePct ?? 0)   // changePct is already a fraction
           : (q.change ?? 0)
         const weight = totalPrevMC > 0 ? (pmc / totalPrevMC) * 100 : 0
         return {
@@ -804,14 +676,19 @@ export default function IndicesPage() {
           </p>
         </div>
         <div className="flex items-center gap-2 min-w-0 w-full sm:w-auto">
-          {/* Index selector — scrollable on mobile */}
-          <div className="flex rounded-lg border min-w-0 flex-1 sm:flex-none" style={{ borderColor: 'var(--bg-border)', overflowX: 'auto' }}>
+          {/* Index selector — dropdown below xl (phones, tablets, small laptops with sidebar), segmented buttons on desktop */}
+          <select value={indexKey} onChange={e => setIndexKey(e.target.value)} aria-label="Select index"
+            className="xl:hidden flex-1 sm:flex-none sm:w-44 min-w-0 rounded-lg px-3 py-2 text-xs font-semibold focus:outline-none"
+            style={{ background: 'var(--bg-card)', border: '1px solid var(--bg-border)', color: 'var(--text-primary)' }}>
+            {INDEX_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+          </select>
+          <div className="hidden xl:flex rounded-lg border overflow-hidden" style={{ borderColor: 'var(--bg-border)' }}>
             {INDEX_OPTIONS.map(opt => (
               <button
                 key={opt.value}
                 onClick={() => setIndexKey(opt.value)}
                 style={{
-                  padding: '6px 9px', fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                  padding: '6px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer',
                   whiteSpace: 'nowrap', flexShrink: 0,
                   background: indexKey === opt.value
                     ? 'linear-gradient(135deg,#FEA500,#986300)'
@@ -827,13 +704,15 @@ export default function IndicesPage() {
           <button
             onClick={load}
             disabled={loading}
+            aria-label="Refresh"
+            className="shrink-0 flex items-center gap-1.5 px-2.5 py-2 xl:py-1.5 rounded-lg text-xs"
             style={{
-              padding: '6px 10px', borderRadius: 8, fontSize: 12, flexShrink: 0,
               background: 'var(--bg-card)', border: '1px solid var(--bg-border)',
-              color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+              color: 'var(--text-secondary)', cursor: 'pointer',
             }}
           >
-            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} /> Refresh
+            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+            <span className="hidden xl:inline">Refresh</span>
           </button>
         </div>
       </div>
@@ -851,7 +730,7 @@ export default function IndicesPage() {
         <>
           {/* KPI Row */}
           {kse && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(110px,1fr))', gap: 10 }}>
+            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2 sm:gap-2.5">
               {[
                 {
                   label: `${kse.label} Change`,
@@ -896,14 +775,14 @@ export default function IndicesPage() {
                   Icon: Activity,
                 },
               ].map(({ label, value, sub, color, Icon }) => (
-                <div key={label} className="card" style={{ padding: '14px 16px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                    <Icon size={14} style={{ color }} />
-                    <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.05em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                <div key={label} className="card min-w-0 !px-3 !py-2.5 sm:!px-4 sm:!py-3.5">
+                  <div className="flex items-center gap-1.5 sm:gap-2 mb-1 sm:mb-1.5 min-w-0">
+                    <Icon size={13} style={{ color, flexShrink: 0 }} />
+                    <span className="truncate" title={label} style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.05em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
                       {label}
                     </span>
                   </div>
-                  <div style={{ fontSize: 18, fontWeight: 700, color, fontVariantNumeric: 'tabular-nums' }}>
+                  <div className="truncate text-base sm:text-lg" style={{ fontWeight: 700, color, fontVariantNumeric: 'tabular-nums' }}>
                     {value}
                   </div>
                   {sub && <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>{sub}</div>}
@@ -919,7 +798,7 @@ export default function IndicesPage() {
                 SECTOR ALLOCATION — {kse?.label}
               </p>
               <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-                All PSX sectors shown · colored = present in {kse?.label} · click a slice to explore
+                Weighted by market cap · hover or click a sector to explore
               </p>
             </div>
             <SectorWheel
@@ -941,33 +820,36 @@ export default function IndicesPage() {
                 </div>
               ) : (
                 <>
-                  {/* Sector KPI bar */}
-                  <div style={{
-                    borderRadius: 10, padding: '14px 20px', marginBottom: 14,
-                    background: selData.color + '14', border: `1px solid ${selData.color}44`,
-                    display: 'flex', alignItems: 'center', gap: 32, flexWrap: 'wrap',
-                  }}>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: selData.color }}>{selected}</div>
-                    {[
-                      ['Stocks',     String(selData.stocks.length),                                                              'var(--text-primary)'],
-                      ['Avg Change', `${selData.pctChange >= 0 ? '+' : ''}${selData.pctChange.toFixed(2)}%`,                    selData.pctChange >= 0 ? '#4ade80' : '#f87171'],
-                      ['Mkt Cap',    formatCompactMC(selData.marketCap), '#60a5fa'],
-                    ].map(([l, v, c]) => (
-                      <div key={String(l)}>
-                        <div style={{ fontSize: 9, color: 'var(--text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 2 }}>{l}</div>
-                        <div style={{ fontSize: 17, fontWeight: 700, color: String(c), fontVariantNumeric: 'tabular-nums' }}>{v}</div>
-                      </div>
-                    ))}
-                    <button
-                      onClick={() => setSelected(null)}
-                      style={{ marginLeft: 'auto', padding: '4px 10px', borderRadius: 6, fontSize: 11,
-                        background: 'var(--bg-hover)', border: '1px solid var(--bg-border)',
-                        color: 'var(--text-muted)', cursor: 'pointer' }}
-                    >✕ Close</button>
+                  {/* Sector KPI bar — header row + responsive stat grid */}
+                  <div className="rounded-[10px] p-3 sm:px-5 sm:py-3.5 mb-3.5 flex flex-col lg:flex-row lg:items-center gap-3 lg:gap-8"
+                    style={{ background: selData.color + '14', border: `1px solid ${selData.color}44` }}>
+                    <div className="flex items-center justify-between gap-3 lg:contents">
+                      <div className="truncate text-sm sm:text-[15px] font-bold" style={{ color: selData.color }}>{selected}</div>
+                      <button onClick={() => setSelected(null)}
+                        className="inline-flex items-center gap-1 shrink-0 lg:order-last lg:ml-auto"
+                        style={{ padding: '4px 10px', borderRadius: 6, fontSize: 11,
+                          background: 'var(--bg-hover)', border: '1px solid var(--bg-border)',
+                          color: 'var(--text-muted)', cursor: 'pointer' }}>
+                        <X size={12} /> Close
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-3 lg:flex lg:gap-8">
+                      {[
+                        ['Stocks',        String(selData.stocks.length), 'var(--text-primary)'],
+                        ['Avg Change',    fmtPct(selData.pctChange),     selData.pctChange >= 0 ? '#4ade80' : '#f87171'],
+                        ['Mkt Cap',       formatCompactMC(selData.marketCap), '#60a5fa'],
+                        ['Mkt Cap (USD)', usdPkr ? formatCompactMC(selData.marketCap / usdPkr).replace('Rs ', '$') : '—', '#60a5fa'],
+                      ].map(([l, v, c]) => (
+                        <div key={String(l)} className="min-w-0">
+                          <div style={{ fontSize: 9, color: 'var(--text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 2 }}>{l}</div>
+                          <div className="text-[15px] sm:text-[17px] truncate" style={{ fontWeight: 700, color: String(c), fontVariantNumeric: 'tabular-nums' }}>{v}</div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
 
                   {/* Stock grid */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(260px,1fr))', gap: 8 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(min(260px,100%),1fr))', gap: 8 }}>
                     {selData.stocks
                       .slice().sort((a, b) => Math.abs(b.changePct ?? 0) - Math.abs(a.changePct ?? 0))
                       .map(q => {
@@ -992,7 +874,7 @@ export default function IndicesPage() {
                                 {q.price?.toFixed(2) ?? '—'}
                               </div>
                               <div style={{ fontSize: 11, fontWeight: 600, color: up2 ? '#4ade80' : '#f87171', fontVariantNumeric: 'tabular-nums' }}>
-                                {up2 ? '+' : ''}{chg.toFixed(2)}%
+                                {fmtPct(chg)}
                               </div>
                             </div>
                           </Link>
@@ -1019,7 +901,7 @@ export default function IndicesPage() {
             <div className="sm:hidden space-y-3">
               {/* Gainers */}
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: '#16a34a' }}>▲ Top Point Contributors</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider mb-2 flex items-center gap-1" style={{ color: '#16a34a' }}><TrendingUp size={12} /> Top Point Contributors</p>
                 <div className="space-y-1.5">
                   {(topContribsSplit?.g ?? []).slice(0, 8).map(b => (
                     <div key={b.symbol} className="flex items-center gap-2 rounded-lg px-3 py-2" style={{ backgroundColor: 'rgba(74,222,128,0.06)', border: '1px solid rgba(74,222,128,0.15)' }}>
@@ -1030,14 +912,14 @@ export default function IndicesPage() {
                         </div>
                       </div>
                       <span className="text-xs font-bold font-number shrink-0" style={{ color: '#4ade80' }}>+{b.pts.toFixed(2)}</span>
-                      <span className="text-[10px] font-semibold font-number shrink-0" style={{ color: '#16a34a' }}>+{b.pct.toFixed(2)}%</span>
+                      <span className="text-[10px] font-semibold font-number shrink-0" style={{ color: '#16a34a' }}>{fmtPct(b.pct)}</span>
                     </div>
                   ))}
                 </div>
               </div>
               {/* Losers */}
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: '#dc2626' }}>▼ Top Point Decliners</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider mb-2 flex items-center gap-1" style={{ color: '#dc2626' }}><TrendingDown size={12} /> Top Point Decliners</p>
                 <div className="space-y-1.5">
                   {(topContribsSplit?.l ?? []).slice(0, 8).map(b => (
                     <div key={b.symbol} className="flex items-center gap-2 rounded-lg px-3 py-2" style={{ backgroundColor: 'rgba(248,113,113,0.06)', border: '1px solid rgba(248,113,113,0.15)' }}>
@@ -1048,7 +930,7 @@ export default function IndicesPage() {
                         </div>
                       </div>
                       <span className="text-xs font-bold font-number shrink-0" style={{ color: '#f87171' }}>{b.pts.toFixed(2)}</span>
-                      <span className="text-[10px] font-semibold font-number shrink-0" style={{ color: '#dc2626' }}>{b.pct.toFixed(2)}%</span>
+                      <span className="text-[10px] font-semibold font-number shrink-0" style={{ color: '#dc2626' }}>{fmtPct(b.pct)}</span>
                     </div>
                   ))}
                 </div>
@@ -1061,110 +943,6 @@ export default function IndicesPage() {
             </div>
           </div>
 
-          {/* Full stock table for selected sector OR all index stocks */}
-          <div className="card" style={{ padding: 16 }}>
-            <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 12 }}>
-              {selected ? `${selected} — All Stocks` : `All ${kse?.label} Stocks`}
-              <span style={{ fontWeight: 400, color: 'var(--text-muted)', marginLeft: 8, fontSize: 10 }}>
-                ({(selected ? (selData?.stocks ?? []) : indexStocks).length} companies)
-              </span>
-            </p>
-
-            {/* Mobile card view */}
-            <div className="sm:hidden space-y-2">
-              {(selected ? (selData?.stocks ?? []) : indexStocks)
-                .slice().sort((a, b) => Math.abs(b.changePct ?? 0) - Math.abs(a.changePct ?? 0))
-                .map(q => {
-                  const chg = q.changePct ?? 0
-                  const up2 = chg >= 0
-                  return (
-                    <div key={q.symbol} className="rounded-xl p-3" style={{ border: '1px solid var(--bg-border)', backgroundColor: 'var(--bg-hover)' }}>
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="min-w-0">
-                          <Link href={`/stocks/${q.symbol}`} className="font-bold text-sm" style={{ color: '#FEA500', textDecoration: 'none' }}>{q.symbol}</Link>
-                          <p className="text-[11px] truncate mt-0.5" style={{ color: 'var(--text-muted)' }}>{(q.name ?? '').slice(0, 28)}</p>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <div className="text-sm font-semibold font-number" style={{ color: 'var(--text-primary)' }}>{q.price?.toFixed(2) ?? '—'}</div>
-                          <span style={{
-                            display: 'inline-block', padding: '1px 5px', borderRadius: 4, fontSize: 11, fontWeight: 600, marginTop: 2,
-                            background: up2 ? 'rgba(74,222,128,0.12)' : 'rgba(248,113,113,0.12)',
-                            color: up2 ? '#4ade80' : '#f87171',
-                          }}>
-                            {up2 ? '+' : ''}{chg.toFixed(2)}%
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3 mt-2 text-[10px]" style={{ color: 'var(--text-muted)' }}>
-                        <span>Vol: <span className="font-number">{(q.volume ?? 0).toLocaleString()}</span></span>
-                        <span className="truncate">{normSector(q.sector ?? '')}</span>
-                      </div>
-                    </div>
-                  )
-                })}
-            </div>
-
-            {/* Desktop table */}
-            <div className="hidden sm:block" style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid var(--bg-border)' }}>
-                    {['Symbol', 'Name', 'LTP', 'Change', '% Change', 'Volume', 'Sector'].map(h => (
-                      <th key={h} style={{
-                        padding: '8px 10px', textAlign: h === 'Symbol' || h === 'Name' ? 'left' : 'right',
-                        fontSize: 10, fontWeight: 600, letterSpacing: '0.04em',
-                        color: 'var(--text-muted)', textTransform: 'uppercase', whiteSpace: 'nowrap',
-                      }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {(selected ? (selData?.stocks ?? []) : indexStocks)
-                    .slice().sort((a, b) => Math.abs(b.changePct ?? 0) - Math.abs(a.changePct ?? 0))
-                    .map((q, i) => {
-                      const chg = q.changePct ?? 0
-                      const up2 = chg >= 0
-                      return (
-                        <tr key={q.symbol} style={{
-                          borderBottom: '1px solid var(--bg-border)',
-                          background: i % 2 === 0 ? 'transparent' : 'var(--bg-hover)',
-                        }}>
-                          <td style={{ padding: '8px 10px' }}>
-                            <Link href={`/stocks/${q.symbol}`} style={{ color: '#FEA500', fontWeight: 700, textDecoration: 'none' }}>
-                              {q.symbol}
-                            </Link>
-                          </td>
-                          <td style={{ padding: '8px 10px', color: 'var(--text-secondary)', maxWidth: 200 }}>
-                            {(q.name ?? '').slice(0, 28)}
-                          </td>
-                          <td style={{ padding: '8px 10px', textAlign: 'right', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
-                            {q.price?.toFixed(2) ?? '—'}
-                          </td>
-                          <td style={{ padding: '8px 10px', textAlign: 'right', color: up2 ? '#4ade80' : '#f87171', fontVariantNumeric: 'tabular-nums' }}>
-                            {up2 ? '+' : ''}{(q.change ?? 0).toFixed(2)}
-                          </td>
-                          <td style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                            <span style={{
-                              padding: '2px 6px', borderRadius: 4, fontSize: 11, fontWeight: 600,
-                              background: up2 ? 'rgba(74,222,128,0.12)' : 'rgba(248,113,113,0.12)',
-                              color: up2 ? '#4ade80' : '#f87171',
-                            }}>
-                              {up2 ? '+' : ''}{chg.toFixed(2)}%
-                            </span>
-                          </td>
-                          <td style={{ padding: '8px 10px', textAlign: 'right', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
-                            {(q.volume ?? 0).toLocaleString()}
-                          </td>
-                          <td style={{ padding: '8px 10px', color: 'var(--text-muted)', fontSize: 10 }}>
-                            {normSector(q.sector ?? '')}
-                          </td>
-                        </tr>
-                      )
-                    })}
-                </tbody>
-              </table>
-            </div>
-          </div>
         </>
       )}
     </div>

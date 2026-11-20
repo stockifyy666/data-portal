@@ -1,89 +1,67 @@
+// Announcement files, proxied from PSX's public document server.
+//   GET /api/proxy/pdf?file=289410-1.pdf               → view PDF in browser (inline)
+//   GET /api/proxy/pdf?file=289410-1.pdf&download=1    → download (attachment)
+//   GET /api/proxy/pdf?file=288707-1.gif               → announcement image
+// Files come from the `pdf` / `docs` / `images` fields of Capital Stake announcements.
+// PSX serves them publicly but rejects non-browser clients, so we fetch with a
+// browser User-Agent. No Capital Stake API call is made.
+
 import { NextRequest, NextResponse } from 'next/server'
 
-const UAT_BASE  = (process.env.CAPITAL_STAKE_CHART_BASE_URL ?? 'https://uat.csapis.com').replace(/\/$/, '')
-const MAIN_BASE = (process.env.CAPITAL_STAKE_BASE_URL ?? 'https://stockifyy.capitalstake.com').replace(/\/$/, '')
-const UAT_TOKEN  = process.env.CAPITAL_STAKE_CHART_BEARER_TOKEN ?? process.env.CAPITAL_STAKE_BEARER_TOKEN ?? ''
-const MAIN_TOKEN = process.env.CAPITAL_STAKE_BEARER_TOKEN ?? ''
+// Live / per-user data: always run on request, never prerender at build time
+export const dynamic = 'force-dynamic'
 
-function isPdf(bytes: Uint8Array) {
-  // %PDF magic bytes
-  return bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46
+const PSX = 'https://dps.psx.com.pk/download/'
+const FILE_RE = /^\d{3,10}(-\d{1,3})?\.(pdf|gif|png|jpe?g|webp)$/i   // e.g. 288433.pdf, 288707-1.gif
+const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36'
+
+const TYPES: Record<string, string> = {
+  pdf: 'application/pdf', gif: 'image/gif', png: 'image/png',
+  jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp',
 }
 
-async function tryUrl(url: string, token: string): Promise<Uint8Array | null> {
-  try {
-    const res = await fetch(url, {
-      headers: {
-        Accept: 'application/pdf,application/octet-stream,*/*',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-    })
-    if (!res.ok) return null
-    const bytes = new Uint8Array(await res.arrayBuffer())
-    if (!isPdf(bytes)) return null
-    return bytes
-  } catch {
-    return null
-  }
+// Check the real file signature so we never relay an HTML error page
+function looksLike(ext: string, b: Uint8Array): boolean {
+  if (ext === 'pdf')  return b[0] === 0x25 && b[1] === 0x50 && b[2] === 0x44 && b[3] === 0x46        // %PDF
+  if (ext === 'gif')  return b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46                          // GIF
+  if (ext === 'png')  return b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47        // .PNG
+  if (ext === 'jpg' || ext === 'jpeg') return b[0] === 0xff && b[1] === 0xd8                           // JPEG
+  if (ext === 'webp') return b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50      // WEBP
+  return false
 }
 
 export async function GET(req: NextRequest) {
-  const id       = req.nextUrl.searchParams.get('id') ?? ''
-  const filename = req.nextUrl.searchParams.get('filename') ?? ''
+  const file     = (req.nextUrl.searchParams.get('file') ?? '').trim()
+  const download = req.nextUrl.searchParams.get('download') === '1'
 
-  if (!id && !filename) {
-    return NextResponse.json({ error: 'Missing params' }, { status: 400 })
+  if (!FILE_RE.test(file)) {
+    return NextResponse.json({ error: 'Invalid file' }, { status: 400 })
   }
+  const ext = file.split('.').pop()!.toLowerCase()
+  const url = PSX + (ext === 'pdf' ? 'document/' : 'image/') + file
 
-  // Try every plausible URL pattern — first real PDF wins
-  const candidates: [string, string][] = [
-    // UAT base with auth
-    [`${UAT_BASE}/3.0/announcements/pdf/${filename}`,    UAT_TOKEN],
-    [`${UAT_BASE}/3.0/announcements/files/${filename}`,  UAT_TOKEN],
-    [`${UAT_BASE}/3.0/announcements/${id}/document`,     UAT_TOKEN],
-    [`${UAT_BASE}/3.0/announcements/${id}/pdf`,          UAT_TOKEN],
-    [`${UAT_BASE}/3.0/files/${filename}`,                UAT_TOKEN],
-    [`${UAT_BASE}/files/${filename}`,                    UAT_TOKEN],
-    // UAT base without auth (public CDN)
-    [`${UAT_BASE}/3.0/announcements/pdf/${filename}`,    ''],
-    [`${UAT_BASE}/files/${filename}`,                    ''],
-    // Main base with auth
-    [`${MAIN_BASE}/announcements/pdf/${filename}`,       MAIN_TOKEN],
-    [`${MAIN_BASE}/api/v3/announcements/pdf/${filename}`,MAIN_TOKEN],
-    [`${MAIN_BASE}/files/${filename}`,                   MAIN_TOKEN],
-    // PSX public CDN (no auth)
-    [`https://www.psx.com.pk/psx/resources-and-tools/listing/announcements/${filename}`, ''],
-  ]
+  try {
+    const res = await fetch(url, {
+      headers: { 'User-Agent': UA, Accept: '*/*', Referer: 'https://dps.psx.com.pk/announcements' },
+      next:    { revalidate: 86_400 },
+    })
+    const bytes = new Uint8Array(await res.arrayBuffer())
 
-  for (const [url, token] of candidates) {
-    if (!url.includes('undefined') && !url.endsWith('/')) {
-      try {
-        const res = await fetch(url, {
-          headers: {
-            Accept: 'application/pdf,application/octet-stream,*/*',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-        })
-        const bytes = new Uint8Array(await res.arrayBuffer())
-        const isPdf = bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46
-        console.log(`[proxy/pdf] ${res.status} ct=${res.headers.get('content-type')} isPdf=${isPdf} url=${url}`)
-        if (res.ok && isPdf) {
-          const name = filename || `${id}.pdf`
-          return new NextResponse(bytes, {
-            status: 200,
-            headers: {
-              'Content-Type': 'application/pdf',
-              'Content-Disposition': `attachment; filename="${name}"`,
-              'Cache-Control': 'private, max-age=3600',
-            },
-          })
-        }
-      } catch (e) {
-        console.log(`[proxy/pdf] error url=${url}`, e)
-      }
+    if (!res.ok || !looksLike(ext, bytes)) {
+      console.error(`[proxy/pdf] ${res.status} not a ${ext}: ${file}`)
+      return NextResponse.json({ error: 'File not available' }, { status: 404 })
     }
-  }
 
-  console.error('[proxy/pdf] ✗ all failed for id=%s filename=%s', id, filename)
-  return NextResponse.json({ error: 'PDF not available' }, { status: 404 })
+    return new NextResponse(bytes, {
+      status: 200,
+      headers: {
+        'Content-Type':        TYPES[ext],
+        'Content-Disposition': `${download ? 'attachment' : 'inline'}; filename="${file}"`,
+        'Cache-Control':       'private, max-age=86400',
+      },
+    })
+  } catch (err) {
+    console.error('[proxy/pdf] fetch failed:', file, err instanceof Error ? err.message : err)
+    return NextResponse.json({ error: 'File not available' }, { status: 502 })
+  }
 }

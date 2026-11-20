@@ -21,6 +21,8 @@ export default function APIUsagePage() {
   const [lastFetch, setLastFetch] = useState('')
   const [countdown, setCountdown] = useState(POLL_INTERVAL / 1000)
 
+  const [offline, setOffline] = useState(false)
+
   const fetchData = useCallback(async (silent = false) => {
     if (!silent) setLoading(true)
     try {
@@ -31,17 +33,24 @@ export default function APIUsagePage() {
         setFsCount(json.fsCount)
         setScCount(json.scCount)
         setLastFetch(new Date().toLocaleTimeString('en-PK', { timeZone: 'Asia/Karachi', hour: '2-digit', minute: '2-digit', second: '2-digit' }))
-        setCountdown(POLL_INTERVAL / 1000)
+        setOffline(false)
+      } else {
+        setOffline(true)
       }
+    } catch {
+      // Network blip (server restarting, connection dropped): keep the last
+      // data on screen and try again on the next tick instead of crashing.
+      setOffline(true)
     } finally {
+      setCountdown(POLL_INTERVAL / 1000)
       setLoading(false)
     }
   }, [])
 
-  // Initial + interval polling
+  // Initial + interval polling (skipped while the tab is hidden)
   useEffect(() => {
     fetchData()
-    const id = setInterval(() => fetchData(true), POLL_INTERVAL)
+    const id = setInterval(() => { if (!document.hidden) fetchData(true) }, POLL_INTERVAL)
     return () => clearInterval(id)
   }, [fetchData])
 
@@ -89,10 +98,10 @@ export default function APIUsagePage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-muted)' }}>
             <span style={{
-              width: 6, height: 6, borderRadius: '50%', backgroundColor: '#22c55e', flexShrink: 0,
+              width: 6, height: 6, borderRadius: '50%', backgroundColor: offline ? '#ef4444' : '#22c55e', flexShrink: 0,
               animation: 'pulse 2s cubic-bezier(0.4,0,0.6,1) infinite',
             }} />
-            Auto-refresh in {countdown}s
+            {offline ? <span style={{ color: '#ef4444' }}>Connection lost · retrying in {countdown}s</span> : <>Auto-refresh in {countdown}s</>}
             {lastFetch && <span style={{ color: 'var(--text-muted)' }}>· {lastFetch}</span>}
           </div>
           <button

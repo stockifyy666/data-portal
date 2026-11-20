@@ -7,7 +7,6 @@ import { formatPrice, formatChange, formatPercent, formatVolume, getChangeColor 
 import { cachedFetch } from '@/lib/utils/clientCache'
 import type { StockQuote } from '@/types/market'
 import KMIBadge, { isKMI } from '@/components/ui/KMIBadge'
-import { useTheme } from '@/components/providers/ThemeProvider'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -71,11 +70,75 @@ function IndexChart({ symbol }: { symbol: string }) {
   )
 }
 
+// ─── Index stat card ──────────────────────────────────────────────────────────
+// "Gradient glass": card filled with a green/red gradient matching the day's
+// direction, with white text.
+
+function IndexStatCard({ label, data, loading, active, onClick }: {
+  label: string; code: string; data?: IndexItem; loading: boolean; active: boolean; onClick: () => void
+}) {
+  // Styled to match the Macro Dashboard KpiCard: tinted bg/border by direction,
+  // decorative corner circle, uppercase label + LIVE dot, 24px value, change line.
+  const up        = data ? data.change > 0 : false
+  const isNeutral = !data || data.change === 0
+  const dirColor  = up ? '#16a34a' : '#dc2626'
+  const bgColor   = isNeutral ? 'var(--bg-card)' : up ? 'rgba(22,163,74,0.12)' : 'rgba(220,38,38,0.12)'
+  const bdrColor  = isNeutral ? 'var(--bg-border)' : up ? 'rgba(22,163,74,0.35)' : 'rgba(220,38,38,0.35)'
+
+  return (
+    <button onClick={onClick} aria-pressed={active} className="card text-left w-full"
+      style={{
+        backgroundColor: bgColor, border: `1px solid ${bdrColor}`,
+        display: 'flex', flexDirection: 'column', gap: 6,
+        position: 'relative', overflow: 'hidden',
+        outline: active ? '2px solid #FEA500' : '2px solid transparent', outlineOffset: 2,
+      }}>
+      {!isNeutral && (
+        <div style={{
+          position: 'absolute', top: -18, right: -18, width: 80, height: 80, borderRadius: '50%',
+          backgroundColor: up ? 'rgba(22,163,74,0.15)' : 'rgba(220,38,38,0.12)', pointerEvents: 'none',
+        }} />
+      )}
+
+      <div className="flex items-center justify-between" style={{ position: 'relative' }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '.05em' }}>
+          {label}
+        </span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 9, fontWeight: 700, color: '#16a34a' }}>
+          <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#22c55e' }} />
+          LIVE
+        </span>
+      </div>
+
+      {loading ? (
+        <>
+          <div className="h-6 w-28 rounded animate-pulse" style={{ backgroundColor: 'var(--bg-border)' }} />
+          <div className="h-3 w-20 rounded animate-pulse" style={{ backgroundColor: 'var(--bg-border)' }} />
+        </>
+      ) : data ? (
+        <>
+          <p style={{ fontSize: 24, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1, fontVariantNumeric: 'tabular-nums', position: 'relative' }}>
+            {data.current.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </p>
+          <div style={{ marginTop: 2, position: 'relative' }}>
+            {isNeutral ? (
+              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>0.00 (0.00%)</span>
+            ) : (
+              <span style={{ fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3, color: dirColor, fontVariantNumeric: 'tabular-nums' }}>
+                {up ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
+                {formatChange(data.change)} ({formatPercent(data.changePct)})
+              </span>
+            )}
+          </div>
+        </>
+      ) : <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Unavailable</p>}
+    </button>
+  )
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function DashboardClient() {
-  const { theme } = useTheme()
-  const isDark = theme === 'dark'
   const [selectedIdx, setSelectedIdx] = useState(0)
   const [indices,     setIndices]     = useState<IndexItem[]>([])
   const [quotes,      setQuotes]      = useState<StockQuote[]>([])
@@ -161,160 +224,35 @@ export default function DashboardClient() {
            Mobile : single full-width card + arrow navigation
            Desktop: 5-column grid                             */}
 
-      {/* Mobile single card */}
+      {/* Mobile: one card with prev/next + dots */}
       <div className="sm:hidden">
-        {(() => {
-          const idx  = INDICES[selectedIdx]
-          const data = indexData(idx.key)
-          const isUp = data ? data.change > 0 : null
-          const bgColor  = isDark ? (isUp === true ? 'rgba(22,163,74,0.12)' : isUp === false ? 'rgba(220,38,38,0.12)' : 'var(--bg-card)') : 'var(--bg-card)'
-          const bdrColor = isDark ? (isUp === true ? 'rgba(22,163,74,0.35)' : isUp === false ? 'rgba(220,38,38,0.35)' : 'var(--bg-border)') : 'var(--bg-border)'
-          return (
-            <div className="rounded-xl overflow-hidden"
-              style={{ backgroundColor: bgColor, border: `2px solid #FEA500`, boxShadow: '0 0 0 3px rgba(254,165,0,0.12)', position: 'relative' }}>
-              {isUp !== null && (
-                <div style={{ position: 'absolute', top: -20, right: -20, width: 100, height: 100, borderRadius: '50%',
-                  backgroundColor: isUp ? 'rgba(22,163,74,0.15)' : 'rgba(220,38,38,0.12)', pointerEvents: 'none' }} />
-              )}
-              <div className="flex items-center justify-between px-4 py-3">
-                {/* Prev arrow */}
-                <button onClick={() => setSelectedIdx(i => (i - 1 + INDICES.length) % INDICES.length)}
-                  className="flex items-center justify-center w-8 h-8 rounded-full"
-                  style={{ backgroundColor: 'rgba(0,0,0,0.06)' }}>
-                  <ChevronLeft size={18} style={{ color: 'var(--text-secondary)' }} />
-                </button>
-
-                {/* Card content */}
-                <div className="flex-1 text-center px-2">
-                  <div className="flex items-center justify-center gap-1.5 mb-1">
-                    <span className="text-[11px] font-bold uppercase tracking-wide" style={{ color: '#FEA500' }}>
-                      {idx.label}
-                    </span>
-                    {!indLoading && (isUp
-                      ? <TrendingUp  size={12} className="text-green-800" />
-                      : <TrendingDown size={12} className="text-red-500" />
-                    )}
-                  </div>
-                  {indLoading ? (
-                    <div className="flex flex-col items-center gap-1">
-                      <div className="h-6 w-28 rounded animate-pulse" style={{ backgroundColor: 'var(--bg-border)' }} />
-                      <div className="h-3 w-20 rounded animate-pulse" style={{ backgroundColor: 'var(--bg-border)' }} />
-                    </div>
-                  ) : data ? (
-                    <>
-                      <p className="text-xl font-bold font-number" style={{ color: 'var(--text-primary)', letterSpacing: '0.03em' }}>
-                        {formatPrice(data.current, 2)}
-                      </p>
-                      <p className={`text-xs font-number font-semibold mt-0.5 ${isUp ? 'text-green-600' : 'text-red-500'}`}>
-                        {formatChange(data.change)} ({formatPercent(data.changePct / 100)})
-                      </p>
-                    </>
-                  ) : <p className="text-xs" style={{ color: 'var(--text-muted)' }}>—</p>}
-                </div>
-
-                {/* Next arrow */}
-                <button onClick={() => setSelectedIdx(i => (i + 1) % INDICES.length)}
-                  className="flex items-center justify-center w-8 h-8 rounded-full"
-                  style={{ backgroundColor: 'rgba(0,0,0,0.06)' }}>
-                  <ChevronRight size={18} style={{ color: 'var(--text-secondary)' }} />
-                </button>
-              </div>
-
-              {/* Dot indicators */}
-              <div className="flex justify-center gap-1.5 pb-2.5">
-                {INDICES.map((_, i) => (
-                  <button key={i} onClick={() => setSelectedIdx(i)}
-                    style={{ width: i === selectedIdx ? 16 : 6, height: 6, borderRadius: 999,
-                      backgroundColor: i === selectedIdx ? '#FEA500' : 'rgba(0,0,0,0.18)',
-                      transition: 'width 0.2s, background-color 0.2s', border: 'none', padding: 0, cursor: 'pointer' }} />
-                ))}
-              </div>
-            </div>
-          )
-        })()}
+        <div className="flex items-center gap-2">
+          <button onClick={() => setSelectedIdx(i => (i - 1 + INDICES.length) % INDICES.length)}
+            className="idx-nav" aria-label="Previous index"><ChevronLeft size={16} /></button>
+          <div className="flex-1 min-w-0">
+            <IndexStatCard label={INDICES[selectedIdx].label} code={INDICES[selectedIdx].key}
+              data={indexData(INDICES[selectedIdx].key)} loading={indLoading} active onClick={() => {}} />
+          </div>
+          <button onClick={() => setSelectedIdx(i => (i + 1) % INDICES.length)}
+            className="idx-nav" aria-label="Next index"><ChevronRight size={16} /></button>
+        </div>
+        <div className="flex justify-center gap-1.5 mt-2.5">
+          {INDICES.map((ix, i) => (
+            <button key={ix.key} onClick={() => setSelectedIdx(i)} aria-label={ix.label}
+              style={{ width: i === selectedIdx ? 18 : 6, height: 6, borderRadius: 999, border: 'none', padding: 0,
+                background: i === selectedIdx ? 'linear-gradient(90deg,#FEA500,#986300)' : 'var(--bg-border)',
+                transition: 'width .2s' }} />
+          ))}
+        </div>
       </div>
 
       {/* Desktop grid */}
       <div className="hidden sm:grid sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        {INDICES.map((idx, i) => {
-          const data   = indexData(idx.key)
-          const active = selectedIdx === i
-          const isUp   = data ? data.change > 0 : null
-          const bgColor  = isDark ? (isUp === true ? 'rgba(22,163,74,0.12)' : isUp === false ? 'rgba(220,38,38,0.12)' : 'var(--bg-card)') : 'var(--bg-card)'
-          const bdrColor = isDark ? (isUp === true ? 'rgba(22,163,74,0.35)' : isUp === false ? 'rgba(220,38,38,0.35)' : 'var(--bg-border)') : 'var(--bg-border)'
-          const glowClr  = 'transparent'
-
-          return (
-            <button key={idx.key} onClick={() => setSelectedIdx(i)}
-              className="card text-left cursor-pointer"
-              style={{
-                ...(active ? {
-                  backgroundColor: bgColor, border: '2px solid #FEA500',
-                  boxShadow: '0 0 0 3px rgba(254,165,0,0.18), 0 8px 32px rgba(254,165,0,0.2), 0 4px 16px rgba(0,0,0,0.2)',
-                } : {
-                  backgroundColor: bgColor, border: `1px solid ${bdrColor}`,
-                  boxShadow: `0 4px 12px rgba(0,0,0,0.1)`,
-                }),
-                position: 'relative', overflow: 'hidden',
-                transformStyle: 'preserve-3d',
-                transition: 'box-shadow .2s ease, border-color .2s ease',
-                willChange: 'transform',
-              }}
-              onMouseMove={e => {
-                const el = e.currentTarget
-                const r  = el.getBoundingClientRect()
-                const x  = (e.clientX - r.left) / r.width  - 0.5
-                const y  = (e.clientY - r.top)  / r.height - 0.5
-                el.style.transform = `perspective(600px) rotateY(${x * 14}deg) rotateX(${-y * 14}deg) scale3d(1.04,1.04,1.04)`
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.transform = 'perspective(600px) rotateY(0deg) rotateX(0deg) scale3d(1,1,1)'
-              }}
-            >
-              {/* shimmer layer — dark mode only */}
-              {isDark && <div style={{
-                position: 'absolute', inset: 0, borderRadius: 'inherit', pointerEvents: 'none',
-                background: 'linear-gradient(135deg, rgba(255,255,255,0.08) 0%, transparent 60%)',
-                zIndex: 1,
-              }} />}
-
-              {isDark && isUp !== null && (
-                <div style={{ position: 'absolute', top: -16, right: -16, width: 90, height: 90,
-                  borderRadius: '50%',
-                  background: isUp ? 'radial-gradient(circle, rgba(22,163,74,0.25) 0%, transparent 70%)' : 'radial-gradient(circle, rgba(220,38,38,0.2) 0%, transparent 70%)',
-                  pointerEvents: 'none' }} />
-              )}
-              {/* header */}
-              <div className="flex items-center justify-between" style={{ marginBottom: 6 }}>
-                <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', color: active ? '#FEA500' : 'var(--text-primary)' }}>
-                  {idx.label}
-                </span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 9, fontWeight: 700, color: '#16a34a' }}>
-                  <span style={{ width: 5, height: 5, borderRadius: '50%', backgroundColor: '#22c55e', flexShrink: 0 }} />
-                  LIVE
-                </span>
-              </div>
-
-              {indLoading ? (
-                <>
-                  <div className="h-5 w-20 rounded animate-pulse mb-1" style={{ backgroundColor: 'var(--bg-border)' }} />
-                  <div className="h-3 w-14 rounded animate-pulse"       style={{ backgroundColor: 'var(--bg-border)' }} />
-                </>
-              ) : data ? (
-                <>
-                  <p className="font-number" style={{ color: 'var(--text-primary)', fontWeight: 700, fontSize: 20, letterSpacing: '0.02em', lineHeight: 1, marginBottom: 6 }}>
-                    {formatPrice(data.current, 2)}
-                  </p>
-                  <span style={{ fontSize: 11, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 3, color: isUp ? '#16a34a' : '#dc2626' }}>
-                    {isUp ? <TrendingUp size={10}/> : <TrendingDown size={10}/>}
-                    {formatChange(data.change)}
-                    <span style={{ fontWeight: 500, opacity: 0.85 }}>({formatPercent(data.changePct / 100)})</span>
-                  </span>
-                </>
-              ) : <p className="text-xs" style={{ color: 'var(--text-muted)' }}>—</p>}
-            </button>
-          )
-        })}
+        {INDICES.map((idx, i) => (
+          <IndexStatCard key={idx.key} label={idx.label} code={idx.key}
+            data={indexData(idx.key)} loading={indLoading}
+            active={selectedIdx === i} onClick={() => setSelectedIdx(i)} />
+        ))}
       </div>
 
       {/* ── Chart ── */}
@@ -336,7 +274,7 @@ export default function DashboardClient() {
                   {formatPrice(d.current, 2)}
                 </p>
                 <p className={`text-xs font-number font-semibold ${up ? 'text-green-600' : 'text-red-500'}`}>
-                  {formatChange(d.change)} ({formatPercent(d.changePct / 100)})
+                  {formatChange(d.change)} ({formatPercent(d.changePct)})
                 </p>
               </div>
             )
@@ -461,7 +399,7 @@ export default function DashboardClient() {
                     </td>
                     {/* % Change */}
                     <td className={`py-2.5 px-2 sm:px-3 font-number font-semibold whitespace-nowrap ${color}`}>
-                      {formatPercent(q.changePct / 100)}
+                      {formatPercent(q.changePct)}
                     </td>
                     {/* Volume — desktop only */}
                     <td className="hidden sm:table-cell py-2.5 px-3 font-number whitespace-nowrap" style={{ color: 'var(--text-secondary)' }}>

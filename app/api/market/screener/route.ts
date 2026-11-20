@@ -9,6 +9,9 @@ import type { RawStock, RawQuote }                       from '@/types/capitalst
 import type { StockQuote }                               from '@/types/market'
 import type { StatementData }                            from '@/components/stock/stock-detail-types'
 
+// Live / per-user data: always run on request, never prerender at build time
+export const dynamic = 'force-dynamic'
+
 const SCREENER_CACHE_KEY = 'screener:enriched'
 const SCREENER_TTL       = 60 * 60 // 1 hour — fundamentals change daily at most
 
@@ -41,9 +44,8 @@ async function getAllFundamentals(): Promise<Map<string, { eps: number; dps: num
   try {
     const db = createServiceClient()
     const { data, error } = await db
-      .from('financial_statements')
+      .from('fundamentals')
       .select('symbol, data')
-      .eq('stmt_type', 'fundamentals')
       .eq('interval', 'annual')
 
     if (error || !data) return new Map()

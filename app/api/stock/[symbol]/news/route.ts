@@ -1,23 +1,16 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { csUatGet }                  from '@/lib/capitalstake/client'
-import { CS_ENDPOINTS }              from '@/lib/capitalstake/endpoints'
-import { withCache, TTL_SECONDS }    from '@/lib/redis/cache'
-import { trackChartAPICall }         from '@/lib/utils/rateLimit'
-import { getContent, saveContent }   from '@/lib/supabase/content'
+// Company news = this company's items filtered out of its sector's news.
+// No per-company CS call: sector news is fetched once per sector (hourly sync / 2h cache).
+
+import { NextRequest, NextResponse }  from 'next/server'
+import { getSectorNews, getAllStocks } from '@/lib/news/sectorNews'
+import { dedupeNews }                 from '@/lib/news/dedupe'
+
+// Live / per-user data: always run on request, never prerender at build time
+export const dynamic = 'force-dynamic'
 
 const SYMBOL_RE = /^[A-Z0-9]{2,10}$/
 
-type NewsItem = {
-  title:       string
-  date:        string
-  description: string
-  link:        string
-  image:       string
-  source:      string
-  source_url:  string
-}
-
-function normalize(item: any): NewsItem {
+function normalize(item: any) {
   return {
     title:       item.title ?? '',
     date:        item.date  ?? '',
@@ -41,28 +34,15 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid symbol' }, { status: 400 })
     }
 
-    // 1. Supabase DB first (nightly synced, free for all users)
-    const cached = await getContent<NewsItem>(symbol, 'news')
-    if (cached) return NextResponse.json({ data: cached })
+    const stocks = await getAllStocks()
+    const code   = stocks.find(s => s.symbol === symbol)?.sector
+    if (!code) return NextResponse.json({ data: [], source: 'sector' })
 
-    // 2. DB miss — fetch from CS UAT, persist to DB
-    const raw2 = await withCache(
-      `stock:news:uat:${symbol}`,
-      TTL_SECONDS.ANNOUNCEMENTS,
-      async () => {
-        const url = CS_ENDPOINTS.COMPANY_NEWS(symbol)
-        await trackChartAPICall(url)
-        return csUatGet<{ status: string; data: any[] }>(url)
-      }
-    )
+    const mine = dedupeNews((await getSectorNews(code))
+      .filter(i => i.symbol?.toUpperCase() === symbol)
+      .map(normalize))
 
-    const news = ((raw2 as any)?.data ?? [])
-      .filter((item: any) => item.title)
-      .map(normalize)
-
-    if (news.length > 0) saveContent(symbol, 'news', news).catch(() => {})
-
-    return NextResponse.json({ data: news })
+    return NextResponse.json({ data: mine, source: 'sector', sector_code: code })
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unknown error'
     console.error('[API /stock/news]', msg)

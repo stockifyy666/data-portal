@@ -3,6 +3,9 @@ import { createServerClient }        from '@supabase/ssr'
 import { createServiceClient }       from '@/lib/supabase/service'
 import { cookies }                   from 'next/headers'
 
+// Live / per-user data: always run on request, never prerender at build time
+export const dynamic = 'force-dynamic'
+
 export async function DELETE(req: NextRequest) {
   try {
     const cookieStore = await cookies()

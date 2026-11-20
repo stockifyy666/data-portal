@@ -16,25 +16,31 @@ const LIVE_FALLBACK = {
   usdPkr:      { value: 278.40,   change: 0, label: 'USD / PKR',       note: 'Live — open.er-api.com' },
   oilBrent:    { value: 82.40,    change: 0, label: 'Brent Crude',     note: 'Live — Yahoo Finance (BZ=F)' },
   wti:         { value: 78.20,    change: 0, label: 'WTI Crude',       note: 'Live — Yahoo Finance (CL=F)' },
-  sbpRate:     { value: 11.50,    change: 0, label: 'SBP Policy Rate', note: 'MPC Apr 27, 2026 — Cut 100bps' },
+  sbpRate:     { value: 12.00,    change: 0, label: 'SBP Policy Rate', note: 'MPC Oct 26, 2026 — Hike 50bps' },
   inflation:   { value: 4.50,     change: 0, label: 'CPI Inflation',   note: 'IMF WEO 2025 annual avg' },
-  forex:       { value: 17.10,    change: 0, label: 'Forex Reserves',  note: 'SBP holdings — Aug 26' },
+  forex:       { value: 21.57,    change: 0, label: 'Forex Reserves',  note: 'SBP holdings — Nov 26' },
   currentAcct: { value: -0.20,    change: 0, label: 'Current Account', note: 'FY2026 full-year (est.) — USD billion' },
   gdpGrowth:   { value: 3.10,     change: 0, label: 'GDP Growth',      note: 'IMF WEO 2025 annual %' },
   remittances: { value: 3.20,     change: 0, label: 'Remittances',     note: 'SBP — monthly (Jul 2026, USD billion)' },
   kse100:      { value: 115000,   change: 0, label: 'KSE-100',         note: 'Live — Capital Stake' },
 }
 
+// IMF EFF (SDR 5.32bn ≈ $7.0B, 37 months, approved Sep 25 2024) — USD amounts approximate
 const IMF_TRANCHES = [
-  { tranche: '1st', amount: '$1.1B', date: 'Sep 2023', status: 'received',  note: 'Program approved' },
-  { tranche: '2nd', amount: '$1.1B', date: 'Feb 2024', status: 'received',  note: 'Review completed' },
-  { tranche: '3rd', amount: '$1.0B', date: 'Sep 2024', status: 'received',  note: 'Structural benchmarks met' },
-  { tranche: '4th', amount: '$1.0B', date: 'Mar 2025', status: 'received',  note: 'Fiscal targets met' },
-  { tranche: '5th', amount: '$1.0B', date: 'Sep 2025', status: 'received',  note: 'Revenue measures passed' },
-  { tranche: '6th', amount: '$1.3B', date: 'Mar 2026', status: 'received',  note: 'Latest tranche received' },
-  { tranche: '7th', amount: '$1.3B', date: 'Sep 2026', status: 'upcoming',  note: 'Review in progress — estimated' },
-  { tranche: '8th', amount: '$1.3B', date: 'Mar 2027', status: 'future',    note: 'Program end' },
+  { tranche: 'Approval',   amt: 1.0, date: 'Sep 2024', status: 'received', note: 'Board approved EFF' },
+  { tranche: '1st Review', amt: 1.0, date: 'May 2025', status: 'received', note: 'Board completed review' },
+  { tranche: '2nd Review', amt: 1.0, date: 'Dec 2025', status: 'received', note: 'Board completed review' },
+  { tranche: '3rd Review', amt: 1.1, date: 'May 2026', status: 'received', note: 'Board completed May 8' },
+  { tranche: '4th Review', amt: 1.0, date: 'Dec 2026', status: 'upcoming', note: 'Staff-level deal Oct 2026 — Board pending' },
+  { tranche: '5th Review', amt: 1.0, date: 'mid-2027', status: 'future',   note: 'Scheduled — estimated' },
+  { tranche: '6th Review', amt: 0.9, date: 'late 2027', status: 'future',  note: 'Final review — program end' },
 ]
+const IMF_TOTAL     = 7.0
+const IMF_RECEIVED  = IMF_TRANCHES.filter(t => t.status === 'received')
+const IMF_DISBURSED = +IMF_RECEIVED.reduce((s, t) => s + t.amt, 0).toFixed(1)
+const IMF_PENDING   = IMF_TRANCHES.filter(t => t.status === 'upcoming').reduce((s, t) => s + t.amt, 0)
+const IMF_PCT       = Math.round((IMF_DISBURSED / IMF_TOTAL) * 100)
+
 
 const MPC_MEETINGS = [
   { date: 'Jul 29, 2025', decision: 'Cut 100bps', rate: '14.00%', status: 'past' },
@@ -44,18 +50,41 @@ const MPC_MEETINGS = [
   { date: 'Mar 17, 2026', decision: 'Cut 50bps',   rate: '12.50%', status: 'past' },
   { date: 'Apr 27, 2026', decision: 'Cut 100bps',  rate: '11.50%', status: 'past' },
   { date: 'Jun 23, 2026', decision: 'Hold',        rate: '11.50%', status: 'past' },
-  { date: 'Sep 22, 2026', decision: 'TBD',         rate: '?',      status: 'next' },
-  { date: 'Nov 10, 2026', decision: 'TBD',         rate: '?',      status: 'future' },
+  { date: 'Jul 27, 2026', decision: 'Hold',        rate: '11.50%', status: 'past' },
+  { date: 'Sep 14, 2026', decision: 'Hold',        rate: '11.50%', status: 'past' },
+  { date: 'Oct 26, 2026', decision: 'Hike 50bps',  rate: '12.00%', status: 'past' },
 ]
 
+// SBP official FY27 advance calendar of MPC meetings & communications
+const MPC_CALENDAR_FY27 = [
+  { meeting: '2026-07-27', statement: '27-Jul-26', briefing: '28-Jul-26', presser: '27-Jul-26', minutes: '21-Aug-26', mpr: '10-Aug-26' },
+  { meeting: '2026-09-14', statement: '14-Sep-26', briefing: '15-Sep-26', presser: '–',         minutes: '09-Oct-26', mpr: '–' },
+  { meeting: '2026-10-26', statement: '26-Oct-26', briefing: '27-Oct-26', presser: '26-Oct-26', minutes: '20-Nov-26', mpr: '–' },
+  { meeting: '2026-12-14', statement: '14-Dec-26', briefing: '15-Dec-26', presser: '–',         minutes: '08-Jan-27', mpr: '–' },
+  { meeting: '2027-01-25', statement: '25-Jan-27', briefing: '26-Jan-27', presser: '25-Jan-27', minutes: '19-Feb-27', mpr: '08-Feb-27' },
+  { meeting: '2027-03-08', statement: '08-Mar-27', briefing: '09-Mar-27', presser: '–',         minutes: '02-Apr-27', mpr: '–' },
+  { meeting: '2027-04-26', statement: '26-Apr-27', briefing: '27-Apr-27', presser: '26-Apr-27', minutes: '21-May-27', mpr: '–' },
+  { meeting: '2027-06-17', statement: '17-Jun-27', briefing: '18-Jun-27', presser: '–',         minutes: '12-Jul-27', mpr: '–' },
+]
+
+const fmtMpcDate = (iso: string) =>
+  new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
+
+const NEXT_MPC = MPC_CALENDAR_FY27.find(m => new Date(m.meeting + 'T23:59:59') >= new Date()) ?? null
+
+// SBP weekly liquid FX reserves (USD bn) — month's latest reported week
 const RESERVES_DATA = [
-  { month: 'Feb 26', sbp: 13.1, total: 18.2 },
-  { month: 'Mar 26', sbp: 14.0, total: 19.1 },
-  { month: 'Apr 26', sbp: 14.8, total: 20.0 },
-  { month: 'May 26', sbp: 15.5, total: 20.8 },
-  { month: 'Jun 26', sbp: 16.2, total: 21.5 },
-  { month: 'Jul 26', sbp: 16.8, total: 22.1 },
-  { month: 'Aug 26', sbp: 17.1, total: 22.5 },
+  { month: 'Jan 26', sbp: 16.16, total: 21.34 },  // week ended Jan 30
+  { month: 'Feb 26', sbp: 16.30, total: 21.43 },  // week ended Feb 27
+  { month: 'Mar 26', sbp: 16.38, total: 21.79 },  // week ended Mar 27
+  { month: 'Apr 26', sbp: 15.85, total: 21.29 },  // week ended Apr 30
+  { month: 'May 26', sbp: 17.19, total: 22.64 },  // week ended May 29
+  { month: 'Jun 26', sbp: 16.50, total: 22.00 },  // week ended Jun 24
+  { month: 'Jul 26', sbp: 17.04, total: 22.47 },  // week ended Jul 31
+  { month: 'Aug 26', sbp: 17.12, total: 22.53 },  // week ended Aug 28
+  { month: 'Sep 26', sbp: 21.44, total: 26.77 },  // week ended Sep 25
+  { month: 'Oct 26', sbp: 21.56, total: 26.86 },  // week ended Oct 30
+  { month: 'Nov 26', sbp: 21.57, total: 26.84 },  // week ended Nov 06
 ]
 
 const CPEC_STOCKS = [
@@ -85,9 +114,9 @@ function formatVal(key: string, val: number) {
   if (key === 'oilBrent')    return `$${val.toFixed(2)}`
   if (key === 'wti')         return `$${val.toFixed(2)}`
   if (key === 'forex')       return `$${val.toFixed(1)}B`
-  if (key === 'currentAcct') return `$${val.toFixed(1)}B`
+  if (key === 'currentAcct') return `${val < 0 ? '−' : ''}$${Math.abs(val).toFixed(2)}B`
   if (key === 'remittances') return `$${val.toFixed(1)}B`
-  if (key === 'kse100')      return val >= 1000 ? `${(val / 1000).toFixed(1)}K` : val.toLocaleString()
+  if (key === 'kse100')      return val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
   return `${val.toFixed(2)}%`
 }
 
@@ -298,18 +327,25 @@ export default function MacroDashboard() {
     setLiveLoading(true)
 
     // SBP Rate: derive from MPC calendar (last confirmed decision)
-    const lastPastMPC = [...MPC_MEETINGS].filter(m => m.status === 'past').at(-1)
-    const sbpRateVal  = lastPastMPC ? parseFloat(lastPastMPC.rate) : 11.50
+    const lastPastMPC = [...MPC_MEETINGS].filter(m => m.status === 'past' && m.rate !== '?').at(-1)
+    const sbpRateVal  = lastPastMPC ? parseFloat(lastPastMPC.rate) : 12.00
     const sbpRateNote = lastPastMPC ? `MPC ${lastPastMPC.date} — ${lastPastMPC.decision}` : 'MPC calendar'
 
     // Forex Reserves: derive from RESERVES_DATA (latest weekly SBP data)
     const lastReserve  = RESERVES_DATA.at(-1)
-    const forexVal     = lastReserve ? lastReserve.sbp : 17.10
+    const forexVal     = lastReserve ? lastReserve.sbp : 21.57
     const forexNote    = lastReserve ? `SBP holdings — ${lastReserve.month}` : 'SBP weekly data'
 
     // Remittances: latest published monthly figure (PBS / SBP)
-    const remittancesVal  = 3.20
-    const remittancesNote = 'SBP — monthly (Jul 2026, USD billion)'
+    const remittancesVal  = 3.89
+    const remittancesNote = 'SBP — Oct 2026 workers\' remittances (USD bn)'
+
+    // Latest official monthly prints (PBS / SBP) — override annual IMF WEO figures
+    const LATEST = {
+      inflation:   { value: 9.6,   change: 0, label: 'CPI Inflation',   note: 'PBS — Oct 2026 YoY (Sep: 10.3%)' },
+      currentAcct: { value: -0.85, change: 0, label: 'Current Account', note: 'SBP — Jul–Oct FY27 deficit (Oct: +$39M surplus)' },
+      gdpGrowth:   { value: 4.0,   change: 0, label: 'GDP Growth',      note: 'SBP FY27 projection 3.5–4.5%' },
+    }
 
     Promise.all([
       fetch('/api/market/macro').then(r => r.json()),
@@ -317,7 +353,7 @@ export default function MacroDashboard() {
     ]).then(([j, idxData]) => {
       const kse = (idxData?.indices ?? []).find((i: any) => i.key === 'KSE100')
       const kse100Entry: KpiEntry = kse
-        ? { value: kse.current, change: kse.changePct, label: 'KSE-100', note: 'Live — Capital Stake' }
+        ? { value: kse.current, change: (kse.changePct ?? 0) * 100, label: 'KSE-100', note: 'Live — Capital Stake' }
         : LIVE_FALLBACK.kse100
         function pick(apiKey: string, fbKey: keyof typeof LIVE_FALLBACK, label: string, note: string): KpiEntry {
           const d = j[apiKey]
@@ -327,15 +363,12 @@ export default function MacroDashboard() {
 
         // Use live Capital Stake policy rate if available
         const pr = j.policyRate
-        const sbpEntry: KpiEntry = pr?.value != null
-          ? { value: pr.value, change: pr.change ?? 0, label: 'SBP Policy Rate', note: `Capital Stake — ${pr.period || 'Jun-26'}` }
+        const sbpEntry: KpiEntry = pr?.value != null && pr.value === sbpRateVal
+          ? { value: pr.value, change: pr.change ?? 0, label: 'SBP Policy Rate', note: `Capital Stake — ${pr.period}` }
           : { value: sbpRateVal, change: 0, label: 'SBP Policy Rate', note: sbpRateNote }
 
         // Use live Capital Stake NCPI if available
-        const nc = j.ncpi
-        const inflationEntry: KpiEntry = nc?.value != null
-          ? { value: nc.value, change: nc.change ?? 0, label: 'CPI Inflation (NCPI)', note: `Capital Stake — ${nc.period || 'Aug-26'}` }
-          : pick('inflation', 'inflation', 'CPI Inflation', `IMF WEO ${j.inflation?.date ?? '2025'} annual avg`)
+        const inflationEntry: KpiEntry = LATEST.inflation
 
         setLiveData({
           usdPkr:      pick('usdPkr',      'usdPkr',      'USD / PKR',       'Live — open.er-api.com'),
@@ -344,8 +377,8 @@ export default function MacroDashboard() {
           sbpRate:     sbpEntry,
           inflation:   inflationEntry,
           forex:       { value: forexVal,        change: 0, label: 'Forex Reserves',  note: forexNote },
-          currentAcct: pick('currentAcct',  'currentAcct', 'Current Account', `IMF FY${j.currentAcct?.date ?? '2025'} annual — USD billion`),
-          gdpGrowth:   pick('gdpGrowth',    'gdpGrowth',   'GDP Growth',      `IMF WEO ${j.gdpGrowth?.date ?? '2025'} annual %`),
+          currentAcct: LATEST.currentAcct,
+          gdpGrowth:   LATEST.gdpGrowth,
           remittances: { value: remittancesVal,  change: 0, label: 'Remittances',     note: remittancesNote },
           kse100:      kse100Entry,
         })
@@ -354,6 +387,7 @@ export default function MacroDashboard() {
         setLiveData({
           ...Object.fromEntries(Object.keys(LIVE_FALLBACK).map(k => [k, LIVE_FALLBACK[k as keyof typeof LIVE_FALLBACK]])),
           sbpRate:     { value: sbpRateVal,     change: 0, label: 'SBP Policy Rate', note: sbpRateNote },
+          ...LATEST,
           forex:       { value: forexVal,       change: 0, label: 'Forex Reserves',  note: forexNote },
           remittances: { value: remittancesVal, change: 0, label: 'Remittances',     note: remittancesNote },
           kse100:      LIVE_FALLBACK.kse100,
@@ -370,9 +404,10 @@ export default function MacroDashboard() {
   const MACRO_DATA = liveData
 
   // Days to next MPC
-  const nextMPC = new Date('2026-09-22')
-  const today   = new Date()
-  const daysToMPC = Math.max(0, Math.ceil((nextMPC.getTime() - today.getTime()) / 86400000))
+  const today     = new Date()
+  const daysToMPC = NEXT_MPC
+    ? Math.max(0, Math.ceil((new Date(NEXT_MPC.meeting + 'T00:00:00').getTime() - today.getTime()) / 86400000))
+    : 0
 
   return (
     <div className="space-y-6 animate-data pb-8">
@@ -424,11 +459,11 @@ export default function MacroDashboard() {
         <AlertCircle size={18} style={{ color: '#d97706', flexShrink: 0 }} />
         <div className="flex-1">
           <p className="text-sm font-bold" style={{ color: '#d97706' }}>
-            IMF 7th Tranche Review In Progress — $1.3B Expected Sep 2026
+            IMF 4th EFF Review — Staff-Level Agreement Reached, ~$1.0B Pending Board Approval
           </p>
           <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-secondary)' }}>
             Banking, Cement, and Fertilizer stocks historically rally on tranche approvals.
-            SBP reserves at $17.1B (Aug 2026) — highest since 2022, supported by IMF tranches.
+            SBP reserves at $21.57B (Nov 6, 2026) — supported by IMF and other inflows.
           </p>
         </div>
       </div>
@@ -437,15 +472,15 @@ export default function MacroDashboard() {
       <div className="grid grid-cols-1 gap-4 sm:gap-5">
 
         {/* ── IMF Program Tracker ─────────────────────────────────────────── */}
-        <Section title="IMF Program Tracker" subtitle="Extended Fund Facility (EFF) · $7.0B · 2023–2027" icon={Shield}>
+        <Section title="IMF Program Tracker" subtitle="Extended Fund Facility (EFF) · $7.0B · Sep 2024 – 2027" icon={Shield}>
 
           {/* ── 4 KPI stats ── */}
           <div className="grid grid-cols-1 min-[380px]:grid-cols-2 lg:grid-cols-4" style={{ gap:10, marginBottom:20 }}>
             {[
               { label:'Total Program', value:'$7.0B',   sub:'EFF commitment',   color:'var(--text-primary)' },
-              { label:'Disbursed',     value:'$6.5B',   sub:'6 of 8 tranches',  color:'#16a34a' },
-              { label:'Remaining',     value:'$0.5B',   sub:'2 tranches left',  color:'#f59e0b' },
-              { label:'Program End',   value:'Mar 2027', sub:'~16 months away', color:'var(--text-secondary)' },
+              { label:'Disbursed',     value:`~$${IMF_DISBURSED}B`, sub:`${IMF_RECEIVED.length} of ${IMF_TRANCHES.length} tranches`, color:'#16a34a' },
+              { label:'Remaining',     value:`~$${(IMF_TOTAL - IMF_DISBURSED).toFixed(1)}B`, sub:`${IMF_TRANCHES.length - IMF_RECEIVED.length} tranches left`, color:'#f59e0b' },
+              { label:'Program End',   value:'Late 2027', sub:'37-month EFF', color:'var(--text-secondary)' },
             ].map((k) => (
               <div key={k.label} className="card" style={{ padding:'16px 18px' }}>
                 <p style={{ fontSize:10, fontWeight:700, color:'var(--text-primary)', textTransform:'uppercase', letterSpacing:'.07em', marginBottom:8 }}>{k.label}</p>
@@ -459,23 +494,23 @@ export default function MacroDashboard() {
           <div style={{ marginBottom:20 }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:8 }}>
               <span style={{ fontSize:11, fontWeight:600, color:'var(--text-secondary)' }}>Disbursement Progress</span>
-              <span style={{ fontSize:11, fontWeight:700, color:'#16a34a', fontVariantNumeric:'tabular-nums' }}>$6.5B of $7.0B — 75%</span>
+              <span style={{ fontSize:11, fontWeight:700, color:'#16a34a', fontVariantNumeric:'tabular-nums' }}>~${IMF_DISBURSED}B of ${IMF_TOTAL.toFixed(1)}B — {IMF_PCT}%</span>
             </div>
             <div style={{ height:8, borderRadius:999, backgroundColor:'var(--bg-border)', overflow:'hidden', display:'flex' }}>
-              <div style={{ width:'75%', background:'#16a34a', borderRadius:999 }}/>
-              <div style={{ width:'18.57%', background:'#f59e0b', opacity:.6 }}/>
+              <div style={{ width:`${IMF_PCT}%`, background:'#16a34a', borderRadius:999 }}/>
+              <div style={{ width:`${(IMF_PENDING / IMF_TOTAL) * 100}%`, background:'#f59e0b', opacity:.6 }}/>
             </div>
             <div style={{ display:'flex', gap:16, marginTop:6 }}>
-              <span style={{ fontSize:10, color:'var(--text-muted)' }}><span style={{ color:'#16a34a' }}>●</span> Received (6)</span>
-              <span style={{ fontSize:10, color:'var(--text-muted)' }}><span style={{ color:'#f59e0b' }}>●</span> In Progress (1)</span>
-              <span style={{ fontSize:10, color:'var(--text-muted)' }}><span style={{ color:'var(--bg-border)' }}>●</span> Pending (1)</span>
+              <span style={{ fontSize:10, color:'var(--text-muted)' }}><span style={{ color:'#16a34a' }}>●</span> Received ({IMF_RECEIVED.length})</span>
+              <span style={{ fontSize:10, color:'var(--text-muted)' }}><span style={{ color:'#f59e0b' }}>●</span> In Progress ({IMF_TRANCHES.filter(t => t.status === 'upcoming').length})</span>
+              <span style={{ fontSize:10, color:'var(--text-muted)' }}><span style={{ color:'var(--bg-border)' }}>●</span> Pending ({IMF_TRANCHES.filter(t => t.status === 'future').length})</span>
             </div>
           </div>
 
           {/* ── Tranche timeline ── */}
           <div style={{ borderTop:'1px solid var(--bg-border)', paddingTop:16 }}>
             <p style={{ fontSize:11, fontWeight:600, color:'var(--text-secondary)', marginBottom:12, textTransform:'uppercase', letterSpacing:'.06em' }}>Tranche Timeline</p>
-            <div className="grid grid-cols-2 min-[480px]:grid-cols-4 xl:grid-cols-8" style={{ gap:6, gridAutoRows:'1fr' }}>
+            <div className="grid grid-cols-2 min-[480px]:grid-cols-4 xl:grid-cols-7" style={{ gap:6, gridAutoRows:'1fr' }}>
               {IMF_TRANCHES.map((t, i) => {
                 const received = t.status === 'received'
                 const isNext   = t.status === 'upcoming'
@@ -487,12 +522,12 @@ export default function MacroDashboard() {
                     {/* Connector line */}
                     <div style={{ display:'flex', alignItems:'center', marginBottom:8 }}>
                       <div style={{ width:12, height:12, borderRadius:'50%', backgroundColor: dotColor, flexShrink:0, border: isFuture ? '2px solid var(--bg-border)' : 'none', boxSizing:'border-box' }}/>
-                      {i < 7 && <div style={{ flex:1, height:1, backgroundColor:'var(--bg-border)' }}/>}
+                      {i < IMF_TRANCHES.length - 1 && <div style={{ flex:1, height:1, backgroundColor:'var(--bg-border)' }}/>}
                     </div>
                     {/* Card */}
                     <div className="macro-card" style={{ padding:'10px', borderRadius:10, backgroundColor:'var(--bg-hover)', border:'1px solid var(--bg-border)', flex:1, display:'flex', flexDirection:'column' }}>
                       <p style={{ fontSize:9, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:5 }}>{t.tranche}</p>
-                      <p style={{ fontSize:14, fontWeight:800, color:amtC, fontVariantNumeric:'tabular-nums', lineHeight:1, marginBottom:4 }}>{t.amount}</p>
+                      <p style={{ fontSize:14, fontWeight:800, color:amtC, fontVariantNumeric:'tabular-nums', lineHeight:1, marginBottom:4 }}>~${t.amt.toFixed(1)}B</p>
                       <p style={{ fontSize:9, color: isNext ? '#f59e0b' : 'var(--text-muted)', fontWeight: isNext ? 700 : 400, marginBottom:4 }}>{t.date}</p>
                       <p style={{ fontSize:8.5, color:'var(--text-muted)', lineHeight:1.4, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>{t.note}</p>
                     </div>
@@ -503,20 +538,20 @@ export default function MacroDashboard() {
           </div>
 
           <p style={{ fontSize:10, marginTop:14, color:'var(--text-muted)', display:'flex', alignItems:'center', gap:4 }}>
-            <Info size={9}/> Estimated — verify with IMF.org.
+            <Info size={9}/> USD values approximate (EFF is denominated in SDR). Source: IMF press releases; future dates estimated.
           </p>
         </Section>
 
         {/* ── SBP Policy Rate History ──────────────────────────────────────── */}
-        <Section title="SBP Policy Rate History" subtitle="Monetary Policy Committee · Jul 2025 – present" icon={Calendar}>
+        <Section title="SBP Policy Rate History" subtitle="Monetary Policy Committee · FY27" icon={Calendar}>
 
           {/* ── Stats strip ── */}
           <div className="grid grid-cols-1 min-[380px]:grid-cols-2 lg:grid-cols-4" style={{ gap:10, marginBottom:20 }}>
             {[
-              { label:'Current Rate',  value:'11.50%',         sub:'As of Jun 2026',   color:'var(--text-primary)' },
-              { label:'Total Easing',  value:'−350bps',        sub:'4 cuts since Jul 25', color:'#16a34a' },
-              { label:'Next MPC',      value:'Sep 22, 2026',   sub:`${daysToMPC} days away`, color:'#f59e0b' },
-              { label:'Market Expects',value:'Cut',            sub:'50–100bps expected', color:'#16a34a' },
+              { label:'Current Rate',  value:'12.00%',      sub:'Effective Oct 27, 2026', color:'var(--text-primary)' },
+              { label:'Last Decision', value:'+50bps',      sub:'Hike · MPC Oct 26, 2026 (9–1 vote)', color:'#dc2626' },
+              { label:'Next MPC',      value: NEXT_MPC ? fmtMpcDate(NEXT_MPC.meeting) : 'TBA', sub: NEXT_MPC ? (daysToMPC === 0 ? 'Today' : `${daysToMPC} days away`) : 'FY28 calendar pending', color:'#f59e0b' },
+              { label:'Rate Corridor', value:'11%–13%',     sub:'Floor · Ceiling (O/N repo)', color:'var(--text-primary)' },
             ].map((k) => (
               <div key={k.label} className="card" style={{ padding:'14px 16px' }}>
                 <p style={{ fontSize:10, fontWeight:700, color:'var(--text-primary)', textTransform:'uppercase', letterSpacing:'.07em', marginBottom:7 }}>{k.label}</p>
@@ -526,54 +561,44 @@ export default function MacroDashboard() {
             ))}
           </div>
 
-          {/* ── MPC meeting table ── */}
-          <div style={{ borderTop:'1px solid var(--bg-border)', overflowX:'auto' }}>
-            <div style={{ minWidth:340 }}>
-              <div className="grid" style={{ gridTemplateColumns:'1fr 100px 70px 0fr 60px',
-                padding:'8px 0', borderBottom:'1px solid var(--bg-border)', marginBottom:2 }}>
-                {['Date','Decision','Rate','','Change'].map((h,i) => (
-                  <span key={i} className={i === 3 ? 'hidden sm:block' : ''} style={{ fontSize:9, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.07em', fontWeight:700,
-                    textAlign: i >= 4 ? 'right' : 'left', gridColumn: i + 1 }}>{h}</span>
-                ))}
-              </div>
-              {MPC_MEETINGS.map((m,i) => {
-                const isNext   = m.status === 'next'
-                const isFuture = m.status === 'future'
-                const isCut    = m.decision.includes('Cut')
-                const bps      = (m.decision.match(/(\d+)bps/)||[])[1]
-                const rateVal  = m.rate !== '?' ? parseFloat(m.rate) : null
-                const barPct   = rateVal ? Math.min(((rateVal - 10) / 5) * 100, 100) : 20
-                return (
-                  <div key={i} className="grid" style={{ gridTemplateColumns:'1fr 100px 70px 0fr 60px',
-                    padding:'9px 0', borderBottom:'1px solid var(--bg-border)',
-                    opacity: isFuture ? .35 : 1,
-                    backgroundColor: isNext ? '#f59e0b08' : 'transparent' }}>
-                    <span style={{ fontSize:11, fontVariantNumeric:'tabular-nums',
-                      color: isNext ? '#f59e0b' : 'var(--text-secondary)', fontWeight: isNext ? 700 : 600 }}>{m.date}</span>
-                    <span style={{ fontSize:11, fontWeight:600,
-                      color: isCut ? '#16a34a' : isNext ? '#f59e0b' : 'var(--text-muted)' }}>{m.decision}</span>
-                    <span style={{ fontSize:13, fontWeight:800, fontVariantNumeric:'tabular-nums',
-                      color: 'var(--text-primary)' }}>{m.rate}{m.rate !== '?' ? '%' : ''}</span>
-                    {/* mini bar — hidden on mobile */}
-                    <div className="hidden sm:flex" style={{ alignItems:'center', paddingRight:12, minWidth:80, gridColumn:4 }}>
-                      <div style={{ flex:1, height:5, borderRadius:999, backgroundColor:'var(--bg-border)', overflow:'hidden' }}>
-                        <div style={{ width:`${barPct}%`, height:'100%', borderRadius:999,
-                          backgroundColor: isCut ? '#FEA500' : isNext ? '#f59e0b' : 'var(--bg-border)',
-                          opacity: m.rate === '?' ? .3 : 1 }}/>
-                      </div>
-                    </div>
-                    <span style={{ fontSize:11, fontWeight:700, textAlign:'right', fontVariantNumeric:'tabular-nums', gridColumn:5,
-                      color: isCut ? '#16a34a' : isNext ? '#f59e0b' : 'var(--text-muted)' }}>
-                      {isCut ? `−${bps}bps` : isNext ? 'upcoming' : '—'}
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
+          {/* ── SBP FY27 advance calendar ── */}
+          <p style={{ fontSize:10, fontWeight:700, color:'var(--text-primary)', textTransform:'uppercase', letterSpacing:'.07em', margin:'4px 0 8px' }}>
+            FY27 MPC Calendar &amp; Communications
+          </p>
+          <div style={{ overflowX:'auto', border:'1px solid var(--bg-border)', borderRadius:8 }}>
+            <table style={{ width:'100%', minWidth:720, borderCollapse:'collapse', fontSize:11 }}>
+              <thead>
+                <tr style={{ background:'var(--bg-hover)' }}>
+                  {['MPC Meeting','Policy Statement','Analyst Briefing','Press Conference','Minutes (week ending)','Monetary Policy Report'].map(h => (
+                    <th key={h} style={{ textAlign:'left', padding:'9px 12px', fontSize:9, fontWeight:700, textTransform:'uppercase',
+                      letterSpacing:'.07em', color:'var(--text-secondary)', whiteSpace:'nowrap' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {MPC_CALENDAR_FY27.map(m => {
+                  const isNext = m === NEXT_MPC
+                  const past   = new Date(m.meeting + 'T23:59:59') < today
+                  return (
+                    <tr key={m.meeting} style={{ borderTop:'1px solid var(--bg-border)',
+                      background: isNext ? 'rgba(245,158,11,0.08)' : 'transparent', opacity: past ? .85 : 1 }}>
+                      <td style={{ padding:'8px 12px', fontWeight:700, whiteSpace:'nowrap', fontVariantNumeric:'tabular-nums',
+                        color: isNext ? '#f59e0b' : 'var(--text-primary)' }}>
+                        {fmtMpcDate(m.meeting)}{isNext && <span style={{ marginLeft:6, fontSize:9 }}>NEXT</span>}
+                      </td>
+                      {[m.statement, m.briefing, m.presser, m.minutes, m.mpr].map((v, j) => (
+                        <td key={j} style={{ padding:'8px 12px', whiteSpace:'nowrap', fontVariantNumeric:'tabular-nums',
+                          color: v === '–' ? 'var(--text-muted)' : 'var(--text-primary)' }}>{v}</td>
+                      ))}
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
 
           <p style={{ fontSize:10, marginTop:10, color:'var(--text-muted)', display:'flex', alignItems:'center', gap:4 }}>
-            <Info size={9}/> Future MPC dates are estimates. Rate corridor: 10.50%–12.50%.
+            <Info size={9}/> Dates from SBP&apos;s FY27 advance MPC calendar. Rate corridor: 11.00%–13.00%.
           </p>
         </Section>
 
@@ -595,8 +620,8 @@ export default function MacroDashboard() {
                   {[
                     { label:'SBP Holdings',   value:`$${latest.sbp}B`,   sub:`${latest.month}`,             accent: false },
                     { label:'Total Reserves', value:`$${latest.total}B`, sub:'SBP + commercial banks',      accent: false },
-                    { label:'Import Cover',   value:'~3 months',          sub:'Adequate buffer',             accent: true  },
-                    { label:'6-Month Change', value:`+$${gain6m}B`,      sub:`${first.month} → ${latest.month}`, accent: true  },
+                    { label:'SBP Target',     value:'$23B',               sub:'By Dec 2026 · $25B by Jun 27', accent: true  },
+                    { label:'Change', value:`${gain6m >= 0 ? '+' : '−'}$${Math.abs(gain6m)}B`,      sub:`${first.month} → ${latest.month}`, accent: true  },
                   ].map((k) => (
                     <div key={k.label} className="card" style={{ padding:'16px 20px' }}>
                       <p style={{ fontSize:10, color:'var(--text-primary)', textTransform:'uppercase', letterSpacing:'.07em', marginBottom:10, fontWeight:700 }}>{k.label}</p>
@@ -693,6 +718,7 @@ export default function MacroDashboard() {
                           name === 'sbp' ? 'SBP Holdings' : 'Commercial Banks',
                         ]}
                         labelStyle={{ fontWeight:700, marginBottom:6, color:'var(--text-primary)', fontSize:12 }}
+                        itemStyle={{ color:'var(--text-secondary)', padding:'1px 0' }}
                       />
                       <Bar dataKey="sbp" stackId="a" radius={[0,0,3,3]} maxBarSize={48}>
                         {RESERVES_DATA.map((d, i) => {
@@ -711,7 +737,7 @@ export default function MacroDashboard() {
                 </div>
 
                 <p style={{ fontSize:10, marginTop:14, color:'var(--text-muted)', display:'flex', alignItems:'center', gap:4 }}>
-                  <Info size={9}/> Below 3 months import cover = market stress signal.
+                  <Info size={9}/> Source: SBP weekly liquid FX reserves (latest week ended Nov 06, 2026).
                 </p>
               </>
             )

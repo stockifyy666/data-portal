@@ -20,6 +20,9 @@ import { withCache, CACHE_KEYS, TTL_SECONDS } from '@/lib/redis/cache'
 import { trackChartAPICall }                 from '@/lib/utils/rateLimit'
 import type { CSResponse, OHLCVCandle }      from '@/types/market'
 
+// Live / per-user data: always run on request, never prerender at build time
+export const dynamic = 'force-dynamic'
+
 // Valid timeframe values the user can request
 const VALID_TIMEFRAMES = ['1min', '5min', '10min', '15min', '30min', '1h', 'eod'] as const
 

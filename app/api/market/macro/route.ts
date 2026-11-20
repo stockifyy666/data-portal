@@ -1,6 +1,9 @@
 import { NextResponse }          from 'next/server'
 import { withCache, TTL_SECONDS } from '@/lib/redis/cache'
 
+// Live / per-user data: always run on request, never prerender at build time
+export const dynamic = 'force-dynamic'
+
 // ── IMF DataMapper helper ─────────────────────────────────────────────────────
 // Fast, no-auth, returns annual data for Pakistan.
 // Response: { values: { [indicator]: { PAK: { "2023": 4.6, "2022": 6.1, ... } } } }

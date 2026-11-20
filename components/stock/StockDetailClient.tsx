@@ -228,7 +228,7 @@ export default function StockDetailClient({
         .then(j => {
           if (!Array.isArray(j.announcements)) return
           const isFinancialPdf = (a: Announcement) => {
-            if (!a.pdf_id) return false
+            if (!a.files?.length) return false
             const text = (a.announcementType + ' ' + a.title).toLowerCase()
             if (!/financial result|quarterly result|annual result|half.?year|q[1-4] result|financial statement|transmission of account|year ended|period ended/i.test(text)) return false
             if (/general meeting|agm|resolution|dividend|bonus|right share|notice of/i.test(text)) return false
@@ -238,7 +238,7 @@ export default function StockDetailClient({
           if (fins.length) {
             setStmtPdfs(fins.map(a => ({
               title: a.title || a.announcementType || 'Financial Statement',
-              url:   a.pdf_id!,
+              url:   `/api/proxy/pdf?file=${encodeURIComponent(a.files[0])}`,
               type:  a.announcementType,
             })))
           }
@@ -330,7 +330,7 @@ export default function StockDetailClient({
                       {q.price.toFixed(2)}
                     </p>
                     <p className="text-[11px] font-semibold font-number" style={{ color: up ? '#16a34a' : '#dc2626' }}>
-                      {up ? '+' : ''}{q.changePct.toFixed(2)}%
+                      {up ? '+' : ''}{(q.changePct * 100).toFixed(2)}%
                     </p>
                   </div>
                 </a>

@@ -3,6 +3,9 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { cookies }             from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 
+// Live / per-user data: always run on request, never prerender at build time
+export const dynamic = 'force-dynamic'
+
 const VALID_ROLES = ['user', 'admin', 'superadmin']
 
 export async function PATCH(request: NextRequest) {

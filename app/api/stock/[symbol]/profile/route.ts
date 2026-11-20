@@ -5,6 +5,9 @@ import { withCache, TTL_SECONDS }    from '@/lib/redis/cache'
 import { trackChartAPICall }         from '@/lib/utils/rateLimit'
 import { getContent, saveContent }   from '@/lib/supabase/content'
 
+// Live / per-user data: always run on request, never prerender at build time
+export const dynamic = 'force-dynamic'
+
 const SYMBOL_RE = /^[A-Z0-9]{2,10}$/
 
 export async function GET(

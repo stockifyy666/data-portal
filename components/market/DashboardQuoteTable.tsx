@@ -192,7 +192,7 @@ export default function DashboardQuoteTable() {
                     </td>
                     <td className={`py-2 px-2 font-number ${color}`}>{formatChange(q.change)}</td>
                     <td className={`py-2 px-2 font-number font-semibold ${color}`}>
-                      {formatPercent(q.changePct / 100)}
+                      {formatPercent(q.changePct)}
                     </td>
                     <td className="py-2 px-2 font-number" style={{ color: 'var(--text-secondary)' }}>
                       {formatVolume(q.volume)}

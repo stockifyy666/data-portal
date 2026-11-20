@@ -38,7 +38,7 @@ function TickerCell({ item }: { item: TickerItem }) {
       <span className="inline-flex items-center gap-0.5 text-[10px] font-bold"
         style={{ color: up ? '#16a34a' : '#dc2626' }}>
         {up ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
-        {up ? '+' : ''}{fmt(item.change)} ({up ? '+' : ''}{fmt(item.changePct)}%)
+        {up ? '+' : ''}{fmt(item.change)} ({up ? '+' : ''}{fmt(item.changePct * 100)}%)
       </span>
     </span>
   )

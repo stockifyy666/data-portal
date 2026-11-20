@@ -2,9 +2,8 @@ import { cookies }            from 'next/headers'
 import { redirect }           from 'next/navigation'
 import { createServerClient } from '@supabase/ssr'
 import { createServiceClient } from '@/lib/supabase/service'
-import RoleSelect              from './RoleSelect'
 import CreateUserModal         from './CreateUserModal'
-import DeleteUserButton        from './DeleteUserButton'
+import UsersTable              from './UsersTable'
 
 export default async function UsersPage() {
   const cookieStore = await cookies()
@@ -49,66 +48,12 @@ export default async function UsersPage() {
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>User Management</h1>
-          <p style={{ fontSize: 13, color: 'var(--text-subtitle)', marginTop: 4 }}>{users.length} {users.length === 1 ? 'user' : 'users'} registered</p>
+          <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}>Manage accounts, roles and access</p>
         </div>
         <CreateUserModal viewerRole={currentRole!} />
       </div>
 
-      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--bg-border)', borderRadius: 5, overflow: 'hidden' }}>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid var(--bg-border)' }}>
-                {['Name', 'Email', 'Provider', 'Role', 'Status', 'Last Sign In', 'Joined', ''].map(h => (
-                  <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: 11, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((u, i) => (
-                <tr key={u.id} style={{ borderBottom: i < users.length - 1 ? '1px solid var(--bg-border)' : 'none' }}>
-                  <td style={{ padding: '12px 16px', color: 'var(--text-primary)', fontWeight: 500, whiteSpace: 'nowrap' }}>
-                    {u.full_name}
-                  </td>
-                  <td style={{ padding: '12px 16px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{u.email}</td>
-                  <td style={{ padding: '12px 16px', color: 'var(--text-muted)', textTransform: 'capitalize', whiteSpace: 'nowrap' }}>{u.provider}</td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <RoleSelect userId={u.id} currentRole={u.role} viewerRole={currentRole!} />
-                  </td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <span style={{
-                      fontSize: 11, padding: '2px 8px', fontWeight: 600,
-                      background: u.is_active ? 'rgba(34,197,94,.12)' : 'rgba(239,68,68,.1)',
-                      color: u.is_active ? '#16a34a' : '#dc2626',
-                      border: `1px solid ${u.is_active ? 'rgba(34,197,94,.25)' : 'rgba(239,68,68,.2)'}`,
-                    }}>
-                      {u.is_active ? 'Active' : 'Inactive'}
-                    </span>
-                  </td>
-                  <td style={{ padding: '12px 16px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                    {u.last_sign_in ? new Date(u.last_sign_in).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
-                  </td>
-                  <td style={{ padding: '12px 16px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                    {new Date(u.created_at).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' })}
-                  </td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <DeleteUserButton
-                      userId={u.id}
-                      userEmail={u.email}
-                      viewerRole={currentRole!}
-                      targetRole={u.role}
-                      viewerId={currentId}
-                    />
-                  </td>
-                </tr>
-              ))}
-              {users.length === 0 && (
-                <tr><td colSpan={8} style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)' }}>No users found</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <UsersTable users={users} viewerRole={currentRole!} viewerId={currentId} />
 
     </div>
   )

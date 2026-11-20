@@ -5,6 +5,9 @@ import { withCache, CACHE_KEYS, TTL_SECONDS } from '@/lib/redis/cache'
 import { trackChartAPICall }                  from '@/lib/utils/rateLimit'
 import { PSX_TTL }                            from '@/lib/utils/marketHours'
 
+// Live / per-user data: always run on request, never prerender at build time
+export const dynamic = 'force-dynamic'
+
 interface RawTicker {
   m:   string   // 'REG' | 'IDX'
   s:   string   // symbol

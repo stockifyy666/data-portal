@@ -59,6 +59,9 @@ function getUserIdFromCookie(request: NextRequest): string | null {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
+  // Cron sync jobs: no user session — each route checks CRON_SECRET itself
+  if (pathname.startsWith('/api/sync/')) return NextResponse.next()
+
   // Rate limit all /api/* routes
   if (pathname.startsWith('/api/')) {
     const ip         = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? '127.0.0.1'
@@ -66,7 +69,13 @@ export async function middleware(request: NextRequest) {
     const userId     = isAuthRoute ? null : getUserIdFromCookie(request)
     const identifier = userId ? `uid:${userId}` : `ip:${ip}`
 
-    const { success } = await (isAuthRoute ? authLimiter : apiLimiter).limit(identifier)
+    // Fail open: if Redis is unreachable, don't break the request
+    let success = true
+    try {
+      ({ success } = await (isAuthRoute ? authLimiter : apiLimiter).limit(identifier))
+    } catch (e) {
+      console.warn('[middleware] rate limiter unavailable:', e instanceof Error ? e.message : e)
+    }
 
     if (!success) {
       return new NextResponse(JSON.stringify({ error: 'Too many requests. Please slow down.' }), {

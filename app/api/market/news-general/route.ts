@@ -3,6 +3,10 @@ import { csUatGet }             from '@/lib/capitalstake/client'
 import { CS_ENDPOINTS }         from '@/lib/capitalstake/endpoints'
 import { trackChartAPICall }    from '@/lib/utils/rateLimit'
 import { getContent, saveContent } from '@/lib/supabase/content'
+import { dedupeNews }              from '@/lib/news/dedupe'
+
+// Live / per-user data: always run on request, never prerender at build time
+export const dynamic = 'force-dynamic'
 
 type GeneralNewsItem = {
   symbol:      string
@@ -21,7 +25,7 @@ export async function GET() {
     // 1. Supabase first — served from hourly sync, zero CS calls per user
     const cached = await getContent<GeneralNewsItem>('MARKET', 'general_news')
     if (cached && cached.length > 0) {
-      return NextResponse.json({ data: cached })
+      return NextResponse.json({ data: dedupeNews(cached) })
     }
 
     // 2. DB miss — fetch from CS UAT and save for next requests
@@ -34,7 +38,7 @@ export async function GET() {
       saveContent('MARKET', 'general_news', items).catch(() => {})
     }
 
-    return NextResponse.json({ data: items })
+    return NextResponse.json({ data: dedupeNews(items) })
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unknown error'
     console.error('[API /market/news-general]', msg)

@@ -69,5 +69,6 @@ export type NewsItem = {
 export type Announcement = {
   id: number; title: string; date: string; announcementType: string
   dividend: number | null; bonus: number | null; exDate: string | null
-  pdf_id: string | null; name: string
+  files: string[]; images?: string[]; name: string
+  form_type?: string; category?: string
 }

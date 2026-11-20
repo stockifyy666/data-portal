@@ -21,13 +21,19 @@ export async function GET() {
     }
 
     const db = createServiceClient()
-    const [usage, { count: fsCount }, { count: scCount }] = await Promise.all([
+    const count = (t: string) => db.from(t).select('*', { count: 'exact', head: true }).then(r => r.count ?? 0)
+    const [usage, fin, fund, news, anns, profiles] = await Promise.all([
       getCSAPIUsage(),
-      db.from('financial_statements').select('*', { count: 'exact', head: true }),
-      db.from('stock_content').select('*', { count: 'exact', head: true }),
+      count('financial_statements'), count('fundamentals'),
+      count('news'), count('announcements'), count('company_profiles'),
     ])
 
-    return NextResponse.json({ usage, fsCount: fsCount ?? 0, scCount: scCount ?? 0 })
+    return NextResponse.json({
+      usage,
+      fsCount: fin + fund,                 // financial data rows
+      scCount: news + anns + profiles,     // content rows
+      tables:  { financial_statements: fin, fundamentals: fund, news, announcements: anns, company_profiles: profiles },
+    })
   } catch (err) {
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }

@@ -16,6 +16,9 @@ import { NextResponse }    from 'next/server'
 import { createClient }    from '@/lib/supabase/server'
 import { createClient as createAdmin } from '@supabase/supabase-js'
 
+// Live / per-user data: always run on request, never prerender at build time
+export const dynamic = 'force-dynamic'
+
 export async function DELETE() {
   try {
     const supabase = await createClient()

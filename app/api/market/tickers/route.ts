@@ -6,6 +6,9 @@ import { trackChartAPICall }                  from '@/lib/utils/rateLimit'
 import { PSX_TTL }                            from '@/lib/utils/marketHours'
 import type { RawStock }                      from '@/types/capitalstake'
 
+// Live / per-user data: always run on request, never prerender at build time
+export const dynamic = 'force-dynamic'
+
 interface RawTicker {
   m:   string   // market type: "REG" = regular stock, "IDX" = index
   s:   string   // symbol

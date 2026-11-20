@@ -7,6 +7,9 @@ import { trackChartAPICall }                  from '@/lib/utils/rateLimit'
 import { PSX_TTL }                            from '@/lib/utils/marketHours'
 import type { RawStock, RawQuote }            from '@/types/capitalstake'
 
+// Live / per-user data: always run on request, never prerender at build time
+export const dynamic = 'force-dynamic'
+
 const SECTOR_NAMES: Record<string, string> = {
   '0801': 'Automobiles',           '0802': 'Auto Parts & Accessories',
   '0803': 'Cable & Electrical',    '0804': 'Cement',

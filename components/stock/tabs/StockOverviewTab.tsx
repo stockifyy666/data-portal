@@ -263,7 +263,7 @@ export function StockOverviewTab({ symbol, overview, overviewLoad, snapFunds, sn
             </p>
             <p className={`text-sm sm:text-base font-semibold font-number mt-1 ${isUp ? 'text-green-600' : 'text-red-500'}`}>
               {isUp ? <TrendingUp size={14} className="inline mr-1" /> : <TrendingDown size={14} className="inline mr-1" />}
-              {formatChange(Number(overview.change))} ({formatPercent(Number(overview.changePct) / 100)})
+              {formatChange(Number(overview.change))} ({formatPercent(Number(overview.changePct))})
             </p>
           </div>
         </div>

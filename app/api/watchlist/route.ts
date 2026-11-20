@@ -13,6 +13,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient }              from '@/lib/supabase/server'
 import { z }                         from 'zod'
 
+// Live / per-user data: always run on request, never prerender at build time
+export const dynamic = 'force-dynamic'
+
 const AddSymbolSchema = z.object({
   symbol:      z.string().min(2).max(10).toUpperCase(),
   watchlistId: z.string().uuid().optional(),

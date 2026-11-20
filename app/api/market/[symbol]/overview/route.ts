@@ -3,7 +3,11 @@ import { cacheGet, cacheSet, CACHE_KEYS, TTL_SECONDS } from '@/lib/redis/cache'
 import { csUatGet }                           from '@/lib/capitalstake/client'
 import { CS_ENDPOINTS }                       from '@/lib/capitalstake/endpoints'
 import { trackChartAPICall }                  from '@/lib/utils/rateLimit'
+import { PSX_TTL }                            from '@/lib/utils/marketHours'
 import type { RawStock, RawQuote }            from '@/types/capitalstake'
+
+// Live / per-user data: always run on request, never prerender at build time
+export const dynamic = 'force-dynamic'
 
 // Fetch and cache the full stocks list from UAT API
 async function fetchAndCacheStocks(): Promise<RawStock[]> {
@@ -19,7 +23,8 @@ async function fetchAndCacheQuotes(): Promise<RawQuote[]> {
   await trackChartAPICall('GET /3.0/market/quotes')
   const res = await csUatGet<{ status: string; data: RawQuote[] }>(CS_ENDPOINTS.QUOTES_LIST)
   const data = res.data ?? []
-  if (data.length > 0) await cacheSet(CACHE_KEYS.allQuotesUAT(), data, TTL_SECONDS.QUOTES_UAT)
+  // Same market-hours rule as tickers/quotes: 60s while PSX is open, held until next open after close
+  if (data.length > 0) await cacheSet(CACHE_KEYS.allQuotesUAT(), data, PSX_TTL.QUOTES())
   return data
 }
 

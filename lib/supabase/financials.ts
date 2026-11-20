@@ -21,6 +21,19 @@ function staleHours(type: StmtType | string): number {
 }
 export type Interval = 'annual' | 'quarterly'
 
+// Each statement kind lives in its own table (migration 003):
+//   income / balance / cashflow → financial_statements (symbol, stmt_type, interval)
+//   fundamentals                → fundamentals         (symbol, interval)
+//   shareholders                → company_profiles     (symbol, kind='shareholders')
+function target(symbol: string, type: string, interval: string) {
+  const sym = symbol.toUpperCase()
+  if (type === 'fundamentals')
+    return { table: 'fundamentals', keys: { symbol: sym, interval } as Record<string, string>, conflict: 'symbol,interval' }
+  if (type === 'shareholders')
+    return { table: 'company_profiles', keys: { symbol: sym, kind: 'shareholders' } as Record<string, string>, conflict: 'symbol,kind' }
+  return { table: 'financial_statements', keys: { symbol: sym, stmt_type: type, interval } as Record<string, string>, conflict: 'symbol,stmt_type,interval' }
+}
+
 // Row shape returned by Supabase
 type DBRow = {
   data:       StatementData
@@ -38,14 +51,10 @@ export async function getStatement(
   interval: Interval | string
 ): Promise<StatementData | null> {
   try {
-    const db = createServiceClient()
-    const { data, error } = await db
-      .from('financial_statements')
-      .select('data, fetched_at')
-      .eq('symbol',    symbol.toUpperCase())
-      .eq('stmt_type', type)
-      .eq('interval',  interval)
-      .single<DBRow>()
+    const { table, keys } = target(symbol, type, interval)
+    let q = createServiceClient().from(table).select('data, fetched_at')
+    for (const [c, v] of Object.entries(keys)) q = q.eq(c, v)
+    const { data, error } = await q.single<DBRow>()
 
     if (error || !data) return null
 
@@ -68,14 +77,10 @@ export async function getRawStatement(
   interval: Interval | string
 ): Promise<unknown | null> {
   try {
-    const db = createServiceClient()
-    const { data, error } = await db
-      .from('financial_statements')
-      .select('raw_data, fetched_at')
-      .eq('symbol',    symbol.toUpperCase())
-      .eq('stmt_type', type)
-      .eq('interval',  interval)
-      .single<DBRow>()
+    const { table, keys } = target(symbol, type, interval)
+    let q = createServiceClient().from(table).select('raw_data, fetched_at')
+    for (const [c, v] of Object.entries(keys)) q = q.eq(c, v)
+    const { data, error } = await q.single<DBRow>()
 
     if (error || !data?.raw_data) return null
 
@@ -100,17 +105,10 @@ export async function saveStatement(
   rawData?: unknown
 ): Promise<void> {
   try {
-    const db = createServiceClient()
-    await db.from('financial_statements').upsert(
-      {
-        symbol:     symbol.toUpperCase(),
-        stmt_type:  type,
-        interval,
-        data:       stmtData,
-        raw_data:   rawData ?? null,
-        fetched_at: new Date().toISOString(),
-      },
-      { onConflict: 'symbol,stmt_type,interval' }
+    const { table, keys, conflict } = target(symbol, type, interval)
+    await createServiceClient().from(table).upsert(
+      { ...keys, data: stmtData, raw_data: rawData ?? null, fetched_at: new Date().toISOString() },
+      { onConflict: conflict }
     )
   } catch (err) {
     console.error('[Supabase] saveStatement failed:', err)
@@ -126,14 +124,11 @@ export async function getStaleSymbols(
   interval: Interval | string
 ): Promise<string[]> {
   try {
-    const db        = createServiceClient()
-    const cutoff    = new Date(Date.now() - staleHours(type) * 3_600_000).toISOString()
-    const { data }  = await db
-      .from('financial_statements')
-      .select('symbol')
-      .eq('stmt_type', type)
-      .eq('interval',  interval)
-      .lt('fetched_at', cutoff)
+    const cutoff = new Date(Date.now() - staleHours(type) * 3_600_000).toISOString()
+    const { table, keys } = target('', type, interval)
+    let q = createServiceClient().from(table).select('symbol').lt('fetched_at', cutoff)
+    for (const [c, v] of Object.entries(keys)) if (c !== 'symbol') q = q.eq(c, v)
+    const { data } = await q
 
     return (data ?? []).map((r: { symbol: string }) => r.symbol)
   } catch {

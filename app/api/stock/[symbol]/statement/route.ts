@@ -6,6 +6,9 @@ import { trackChartAPICall }                       from '@/lib/utils/rateLimit'
 import { getStatement, saveStatement }             from '@/lib/supabase/financials'
 import type { StatementData }                      from '@/components/stock/stock-detail-types'
 
+// Live / per-user data: always run on request, never prerender at build time
+export const dynamic = 'force-dynamic'
+
 const SYMBOL_RE   = /^[A-Z0-9]{2,10}$/
 const VALID_TYPES = ['balance', 'income', 'cashflow', 'fundamentals', 'shareholders'] as const
 const VALID_INT   = ['annual', 'quarterly'] as const

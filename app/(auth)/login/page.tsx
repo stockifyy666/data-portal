@@ -2,9 +2,9 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
+import { AuthShell } from '@/components/auth/AuthShell'
 import { createClient } from '@/lib/supabase/client'
-import { Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff, Mail, Lock } from 'lucide-react'
 
 export default function LoginPage() {
   const supabase = createClient()
@@ -13,6 +13,7 @@ export default function LoginPage() {
   const [showPw,   setShowPw]   = useState(false)
   const [loading,  setLoading]  = useState(false)
   const [gLoading, setGLoading] = useState(false)
+  const [fLoading, setFLoading] = useState(false)
   const [error,    setError]    = useState<string | null>(null)
 
   function safeRedirect(fallback = '/dashboard') {
@@ -39,326 +40,85 @@ export default function LoginPage() {
     } finally { setLoading(false) }
   }
 
-  async function handleGoogle() {
-    setGLoading(true); setError(null)
+  async function handleOAuth(provider: 'google' | 'facebook') {
+    const setBusy = provider === 'google' ? setGLoading : setFLoading
+    setBusy(true); setError(null)
     const next = new URLSearchParams(window.location.search).get('next') ?? '/dashboard'
     const destination = next.startsWith('/') && !next.startsWith('//') ? next : '/dashboard'
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
+      provider,
       options: { redirectTo: `${window.location.origin}/api/auth/callback?next=${encodeURIComponent(destination)}` },
     })
-    if (oauthError) { setError(oauthError.message); setGLoading(false) }
+    if (oauthError) { setError(oauthError.message); setBusy(false) }
   }
 
   return (
-    <div className="a-page">
-
-      {/* ── Background ── */}
-      <div className="a-bg" aria-hidden>
-        {/* Gradient blobs */}
-        <div className="a-blob a-blob-1" />
-        <div className="a-blob a-blob-2" />
-        <div className="a-blob a-blob-3" />
-      </div>
-
-      <div className="a-card">
-
-        {/* Logo */}
-        <div className="a-logo">
-          <Image src="/images/logo.svg" alt="Stockifyy" width={160} height={44} style={{ objectFit: 'contain' }} />
-        </div>
-
-        <h1 className="a-title">Sign in to your account</h1>
-
-        {/* Google */}
-        <button className="a-google" onClick={handleGoogle} disabled={gLoading || loading}>
+    <AuthShell
+      title="Welcome back"
+      subtitle="Sign in to continue to your market dashboard."
+      footer={
+        <p className="a-switch">
+          New to Stockifyy?{' '}
+          <Link href="/register" className="a-link">Create a free account</Link>
+        </p>
+      }>
+      <button type="button" className="a-google" onClick={() => handleOAuth('google')} disabled={gLoading || fLoading || loading}>
           <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden>
             <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/>
             <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/>
             <path fill="#FBBC05" d="M3.964 10.707A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.039l3.007-2.332z"/>
             <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.961L3.964 7.293C4.672 5.163 6.656 3.58 9 3.58z"/>
           </svg>
-          {gLoading ? 'Redirecting…' : 'Continue with Google'}
-        </button>
+        {gLoading ? 'Redirecting…' : 'Continue with Google'}
+      </button>
 
-        {/* Divider */}
-        <div className="a-divider">
-          <span className="a-divider-line" />
-          <span className="a-divider-text">or continue with email</span>
-          <span className="a-divider-line" />
-        </div>
+      <button type="button" className="a-google mt-3" onClick={() => handleOAuth('facebook')} disabled={gLoading || fLoading || loading}>
+        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden>
+          <path fill="#1877F2" d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.41c0-3.025 1.792-4.697 4.533-4.697 1.312 0 2.686.236 2.686.236v2.971H15.83c-1.491 0-1.956.931-1.956 1.886v2.267h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/>
+          <path fill="#fff" d="M16.671 15.563l.532-3.49h-3.328V9.806c0-.955.465-1.886 1.956-1.886h1.513V4.949s-1.374-.236-2.686-.236c-2.741 0-4.533 1.672-4.533 4.697v2.663H7.078v3.49h3.047V24a12.1 12.1 0 0 0 3.75 0v-8.437h2.796z"/>
+        </svg>
+        {fLoading ? 'Redirecting…' : 'Continue with Facebook'}
+      </button>
 
-        {/* Form */}
-        <form onSubmit={handleLogin} className="a-form">
-          <div className="a-field">
-            <label className="a-label">Email</label>
-            <input
-              type="email" value={email} onChange={e => setEmail(e.target.value)}
-              required placeholder="you@example.com" className="a-input"
-            />
-          </div>
-
-          <div className="a-field">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-              <label className="a-label" style={{ margin: 0 }}>Password</label>
-              <Link href="/forgot-password" className="a-forgot">Forgot password?</Link>
-            </div>
-            <div className="a-input-wrap">
-              <input
-                type={showPw ? 'text' : 'password'} value={password}
-                onChange={e => setPassword(e.target.value)}
-                required placeholder="••••••••" className="a-input" style={{ paddingRight: 42 }}
-              />
-              <button type="button" className="a-eye" onClick={() => setShowPw(p => !p)}>
-                {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
-              </button>
-            </div>
-          </div>
-
-          {error && <div className="a-error">{error}</div>}
-
-          <button type="submit" disabled={loading || gLoading} className="a-submit">
-            {loading ? 'Signing in…' : 'Sign In'}
-          </button>
-        </form>
-
-        <p className="a-switch">
-          Don&apos;t have an account?{' '}
-          <Link href="/register" className="a-link">Create one free</Link>
-        </p>
-
-        {/* Trust bar */}
-        <div className="a-trust">
-          <span>🔒 Secured by Supabase</span>
-          <span>·</span>
-          <span>PSX Live Data</span>
-          <span>·</span>
-          <span>Free forever</span>
-        </div>
+      <div className="a-divider">
+        <span className="a-divider-line" />
+        <span className="a-divider-text">or sign in with email</span>
+        <span className="a-divider-line" />
       </div>
 
-      <style>{`
-        .a-page {
-          min-height: 100vh;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 24px 16px;
-          background-color: var(--bg-page);
-          position: relative;
-          overflow: hidden;
-        }
+      <form onSubmit={handleLogin} className="a-form" noValidate={false}>
+        <div className="a-field">
+          <label className="a-label" htmlFor="login-email">Email address</label>
+          <div className="a-input-wrap">
+            <span className="a-input-icon"><Mail size={16} /></span>
+            <input id="login-email" type="email" value={email} onChange={e => setEmail(e.target.value)}
+              required autoComplete="email" placeholder="you@example.com" className="a-input" />
+          </div>
+        </div>
 
-        /* ── Background ── */
-        .a-bg {
-          position: absolute;
-          inset: 0;
-          pointer-events: none;
-          z-index: 0;
-          overflow: hidden;
-        }
-        .a-blob {
-          position: absolute;
-          border-radius: 50%;
-          filter: blur(80px);
-        }
-        .a-blob-1 {
-          width: 750px; height: 750px;
-          top: -300px; left: -200px;
-          background: radial-gradient(circle, #FEA500AA 0%, #FEA50055 35%, transparent 65%);
-        }
-        .a-blob-2 {
-          width: 650px; height: 650px;
-          bottom: -250px; right: -180px;
-          background: radial-gradient(circle, #FEA50099 0%, #FEA50044 35%, transparent 65%);
-        }
-        .a-blob-3 {
-          width: 500px; height: 500px;
-          top: 30%; left: 52%;
-          background: radial-gradient(circle, #98630055 0%, transparent 60%);
-        }
+        <div className="a-field">
+          <div className="flex items-center justify-between">
+            <label className="a-label" htmlFor="login-password">Password</label>
+            <Link href="/forgot-password" className="a-forgot">Forgot password?</Link>
+          </div>
+          <div className="a-input-wrap">
+            <span className="a-input-icon"><Lock size={16} /></span>
+            <input id="login-password" type={showPw ? 'text' : 'password'} value={password}
+              onChange={e => setPassword(e.target.value)} required autoComplete="current-password"
+              placeholder="Enter your password" className="a-input" style={{ paddingRight: 44 }} />
+            <button type="button" className="a-eye" onClick={() => setShowPw(p => !p)}
+              aria-label={showPw ? 'Hide password' : 'Show password'}>
+              {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
+        </div>
 
-        .a-card {
-          position: relative;
-          z-index: 1;
-          width: 100%;
-          max-width: 420px;
-          background: var(--bg-card);
-          border: 1px solid var(--bg-border);
-          padding: 40px 36px 32px;
-          box-shadow: 0 8px 40px rgba(0,0,0,0.08);
-        }
+        {error && <div className="a-error" role="alert">{error}</div>}
 
-        .a-logo {
-          display: flex;
-          justify-content: center;
-          margin-bottom: 28px;
-        }
-
-        .a-title {
-          font-size: 18px;
-          font-weight: 700;
-          color: var(--text-primary);
-          text-align: center;
-          margin: 0 0 24px;
-          letter-spacing: -.01em;
-        }
-
-        /* Google btn */
-        .a-google {
-          width: 100%;
-          padding: 11px 16px;
-          background: var(--bg-hover);
-          border: 1px solid var(--bg-border);
-          color: var(--text-primary);
-          font-size: 14px;
-          font-weight: 600;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 10px;
-          transition: border-color .15s, background .15s;
-          font-family: inherit;
-        }
-        .a-google:hover:not(:disabled) {
-          border-color: var(--brand);
-          background: var(--bg-card);
-        }
-        .a-google:disabled { opacity: .6; cursor: not-allowed; }
-
-        /* Divider */
-        .a-divider {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          margin: 20px 0;
-        }
-        .a-divider-line {
-          flex: 1;
-          height: 1px;
-          background: var(--bg-border);
-          display: block;
-        }
-        .a-divider-text {
-          font-size: 12px;
-          color: var(--text-muted);
-          white-space: nowrap;
-        }
-
-        /* Form */
-        .a-form { display: flex; flex-direction: column; gap: 16px; }
-
-        .a-field { display: flex; flex-direction: column; gap: 6px; }
-
-        .a-label {
-          font-size: 13px;
-          font-weight: 600;
-          color: var(--text-secondary);
-          margin-bottom: 6px;
-          display: block;
-        }
-
-        .a-forgot {
-          font-size: 12px;
-          color: var(--brand);
-          text-decoration: none;
-          font-weight: 500;
-        }
-        .a-forgot:hover { text-decoration: underline; }
-
-        .a-input-wrap { position: relative; }
-
-        .a-input {
-          width: 100%;
-          padding: 10px 14px;
-          background: var(--bg-page);
-          border: 1px solid var(--bg-border);
-          color: var(--text-primary);
-          font-size: 14px;
-          outline: none;
-          transition: border-color .15s;
-          font-family: inherit;
-          box-sizing: border-box;
-        }
-        .a-input:focus { border-color: var(--brand); }
-        .a-input::placeholder { color: var(--text-muted); }
-
-        .a-eye {
-          position: absolute;
-          right: 12px;
-          top: 50%;
-          transform: translateY(-50%);
-          background: none;
-          border: none;
-          cursor: pointer;
-          color: var(--text-muted);
-          display: flex;
-          align-items: center;
-          padding: 0;
-        }
-        .a-eye:hover { color: var(--text-secondary); }
-
-        /* Error */
-        .a-error {
-          padding: 10px 14px;
-          background: #fef2f2;
-          border: 1px solid #fecaca;
-          color: #dc2626;
-          font-size: 13px;
-          line-height: 1.5;
-        }
-        .dark .a-error {
-          background: #1a0808;
-          border-color: #7f1d1d;
-          color: #f87171;
-        }
-
-        /* Submit */
-        .a-submit {
-          width: 100%;
-          padding: 11px 16px;
-          margin-top: 4px;
-          background: linear-gradient(135deg, #FEA500, #986300);
-          border: none;
-          color: #fff;
-          font-size: 14px;
-          font-weight: 700;
-          letter-spacing: .02em;
-          cursor: pointer;
-          transition: opacity .15s;
-          font-family: inherit;
-        }
-        .a-submit:hover:not(:disabled) { opacity: .9; }
-        .a-submit:disabled { opacity: .6; cursor: not-allowed; }
-
-        /* Switch */
-        .a-switch {
-          text-align: center;
-          font-size: 13px;
-          color: var(--text-muted);
-          margin-top: 20px;
-        }
-        .a-link { color: var(--brand); font-weight: 600; text-decoration: none; }
-        .a-link:hover { text-decoration: underline; }
-
-        /* Trust bar */
-        .a-trust {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
-          margin-top: 20px;
-          padding-top: 20px;
-          border-top: 1px solid var(--bg-border);
-          font-size: 11px;
-          color: var(--text-muted);
-        }
-
-        @media (max-width: 480px) {
-          .a-card { padding: 28px 20px 24px; }
-        }
-      `}</style>
-    </div>
+        <button type="submit" disabled={loading || gLoading || fLoading} className="a-submit">
+          {loading ? 'Signing in…' : 'Sign in'}
+        </button>
+      </form>
+    </AuthShell>
   )
 }

@@ -4,6 +4,9 @@ import { CS_ENDPOINTS }               from '@/lib/capitalstake/endpoints'
 import { withCache, TTL_SECONDS }     from '@/lib/redis/cache'
 import { trackChartAPICall }          from '@/lib/utils/rateLimit'
 
+// Live / per-user data: always run on request, never prerender at build time
+export const dynamic = 'force-dynamic'
+
 const SYMBOL_RE = /^[A-Z0-9]{2,10}$/
 
 // Map request period to UAT endpoint + cache key

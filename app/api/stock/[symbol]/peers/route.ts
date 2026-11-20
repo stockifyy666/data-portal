@@ -3,7 +3,11 @@ import { cacheGet, cacheSet, CACHE_KEYS, TTL_SECONDS } from '@/lib/redis/cache'
 import { csUatGet }                                     from '@/lib/capitalstake/client'
 import { CS_ENDPOINTS }                                 from '@/lib/capitalstake/endpoints'
 import { trackChartAPICall }                            from '@/lib/utils/rateLimit'
+import { PSX_TTL } from '@/lib/utils/marketHours'
 import type { RawStock }                                from '@/types/capitalstake'
+
+// Live / per-user data: always run on request, never prerender at build time
+export const dynamic = 'force-dynamic'
 
 // Shape returned per peer
 export type PeerData = {
@@ -56,7 +60,7 @@ async function fetchSingleQuote(symbol: string): Promise<RawSingleQuote | null> 
     await trackChartAPICall(url)
     const res = await csUatGet<{ status: string; data: RawSingleQuote }>(url)
     const data = res.data
-    if (data?.symbol) await cacheSet(cacheKey, data, TTL_SECONDS.QUOTES_UAT)
+    if (data?.symbol) await cacheSet(cacheKey, data, PSX_TTL.QUOTES())   // market-hours rule
     return data ?? null
   } catch { return null }
 }

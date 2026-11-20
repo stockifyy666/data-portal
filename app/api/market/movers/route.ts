@@ -7,6 +7,9 @@ import { trackChartAPICall }                  from '@/lib/utils/rateLimit'
 import { PSX_TTL }                            from '@/lib/utils/marketHours'
 import type { RawStock, RawQuote }            from '@/types/capitalstake'
 
+// Live / per-user data: always run on request, never prerender at build time
+export const dynamic = 'force-dynamic'
+
 async function getStocks(): Promise<RawStock[]> {
   const cached = await cacheGet<RawStock[]>(CACHE_KEYS.allStocks())
   if (cached) return cached
