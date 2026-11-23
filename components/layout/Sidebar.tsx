@@ -11,6 +11,7 @@ import {
 import { createClient } from '@/lib/supabase/client'
 import { useTheme }     from '@/components/providers/ThemeProvider'
 import logo from "../../public/images/logo.svg"
+import { SHOW_USER_SETTINGS } from '@/lib/features'
 import Image from 'next/image'
 
 const NAV_ITEMS = [
@@ -116,7 +117,7 @@ export default function Sidebar({ onClose, noHeader }: { onClose?: () => void; n
           {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
         </button>
 
-        <Link
+        {SHOW_USER_SETTINGS && <Link
           href="/settings"
           className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium
                       transition-colors duration-150
@@ -125,7 +126,7 @@ export default function Sidebar({ onClose, noHeader }: { onClose?: () => void; n
         >
           <Settings size={16} className="shrink-0" />
           Settings
-        </Link>
+        </Link>}
 
         <div
           className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer

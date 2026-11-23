@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { BarChart3, LayoutDashboard, TrendingUp, BookMarked,
          Briefcase, SlidersHorizontal, Bell, Settings, LogOut, User,
          Grid2x2 } from 'lucide-react'
+import { SHOW_USER_SETTINGS } from '@/lib/features'
 import { createClient } from '@/lib/supabase/client'
 
 const NAV_ITEMS = [
@@ -62,7 +63,7 @@ export default function Navbar() {
 
         {/* Right side */}
         <div className="flex items-center gap-2 shrink-0 ml-auto">
-          <Link
+          {SHOW_USER_SETTINGS && <Link
             href="/settings"
             className={`p-1.5 rounded-lg transition-colors
               ${pathname.startsWith('/settings')
@@ -71,7 +72,7 @@ export default function Navbar() {
               }`}
           >
             <Settings size={16} />
-          </Link>
+          </Link>}
 
           <div className="w-px h-5 bg-slate-200" />
 

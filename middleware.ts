@@ -11,6 +11,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { createServerClient }             from '@supabase/ssr'
 import { Ratelimit }                      from '@upstash/ratelimit'
 import { Redis }                          from '@upstash/redis/cloudflare'
+import { SHOW_USER_SETTINGS }             from '@/lib/features'
 
 const PUBLIC_ROUTES = ['/login', '/register', '/forgot-password']
 
@@ -61,6 +62,11 @@ export async function middleware(request: NextRequest) {
 
   // Cron sync jobs: no user session — each route checks CRON_SECRET itself
   if (pathname.startsWith('/api/sync/')) return NextResponse.next()
+
+  // User Settings page is hidden for now (lib/features.ts)
+  if (!SHOW_USER_SETTINGS && (pathname === '/settings' || pathname.startsWith('/settings/'))) {
+    return NextResponse.redirect(new URL('/dashboard', request.url))
+  }
 
   // Rate limit all /api/* routes
   if (pathname.startsWith('/api/')) {
