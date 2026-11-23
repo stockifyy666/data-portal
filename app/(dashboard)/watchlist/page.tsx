@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import Link from 'next/link'
-import { Star, TrendingUp, TrendingDown, Trash2, Loader2, LayoutGrid, List } from 'lucide-react'
+import { Star, TrendingUp, TrendingDown, Trash2, Loader2, LayoutGrid, List, BookmarkPlus, BookMarked, Search, ArrowRight } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { formatPrice, formatChange, getChangeColor } from '@/lib/utils/format'
 import { cachedFetch } from '@/lib/utils/clientCache'
@@ -249,9 +249,10 @@ export default function WatchlistPage() {
               </button>
             </div>
           )}
-          <div className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--text-secondary)' }}>
-            <Star size={12} className="fill-amber-400 text-amber-400" />
-            {loading ? '…' : `${items.length} symbols`}
+          <div className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full"
+            style={{ color: 'var(--text-secondary)', background: 'var(--bg-hover)', border: '1px solid var(--bg-border)' }}>
+            <BookMarked size={13} strokeWidth={2.3} style={{ color: '#FEA500' }} />
+            {loading ? '…' : `${items.length} ${items.length === 1 ? 'symbol' : 'symbols'}`}
           </div>
         </div>
       </div>
@@ -282,13 +283,20 @@ export default function WatchlistPage() {
         </div>
       ) : items.length === 0 ? (
         <div className="card text-center py-16">
-          <Star size={32} className="mx-auto mb-3" style={{ color: 'var(--text-secondary)' }} />
+          <span className="mx-auto mb-4 w-14 h-14 rounded-2xl flex items-center justify-center"
+            style={{ background: 'rgba(254,165,0,0.12)', color: '#FEA500' }}>
+            <BookmarkPlus size={26} strokeWidth={2.2} />
+          </span>
           <p className="text-sm font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>Your watchlist is empty</p>
-          <p className="text-xs mb-4" style={{ color: 'var(--text-secondary)' }}>
-            Browse stocks and click "Add to Watchlist" to track them here.
+          <p className="text-xs mb-5" style={{ color: 'var(--text-secondary)' }}>
+            Browse stocks and click &quot;Add to Watchlist&quot; to track them here.
           </p>
-          <Link href="/stocks" className="text-xs font-semibold" style={{ color: '#FEA500' }}>
-            Browse PSX stocks →
+          <Link href="/stocks"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-90"
+            style={{ background: '#FEA500', color: '#fff' }}>
+            <Search size={14} strokeWidth={2.4} />
+            Browse PSX stocks
+            <ArrowRight size={14} strokeWidth={2.4} />
           </Link>
         </div>
       ) : view === 'list' ? (

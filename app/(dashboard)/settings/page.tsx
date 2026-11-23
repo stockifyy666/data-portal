@@ -105,7 +105,7 @@ function DeleteModal({ email, onConfirm, onCancel, deleting }: {
           </div>
         </div>
         <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-          All your data — portfolio, watchlist, alerts, and profile — will be permanently deleted.
+          All your data — watchlists and profile — will be permanently deleted.
           Your account <strong style={{ color: 'var(--text-primary)' }}>{email}</strong> will be removed.
         </p>
         <div>
@@ -375,9 +375,8 @@ export default function SettingsPage() {
       <SectionCard title="Notifications" icon={Bell}>
         <DisabledRow label="Price Alerts" sub="Get notified when your watched stocks hit target prices" />
         <div style={{ height: 1, backgroundColor: 'var(--bg-border)' }} />
-        <DisabledRow label="Market News" sub="Breaking news about your portfolio holdings" />
+        <DisabledRow label="Market News" sub="Breaking news about stocks in your watchlist" />
         <div style={{ height: 1, backgroundColor: 'var(--bg-border)' }} />
-        <DisabledRow label="Portfolio Updates" sub="Daily summary of your portfolio performance" />
         <div style={{ height: 1, backgroundColor: 'var(--bg-border)' }} />
         <DisabledRow label="Weekly Report" sub="Weekly digest of market highlights and your holdings" />
       </SectionCard>

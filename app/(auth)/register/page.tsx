@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { AuthShell } from '@/components/auth/AuthShell'
 import { createClient } from '@/lib/supabase/client'
+import { SHOW_FACEBOOK_LOGIN } from '@/lib/features'
 import { Eye, EyeOff, Mail, Lock, User } from 'lucide-react'
 
 export default function RegisterPage() {
@@ -83,6 +84,7 @@ export default function RegisterPage() {
         {gLoading ? 'Redirecting…' : 'Sign up with Google'}
       </button>
 
+      {SHOW_FACEBOOK_LOGIN && (
       <button type="button" className="a-google mt-3" onClick={() => handleOAuth('facebook')} disabled={gLoading || fLoading || loading}>
         <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden>
           <path fill="#1877F2" d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.41c0-3.025 1.792-4.697 4.533-4.697 1.312 0 2.686.236 2.686.236v2.971H15.83c-1.491 0-1.956.931-1.956 1.886v2.267h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/>
@@ -90,6 +92,7 @@ export default function RegisterPage() {
         </svg>
         {fLoading ? 'Redirecting…' : 'Sign up with Facebook'}
       </button>
+      )}
 
       <div className="a-divider">
         <span className="a-divider-line" />

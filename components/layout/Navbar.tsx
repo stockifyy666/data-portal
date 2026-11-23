@@ -3,7 +3,7 @@
 import Link            from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { BarChart3, LayoutDashboard, TrendingUp, BookMarked,
-         Briefcase, SlidersHorizontal, Bell, Settings, LogOut, User,
+         SlidersHorizontal, Settings, LogOut, User,
          Grid2x2 } from 'lucide-react'
 import { SHOW_USER_SETTINGS } from '@/lib/features'
 import { createClient } from '@/lib/supabase/client'
@@ -12,10 +12,8 @@ const NAV_ITEMS = [
   { icon: LayoutDashboard,   label: 'Dashboard',    href: '/dashboard' },
   { icon: TrendingUp,        label: 'Stocks',        href: '/stocks' },
   { icon: BookMarked,        label: 'Watchlist',     href: '/watchlist' },
-  { icon: Briefcase,         label: 'Portfolio',     href: '/portfolio' },
   { icon: Grid2x2,           label: 'Heatmap',       href: '/heatmap' },
   { icon: SlidersHorizontal, label: 'Screener',      href: '/screener' },
-  { icon: Bell,              label: 'Alerts',        href: '/alerts' },
 ]
 
 export default function Navbar() {

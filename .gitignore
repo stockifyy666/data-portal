@@ -27,3 +27,6 @@ yarn-debug.log*
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
+
+# Temporary Supabase migration workspace (delete when done)
+old-database-queries/

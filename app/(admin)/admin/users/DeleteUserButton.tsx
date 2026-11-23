@@ -89,7 +89,7 @@ export default function DeleteUserButton({ userId, userEmail, viewerRole, target
             <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
               Are you sure you want to permanently delete <strong style={{ color: 'var(--text-primary)' }}>{userEmail}</strong>?
               <br /><br />
-              <span style={{ color: '#ef4444', fontWeight: 500 }}>This cannot be undone.</span> All their data, watchlists and portfolio will be removed.
+              <span style={{ color: '#ef4444', fontWeight: 500 }}>This cannot be undone.</span> All their data and watchlists will be removed.
             </div>
 
             {error && (

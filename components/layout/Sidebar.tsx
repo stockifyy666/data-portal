@@ -4,7 +4,7 @@ import Link          from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, TrendingUp, BookMarked,
-  Briefcase, SlidersHorizontal, Bell, Settings, LogOut, User,
+  SlidersHorizontal, Settings, LogOut, User,
   Grid2x2, Sun, Moon, X, Calculator, BookOpen, BarChart2, PanelTopOpen,
   Newspaper, Globe, ArrowUpDown, Activity,
 } from 'lucide-react'
@@ -19,12 +19,10 @@ const NAV_ITEMS = [
   { icon: Globe,             label: 'Macro Dashboard',  href: '/macro'      },
   { icon: TrendingUp,        label: 'Stocks',           href: '/stocks'     },
   { icon: BookMarked,        label: 'Watchlist',        href: '/watchlist'  },
-  // { icon: Briefcase,         label: 'Portfolio',        href: '/portfolio'  },
   { icon: Activity,          label: 'Indices',           href: '/indices'    },
   { icon: Grid2x2,           label: 'Heatmap',          href: '/heatmap'    },
   { icon: SlidersHorizontal, label: 'Screener',         href: '/screener'   },
   // { icon: ArrowUpDown,       label: 'FIPI / LIPI',      href: '/fipi'       },
-  // { icon: Bell,              label: 'Alerts',           href: '/alerts'     },
   // { icon: Calculator,        label: 'Tools',            href: '/tools'      },
   // { icon: BookOpen,          label: 'Reports',          href: '/reports'    },
   { icon: Newspaper,         label: 'News',             href: '/news'       },
