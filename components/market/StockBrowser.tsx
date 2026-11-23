@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import Link                             from 'next/link'
-import { Search, X, ChevronDown }       from 'lucide-react'
+import { Search, X, ChevronDown, ChevronLeft, ChevronRight, MoreHorizontal } from 'lucide-react'
 import { formatPrice, formatVolume }    from '@/lib/utils/format'
 import { cachedFetch }                  from '@/lib/utils/clientCache'
 import KMIBadge                         from '@/components/ui/KMIBadge'
@@ -180,7 +180,7 @@ export default function StockBrowser() {
         {/* Index dropdown */}
         <div className="flex flex-col gap-1 min-w-[150px]">
           <label className="text-[10px] font-semibold uppercase tracking-wider"
-                 style={{ color: 'var(--text-muted)' }}>
+                 style={{ color: 'var(--text-secondary)' }}>
             Index
           </label>
           <FilterSelect
@@ -193,7 +193,7 @@ export default function StockBrowser() {
         {/* Industry / Sector dropdown */}
         <div className="flex flex-col gap-1 min-w-[190px]">
           <label className="text-[10px] font-semibold uppercase tracking-wider"
-                 style={{ color: 'var(--text-muted)' }}>
+                 style={{ color: 'var(--text-secondary)' }}>
             Industry
           </label>
           <FilterSelect
@@ -206,12 +206,12 @@ export default function StockBrowser() {
         {/* Search */}
         <div className="flex flex-col gap-1 flex-1 min-w-[180px]" style={{ position: 'relative', zIndex: 50 }}>
           <label className="text-[10px] font-semibold uppercase tracking-wider"
-                 style={{ color: 'var(--text-muted)' }}>
+                 style={{ color: 'var(--text-secondary)' }}>
             Search
           </label>
           <div className="relative">
             <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2"
-                    style={{ color: 'var(--text-muted)' }} />
+                    style={{ color: 'var(--text-secondary)' }} />
             <input
               type="text"
               value={search}
@@ -251,7 +251,7 @@ export default function StockBrowser() {
                           <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{s.symbol}</p>
                           {(s.listed_in?.includes('KMI30') || s.listed_in?.includes('KMIALLSHR')) && <KMIBadge />}
                         </div>
-                        <p className="text-[11px] truncate max-w-[200px]" style={{ color: 'var(--text-muted)' }}>{s.name}</p>
+                        <p className="text-[11px] truncate max-w-[200px]" style={{ color: 'var(--text-secondary)' }}>{s.name}</p>
                       </div>
                     </div>
                     <div className="text-right">
@@ -264,7 +264,7 @@ export default function StockBrowser() {
                           {s.change_percent >= 0 ? '+' : ''}{(s.change_percent * 100).toFixed(2)}%
                         </p>
                       ) : (
-                        <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                        <p className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>
                           {SECTOR_NAMES[s.sector] ?? s.sector}
                         </p>
                       )}
@@ -294,7 +294,7 @@ export default function StockBrowser() {
 
       {/* Result count */}
       {!loading && (
-        <p className="text-[10px] mb-2" style={{ color: 'var(--text-muted)' }}>
+        <p className="text-[11px] font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
           Showing {Math.min((page - 1) * PAGE_SIZE + 1, filtered.length)}–{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length} securities
           {indexKey   && ` · ${INDEX_OPTIONS.find(o => o.value === indexKey)?.label}`}
           {sectorCode && ` · ${SECTOR_NAMES[sectorCode] ?? sectorCode}`}
@@ -308,9 +308,9 @@ export default function StockBrowser() {
             <tr style={{ borderBottom: '1px solid var(--bg-border)' }}>
               {COLS.map(col => (
                 <th key={col}
-                    className="text-left py-2 px-2 text-[10px] font-semibold uppercase
+                    className="text-left py-2 px-2 text-[11px] font-bold uppercase
                                tracking-wider whitespace-nowrap"
-                    style={{ color: 'var(--text-muted)' }}>
+                    style={{ color: 'var(--text-primary)' }}>
                   {col}
                 </th>
               ))}
@@ -332,7 +332,7 @@ export default function StockBrowser() {
               <tr>
                 <td colSpan={COLS.length}
                     className="text-center py-12 text-sm"
-                    style={{ color: 'var(--text-muted)' }}>
+                    style={{ color: 'var(--text-secondary)' }}>
                   No securities match the selected filters.
                 </td>
               </tr>
@@ -412,7 +412,7 @@ export default function StockBrowser() {
       {!loading && totalPages > 1 && (
         <div className="mt-4 pt-3 flex items-center justify-between gap-2"
              style={{ borderTop: '1px solid var(--bg-border)' }}>
-          <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+          <p className="text-[11px] font-medium" style={{ color: 'var(--text-secondary)' }}>
             Page {page} of {totalPages}
             {liveCount > 0 ? ` · ${liveCount} live · refreshes every 2 min` : ' · market closed'}
           </p>
@@ -420,9 +420,9 @@ export default function StockBrowser() {
             <button
               onClick={() => setPage(p => Math.max(1, p - 1))}
               disabled={page === 1}
-              className="px-2.5 py-1 rounded text-xs font-medium border transition-colors disabled:opacity-30"
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium border transition-colors disabled:opacity-30" aria-label="Previous page"
               style={{ borderColor: 'var(--bg-border)', color: 'var(--text-secondary)', backgroundColor: 'var(--bg-card)' }}>
-              ← Prev
+              <ChevronLeft size={14} /> Prev
             </button>
 
             {(() => {
@@ -438,7 +438,7 @@ export default function StockBrowser() {
               }
               return pages.map((p, i) =>
                 p === '…' ? (
-                  <span key={`e${i}`} className="px-1 text-xs" style={{ color: 'var(--text-muted)' }}>…</span>
+                  <span key={`e${i}`} className="px-1 inline-flex items-center" style={{ color: 'var(--text-secondary)' }} aria-hidden="true"><MoreHorizontal size={14} /></span>
                 ) : (
                   <button
                     key={p}
@@ -457,16 +457,16 @@ export default function StockBrowser() {
             <button
               onClick={() => setPage(p => Math.min(totalPages, p + 1))}
               disabled={page === totalPages}
-              className="px-2.5 py-1 rounded text-xs font-medium border transition-colors disabled:opacity-30"
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium border transition-colors disabled:opacity-30" aria-label="Next page"
               style={{ borderColor: 'var(--bg-border)', color: 'var(--text-secondary)', backgroundColor: 'var(--bg-card)' }}>
-              Next →
+              Next <ChevronRight size={14} />
             </button>
           </div>
         </div>
       )}
       {!loading && totalPages <= 1 && (
         <div className="mt-3 pt-3" style={{ borderTop: '1px solid var(--bg-border)' }}>
-          <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+          <p className="text-[11px] font-medium" style={{ color: 'var(--text-secondary)' }}>
             {liveCount > 0
               ? `${liveCount} live · prices refresh every 2 min · reference data every 10 min`
               : 'Market closed · showing last session prices'}

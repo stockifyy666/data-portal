@@ -174,7 +174,7 @@ export default function CombinedHeatmap() {
   if (loading) return (
     <div className="rounded-lg animate-pulse mt-4" style={{ height: containerH, backgroundColor: 'var(--bg-hover)' }} />
   )
-  if (error) return <p className="text-sm py-6 text-center" style={{ color: 'var(--text-muted)' }}>{error}</p>
+  if (error) return <p className="text-sm py-6 text-center" style={{ color: 'var(--text-secondary)' }}>{error}</p>
 
   return (
     <div className="space-y-3">
@@ -305,7 +305,7 @@ export default function CombinedHeatmap() {
         })}
       </div>
 
-      <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+      <p className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
         Grouped by sector · Box size = trading volume · Click any stock to open detail · Refreshes every 5 min
       </p>
     </div>

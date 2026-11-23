@@ -193,10 +193,10 @@ function BarView({ sectors, onSelect }: { sectors: SectorRow[]; onSelect: (s: Se
           <div className="h-full rounded-full transition-all duration-500"
             style={{ width: `${w}%`, backgroundColor: color, opacity: 0.85 }} />
         </div>
-        <span className="w-14 text-right text-[10px] font-black font-number shrink-0" style={{ color }}>
+        <span className="w-16 text-right text-[13px] font-number shrink-0" style={{ color, fontWeight: 800 }}>
           {fmt(s.avg)}
         </span>
-        <div className="w-14 text-right shrink-0 text-[10px]" style={{ color: 'var(--text-muted)' }}>
+        <div className="w-16 text-right shrink-0 text-xs" style={{ color: 'var(--text-secondary)', fontWeight: 700 }}>
           <span className="text-green-500">{s.advancers}▲</span>
           {' '}
           <span className="text-red-400">{s.decliners}▼</span>
@@ -256,7 +256,7 @@ export default function SectorPerformance({ indexFilter }: { indexFilter?: strin
     for (const q of list) {
       const code = (q as any).sector || '0000'
       if (!map[code]) map[code] = { name: SECTOR_NAMES[code] ?? `Sector ${code}`, stocks: [] }
-      map[code].stocks.push({ symbol: q.symbol, name: q.name, price: q.price, changePct: q.changePct, volume: q.volume })
+      map[code].stocks.push({ symbol: q.symbol, name: q.name, price: q.price, changePct: q.changePct * 100, volume: q.volume })   // fraction -> %
     }
 
     return Object.entries(map)

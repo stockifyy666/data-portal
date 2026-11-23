@@ -1,4 +1,5 @@
-import { NextResponse }             from 'next/server'
+import { NextResponse, type NextRequest } from 'next/server'
+import { archiveNews, getArchived } from '@/lib/news/archive'
 import { csUatGet }                  from '@/lib/capitalstake/client'
 import { CS_ENDPOINTS }              from '@/lib/capitalstake/endpoints'
 import { withCache, TTL_SECONDS }    from '@/lib/redis/cache'
@@ -8,7 +9,8 @@ import { trackChartAPICall }         from '@/lib/utils/rateLimit'
 // Live / per-user data: always run on request, never prerender at build time
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const range = req.nextUrl.searchParams.get('range') ?? 'all'   // 'today' | 'week' | 'all'
   try {
     const data = await withCache(
       'market:news:generic',
@@ -49,7 +51,13 @@ export async function GET() {
       }
     }).filter((n: any) => n.title)
 
-    return NextResponse.json({ data: dedupeNews(news) })
+    // Store the current feed, then serve the requested range
+    await archiveNews('market', news)
+    if (range === 'today' || range === 'week') {
+      const stored = await getArchived('market', range).catch(() => null)
+      if (stored) return NextResponse.json({ data: dedupeNews(stored), range })
+    }
+    return NextResponse.json({ data: dedupeNews(news), range: 'all' })
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unknown error'
     console.error('[API /market/news]', msg)

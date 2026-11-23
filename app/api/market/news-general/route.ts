@@ -1,4 +1,5 @@
-import { NextResponse }        from 'next/server'
+import { NextResponse, type NextRequest } from 'next/server'
+import { archiveNews, getArchived } from '@/lib/news/archive'
 import { csUatGet }             from '@/lib/capitalstake/client'
 import { CS_ENDPOINTS }         from '@/lib/capitalstake/endpoints'
 import { trackChartAPICall }    from '@/lib/utils/rateLimit'
@@ -20,12 +21,23 @@ type GeneralNewsItem = {
   source_url:  string
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const range = req.nextUrl.searchParams.get('range') ?? 'all'   // 'today' | 'week' | 'all'
+
+  // Today / This Week come from the stored archive (filled by the hourly sync and by this route)
+  const fromArchive = async (feed: GeneralNewsItem[]) => {
+    await archiveNews('general', feed)
+    if (range !== 'today' && range !== 'week') return null
+    return getArchived('general', range).catch(() => null)
+  }
+
   try {
     // 1. Supabase first — served from hourly sync, zero CS calls per user
     const cached = await getContent<GeneralNewsItem>('MARKET', 'general_news')
     if (cached && cached.length > 0) {
-      return NextResponse.json({ data: dedupeNews(cached) })
+      const stored = await fromArchive(cached)
+      if (stored) return NextResponse.json({ data: dedupeNews(stored), range })
+      return NextResponse.json({ data: dedupeNews(cached), range: 'all' })
     }
 
     // 2. DB miss — fetch from CS UAT and save for next requests
@@ -38,7 +50,9 @@ export async function GET() {
       saveContent('MARKET', 'general_news', items).catch(() => {})
     }
 
-    return NextResponse.json({ data: dedupeNews(items) })
+    const stored = await fromArchive(items)
+    if (stored) return NextResponse.json({ data: dedupeNews(stored), range })
+    return NextResponse.json({ data: dedupeNews(items), range: 'all' })
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unknown error'
     console.error('[API /market/news-general]', msg)

@@ -167,7 +167,7 @@ export default function WatchlistPage() {
         <td className="py-2.5 px-2 truncate overflow-hidden">
           <Link href={`/stocks/${item.symbol}`} className="hover:underline" style={{ color: 'var(--text-secondary)' }}>{item.name}</Link>
         </td>
-        <td className="py-2.5 px-2 font-number" style={{ color: 'var(--text-muted)' }}>
+        <td className="py-2.5 px-2 font-number" style={{ color: 'var(--text-secondary)' }}>
           {item.added_price > 0 ? formatPrice(item.added_price) : '—'}
         </td>
         <td className="py-2.5 px-2 font-number font-semibold" style={{ color: 'var(--text-primary)' }}>
@@ -190,7 +190,7 @@ export default function WatchlistPage() {
         <td className="py-2.5 px-2 text-right">
           <button onClick={() => remove(item.id, item.symbol)} disabled={isDel}
             className="p-1 rounded hover:text-red-500 disabled:opacity-30 transition-colors"
-            style={{ color: 'var(--text-muted)' }}>
+            style={{ color: 'var(--text-secondary)' }}>
             {isDel
               ? <Loader2 size={12} className="animate-spin" />
               : <Trash2 size={12} />}
@@ -209,8 +209,8 @@ export default function WatchlistPage() {
         <tr style={{ borderBottom: '1px solid var(--bg-border)' }}>
           {COL_LABELS.map((col, i) => (
             <th key={col + i}
-                className="text-left py-2 px-2 text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap"
-                style={{ color: 'var(--text-muted)', width: COL_WIDTHS[i] }}>
+                className="text-left py-2.5 px-2 text-[11px] font-bold uppercase tracking-wider whitespace-nowrap"
+                style={{ color: 'var(--text-primary)', width: COL_WIDTHS[i] }}>
               {col}
             </th>
           ))}
@@ -235,7 +235,7 @@ export default function WatchlistPage() {
                 className="p-1.5 rounded transition-colors"
                 style={view === 'list'
                   ? { background: 'linear-gradient(135deg,#FEA500,#986300)', color: 'white' }
-                  : { color: 'var(--text-muted)', backgroundColor: 'transparent' }}
+                  : { color: 'var(--text-secondary)', backgroundColor: 'transparent' }}
                 title="List view">
                 <List size={13} />
               </button>
@@ -243,13 +243,13 @@ export default function WatchlistPage() {
                 className="p-1.5 rounded transition-colors"
                 style={view === 'sector'
                   ? { background: 'linear-gradient(135deg,#FEA500,#986300)', color: 'white' }
-                  : { color: 'var(--text-muted)', backgroundColor: 'transparent' }}
+                  : { color: 'var(--text-secondary)', backgroundColor: 'transparent' }}
                 title="Sector view">
                 <LayoutGrid size={13} />
               </button>
             </div>
           )}
-          <div className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--text-muted)' }}>
+          <div className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--text-secondary)' }}>
             <Star size={12} className="fill-amber-400 text-amber-400" />
             {loading ? '…' : `${items.length} symbols`}
           </div>
@@ -267,7 +267,7 @@ export default function WatchlistPage() {
           ].map(c => (
             <div key={c.label} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs"
                  style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--bg-border)' }}>
-              <span style={{ color: 'var(--text-muted)' }}>{c.label}</span>
+              <span style={{ color: 'var(--text-secondary)' }}>{c.label}</span>
               <span className="font-bold font-number" style={{ color: c.color }}>{c.val}</span>
             </div>
           ))}
@@ -282,9 +282,9 @@ export default function WatchlistPage() {
         </div>
       ) : items.length === 0 ? (
         <div className="card text-center py-16">
-          <Star size={32} className="mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
+          <Star size={32} className="mx-auto mb-3" style={{ color: 'var(--text-secondary)' }} />
           <p className="text-sm font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>Your watchlist is empty</p>
-          <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>
+          <p className="text-xs mb-4" style={{ color: 'var(--text-secondary)' }}>
             Browse stocks and click "Add to Watchlist" to track them here.
           </p>
           <Link href="/stocks" className="text-xs font-semibold" style={{ color: '#FEA500' }}>
@@ -317,7 +317,7 @@ export default function WatchlistPage() {
                       {sectorLabel(sectorCode === '__other' ? '' : sectorCode)}
                     </span>
                     <span className="text-[10px] px-1.5 py-0.5 rounded font-number"
-                          style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-muted)' }}>
+                          style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-secondary)' }}>
                       {sectorItems.length}
                     </span>
                   </div>

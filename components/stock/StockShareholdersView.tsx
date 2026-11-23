@@ -1,7 +1,8 @@
 'use client'
 
-import { useMemo } from 'react'
-import { Building2, Landmark, Users, Crown, TrendingUp, TrendingDown, Minus } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { Building2, Landmark, Users, Crown, TrendingUp, TrendingDown, Minus, ChevronRight, X } from 'lucide-react'
 
 type StatementData = {
   periods:  Array<{ year: string; quarter?: string; period_end: string }>
@@ -94,15 +95,17 @@ function HistoryBars({ values, periods, color }: { values: (number | null)[]; pe
   )
 }
 
-/* ── Section: one card per category, one readable row per holder ── */
-function SectionTable({ section, rows, periods }: { section: Section; rows: Row[]; periods: StatementData['periods'] }) {
+/* ── Section header: clickable summary card; opens the holder detail popup ── */
+function SectionHeader({ section, rows, periods, onOpen, inModal }: {
+  section: Section; rows: Row[]; periods: StatementData['periods']; onOpen?: () => void; inModal?: boolean
+}) {
   const total = rows.reduce((s, r) => s + (r.values[0] ?? 0), 0)
   const prevTotal = rows.reduce((s, r) => s + (r.values[1] ?? 0), 0)
+  const Tag = onOpen ? 'button' : 'div'
   return (
-    <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--bg-border)', background: 'var(--bg-card)' }}>
-      {/* Header */}
-      <div className="flex items-center justify-between gap-3 px-5 py-3.5"
-        style={{ background: `linear-gradient(90deg, ${section.accent}1a, transparent 70%)`, borderBottom: '1px solid var(--bg-border)' }}>
+      <Tag type={onOpen ? 'button' : undefined} onClick={onOpen}
+        className={`w-full text-left flex items-center justify-between gap-3 pl-5 ${inModal ? 'pr-12' : 'pr-5'} py-3.5 ${onOpen ? 'cursor-pointer transition-colors hover:brightness-110' : ''}`}
+        style={{ background: `linear-gradient(90deg, ${section.accent}1a, transparent 70%)`, borderBottom: inModal ? '1px solid var(--bg-border)' : 'none' }}>
         <div className="flex items-center gap-3 min-w-0">
           <span className="w-1.5 h-9 rounded-full shrink-0" style={{ background: section.accent }} />
           <div className="min-w-0">
@@ -116,12 +119,52 @@ function SectionTable({ section, rows, periods }: { section: Section; rows: Row[
           <ChangePill now={total} prev={periods.length > 1 ? prevTotal : null} />
           <div className="text-right">
             <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Total stake</p>
-            <p className="text-xl font-black font-number tabular-nums leading-tight" style={{ color: section.accent }}>{pct(total)}</p>
+            <p className="text-xl font-number tabular-nums leading-tight" style={{ color: 'var(--text-primary)', fontWeight: 800 }}>{pct(total)}</p>
           </div>
+          {onOpen && <ChevronRight size={18} style={{ color: 'var(--text-secondary)' }} />}
+        </div>
+      </Tag>
+  )
+}
+
+/* ── Popup: full holder breakdown for one category ── */
+function SectionModal({ section, rows, periods, onClose }: {
+  section: Section; rows: Row[]; periods: StatementData['periods']; onClose: () => void
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = prev }
+  }, [onClose])
+
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.6)' }} onClick={onClose}>
+      <div className="w-full max-w-4xl max-h-[85vh] flex flex-col rounded-2xl overflow-hidden shadow-2xl"
+        style={{ border: '1px solid var(--bg-border)', background: 'var(--bg-card)' }}
+        onClick={e => e.stopPropagation()}>
+        <div className="relative">
+          <SectionHeader section={section} rows={rows} periods={periods} inModal />
+          <button type="button" onClick={onClose} aria-label="Close"
+            className="absolute top-2 right-2 w-7 h-7 rounded-lg flex items-center justify-center"
+            style={{ background: 'var(--bg-hover)', color: 'var(--text-secondary)' }}>
+            <X size={15} />
+          </button>
+        </div>
+        <div className="overflow-y-auto">
+          <HolderRows rows={rows} periods={periods} />
         </div>
       </div>
+    </div>,
+    document.body,
+  )
+}
 
-      {/* Holders */}
+/* ── Holder rows ── */
+function HolderRows({ rows, periods }: { rows: Row[]; periods: StatementData['periods'] }) {
+  return (
+    <>
       {rows.map((r, i) => {
         const now = r.values[0] ?? null
         return (
@@ -160,12 +203,13 @@ function SectionTable({ section, rows, periods }: { section: Section; rows: Row[
           </div>
         )
       })}
-    </div>
+    </>
   )
 }
 
 export function ShareholdersView({ data }: { data: StatementData }) {
   const periods = data.periods.slice(0, 5)
+  const [openSection, setOpenSection] = useState<string | null>(null)
 
   // Rows sorted by latest holding; each gets one colour used everywhere
   const rows: Row[] = useMemo(() =>
@@ -217,11 +261,21 @@ export function ShareholdersView({ data }: { data: StatementData }) {
         <Kpi icon={Users}     label="Retail & Foreign" value={pct(stake('Retail & Local') + stake('Foreign'))}           sub="Individuals & foreign investors" accent="#06b6d4" />
       </div>
 
-      {/* Category tables */}
-      {SECTIONS.map(s => {
-        const sRows = grouped.get(s.title) ?? []
-        return sRows.length ? <SectionTable key={s.title} section={s} rows={sRows} periods={periods} /> : null
-      })}
+      {/* Category cards — click to see holders */}
+      <div className="space-y-3">
+        {SECTIONS.map(s => {
+          const sRows = grouped.get(s.title) ?? []
+          return sRows.length ? (
+            <div key={s.title} className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--bg-border)', background: 'var(--bg-card)' }}>
+              <SectionHeader section={s} rows={sRows} periods={periods} onOpen={() => setOpenSection(s.title)} />
+            </div>
+          ) : null
+        })}
+      </div>
+      {openSection && (() => {
+        const s = SECTIONS.find(x => x.title === openSection)!
+        return <SectionModal section={s} rows={grouped.get(s.title) ?? []} periods={periods} onClose={() => setOpenSection(null)} />
+      })()}
 
       <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
         pp = percentage-point change in holding versus the previous period.

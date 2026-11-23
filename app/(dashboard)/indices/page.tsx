@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import Link from 'next/link'
-import { TrendingUp, TrendingDown, Activity, RefreshCw, ArrowLeft, X } from 'lucide-react'
+import { TrendingUp, TrendingDown, Activity, RefreshCw, ArrowLeft, X, Layers, Minus, BarChart3 } from 'lucide-react'
 import { cachedFetch } from '@/lib/utils/clientCache'
 import { useTheme } from '@/components/providers/ThemeProvider'
 import { formatVolume, formatCompactMC } from '@/lib/utils/format'
@@ -203,7 +203,7 @@ function SectorWheel({
               <p className="wheel-txt-label" style={{ fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>
                 {focusSl.label}
               </p>
-              {focusSl.sub && <p className="wheel-txt-small truncate max-w-full" style={{ color: 'var(--text-muted)' }}>{focusSl.sub}</p>}
+              {focusSl.sub && <p className="wheel-txt-small truncate max-w-full" style={{ color: 'var(--text-secondary)' }}>{focusSl.sub}</p>}
               <p className="wheel-txt-big" style={{ fontWeight: 600, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
                 {focusSl.share.toFixed(1)}%
               </p>
@@ -213,7 +213,7 @@ function SectorWheel({
             </>
           ) : (
             <>
-              <p className="wheel-txt-label" style={{ fontWeight: 700, letterSpacing: '.08em', color: drill ? selSd!.color : 'var(--text-muted)', textTransform: 'uppercase' }}>
+              <p className="wheel-txt-label" style={{ fontWeight: 700, letterSpacing: '.08em', color: drill ? selSd!.color : 'var(--text-secondary)', textTransform: 'uppercase' }}>
                 {drill ? selected : 'Market cap'}
               </p>
               <p className="wheel-txt-big" style={{ fontWeight: 600, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
@@ -222,11 +222,11 @@ function SectorWheel({
               <p className="wheel-txt-small" style={{ fontWeight: 700, color: weightedChg >= 0 ? 'var(--color-up)' : 'var(--color-down)', fontVariantNumeric: 'tabular-nums' }}>
                 {fmtPct(weightedChg)} today
               </p>
-              <p className="wheel-txt-small" style={{ color: 'var(--text-muted)' }}>
+              <p className="wheel-txt-small" style={{ color: 'var(--text-secondary)' }}>
                 {slices.length} {drill ? (slices.length === 1 ? 'company' : 'companies') : 'sectors'}
               </p>
               {drill && (
-                <p className="wheel-txt-small inline-flex items-center gap-1" style={{ color: 'var(--text-muted)', marginTop: 4, fontWeight: 600 }}>
+                <p className="wheel-txt-small inline-flex items-center gap-1" style={{ color: 'var(--text-secondary)', marginTop: 4, fontWeight: 600 }}>
                   <ArrowLeft size={11} strokeWidth={2.5} /> Click to go back
                 </p>
               )}
@@ -242,12 +242,12 @@ function SectorWheel({
             <button onClick={() => onSelect(null)} className="inline-flex items-center gap-1.5 text-[11px] font-bold tracking-wide"
               style={{ color: 'var(--text-secondary)' }}>
               <ArrowLeft size={13} strokeWidth={2.5} /> ALL SECTORS
-              <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>/ {selected}</span>
+              <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>/ {selected}</span>
             </button>
           ) : (
-            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.08em', color: 'var(--text-muted)' }}>TOP SECTORS BY WEIGHT</span>
+            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.08em', color: 'var(--text-secondary)' }}>TOP SECTORS BY WEIGHT</span>
           )}
-          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.08em', color: 'var(--text-muted)' }}>CHG</span>
+          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.08em', color: 'var(--text-secondary)' }}>CHG</span>
         </div>
         {(drill ? slices : top).map(sl => {
           const on = hovered === sl.key
@@ -263,7 +263,7 @@ function SectorWheel({
                 <span style={{ width: 10, height: 10, borderRadius: 3, background: sl.color, opacity: sl.shade, flexShrink: 0 }} />
                 <span className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-baseline sm:gap-2" style={{ fontSize: 12, fontWeight: on ? 700 : 600, color: 'var(--text-primary)' }}>
                   <span className="truncate">{sl.label}</span>
-                  {sl.sub && <span className="truncate text-[10px] sm:text-xs" style={{ fontWeight: 500, color: 'var(--text-muted)' }}>{sl.sub}</span>}
+                  {sl.sub && <span className="truncate text-[10px] sm:text-xs" style={{ fontWeight: 500, color: 'var(--text-secondary)' }}>{sl.sub}</span>}
                 </span>
                 <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums', width: 44, textAlign: 'right', flexShrink: 0 }}>
                   {sl.share.toFixed(1)}%
@@ -279,12 +279,12 @@ function SectorWheel({
           )
         })}
         {!drill && restShare > 0 && (
-          <p className="pt-2" style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+          <p className="pt-2" style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
             + {slices.length - top.length} other sectors · {restShare.toFixed(1)}% · click a slice to see its companies
           </p>
         )}
         {drill && (
-          <p className="pt-2" style={{ fontSize: 11, color: 'var(--text-muted)' }}>Click a company to open its page</p>
+          <p className="pt-2" style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Click a company to open its page</p>
         )}
       </div>
     </div>
@@ -346,7 +346,7 @@ function ContribHistogram({ bars }: { bars: ContribBar[] }) {
 
     const css     = getComputedStyle(document.documentElement)
     const isDark  = document.documentElement.classList.contains('dark')
-    const textMut = css.getPropertyValue('--text-muted').trim() || (isDark ? '#7a839e' : '#64748b')
+    const textMut = css.getPropertyValue('--text-secondary').trim() || (isDark ? '#7a839e' : '#64748b')
     const textPri = css.getPropertyValue('--text-primary').trim() || (isDark ? '#f1f5f9' : '#0f172a')
     const border  = css.getPropertyValue('--bg-border').trim()  || (isDark ? '#1e2232' : '#e2e8f0')
 
@@ -492,17 +492,17 @@ function ContribHistogram({ bars }: { bars: ContribBar[] }) {
         }}>
           <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-primary)', marginBottom: 6 }}>
             <Link href={`/stocks/${tip.symbol}`} style={{ color: '#FEA500', textDecoration: 'none' }}>{tip.symbol}</Link>
-            <span style={{ fontWeight: 400, fontSize: 10, color: 'var(--text-muted)', marginLeft: 8 }}>{tip.name}</span>
+            <span style={{ fontWeight: 400, fontSize: 10, color: 'var(--text-secondary)', marginLeft: 8 }}>{tip.name}</span>
           </div>
           {[
             ['Index Points', `${tip.pts >= 0 ? '+' : ''}${tip.pts.toFixed(2)}`,  tip.pts >= 0 ? '#4ade80' : '#f87171'],
             ['% Px Chg',     fmtPct(tip.pct), tip.pct >= 0 ? '#4ade80' : '#f87171'],
             ['Weight',       `${tip.weight.toFixed(2)}%`,                          'var(--text-secondary)'],
             ['Mkt Cap (000s)', `PKR ${tip.mc.toLocaleString('en-PK')}`,            'var(--text-secondary)'],
-            ['Sector',       tip.sector,                                            'var(--text-muted)'],
+            ['Sector',       tip.sector,                                            'var(--text-secondary)'],
           ].map(([l, v, c]) => (
             <div key={l} style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
-              <span style={{ color: 'var(--text-muted)', fontSize: 10 }}>{l}</span>
+              <span style={{ color: 'var(--text-secondary)', fontSize: 10 }}>{l}</span>
               <span style={{ fontWeight: 600, color: c, fontVariantNumeric: 'tabular-nums' }}>{v}</span>
             </div>
           ))}
@@ -723,7 +723,7 @@ export default function IndicesPage() {
                style={{ width: 36, height: 36, borderColor: 'var(--bg-border)', borderTopColor: '#FEA500' }} />
         </div>
       ) : !indexStocks.length ? (
-        <div className="card p-8 text-center" style={{ color: 'var(--text-muted)' }}>
+        <div className="card p-8 text-center" style={{ color: 'var(--text-secondary)' }}>
           No data available for {indexKey}
         </div>
       ) : (
@@ -735,57 +735,62 @@ export default function IndicesPage() {
                 {
                   label: `${kse.label} Change`,
                   value: `${kse.totalPts >= 0 ? '+' : ''}${kse.totalPts.toFixed(2)} pts`,
-                  sub: '',
-                  color: up ? '#4ade80' : '#f87171',
+                  sub: up ? 'Index up today' : 'Index down today',
+                  color: up ? '#16a34a' : '#dc2626',
                   Icon: up ? TrendingUp : TrendingDown,
                 },
                 {
                   label: 'Components',
                   value: kse.count.toLocaleString(),
-                  sub: `${sectors.size} sectors`,
+                  sub: `across ${sectors.size} sectors`,
                   color: '#FEA500',
-                  Icon: Activity,
+                  Icon: Layers,
                 },
                 {
                   label: 'Gainers',
                   value: kse.gainers,
-                  sub: '',
-                  color: '#4ade80',
+                  sub: kse.count ? `${Math.round((kse.gainers / kse.count) * 100)}% of stocks` : '',
+                  color: '#16a34a',
                   Icon: TrendingUp,
                 },
                 {
                   label: 'Losers',
                   value: kse.losers,
-                  sub: '',
-                  color: '#f87171',
+                  sub: kse.count ? `${Math.round((kse.losers / kse.count) * 100)}% of stocks` : '',
+                  color: '#dc2626',
                   Icon: TrendingDown,
                 },
                 {
                   label: 'Unchanged',
                   value: kse.unchanged,
-                  sub: '',
-                  color: 'var(--text-muted)',
-                  Icon: Activity,
+                  sub: kse.count ? `${Math.round((kse.unchanged / kse.count) * 100)}% of stocks` : '',
+                  color: '#94a3b8',
+                  Icon: Minus,
                 },
                 {
                   label: 'Volume',
                   value: formatVolume(kse.totalVol),
-                  sub: 'shares',
-                  color: '#60a5fa',
-                  Icon: Activity,
+                  sub: 'shares traded',
+                  color: '#3b82f6',
+                  Icon: BarChart3,
                 },
               ].map(({ label, value, sub, color, Icon }) => (
-                <div key={label} className="card min-w-0 !px-3 !py-2.5 sm:!px-4 sm:!py-3.5">
-                  <div className="flex items-center gap-1.5 sm:gap-2 mb-1 sm:mb-1.5 min-w-0">
-                    <Icon size={13} style={{ color, flexShrink: 0 }} />
-                    <span className="truncate" title={label} style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.05em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                <div key={label} className="rounded-xl px-3.5 py-3 sm:px-4 sm:py-3.5 flex items-center gap-3 min-w-0"
+                  style={{ background: 'var(--bg-card)', border: '1px solid var(--bg-border)' }}>
+                  {/* Arrow-badge tile — same style as the dashboard index cards */}
+                  <span className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center shrink-0"
+                    style={{ background: `color-mix(in srgb, ${color} 14%, transparent)`, color }}>
+                    <Icon size={20} strokeWidth={2.2} />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs sm:text-[13px]" title={label} style={{ color: 'var(--text-secondary)', fontWeight: 700 }}>
                       {label}
-                    </span>
+                    </p>
+                    <p className="truncate text-lg sm:text-[22px] leading-tight tabular-nums" style={{ color: 'var(--text-primary)', fontWeight: 800 }}>
+                      {value}
+                    </p>
+                    {sub && <p className="truncate text-[11px] sm:text-xs" style={{ color, fontWeight: 700 }}>{sub}</p>}
                   </div>
-                  <div className="truncate text-base sm:text-lg" style={{ fontWeight: 700, color, fontVariantNumeric: 'tabular-nums' }}>
-                    {value}
-                  </div>
-                  {sub && <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>{sub}</div>}
                 </div>
               ))}
             </div>
@@ -794,10 +799,10 @@ export default function IndicesPage() {
           {/* Sector Wheel — full width */}
           <div className="card" style={{ padding: 16 }}>
             <div style={{ marginBottom: 8 }}>
-              <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+              <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-primary)', textTransform: 'uppercase' }}>
                 SECTOR ALLOCATION — {kse?.label}
               </p>
-              <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+              <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
                 Weighted by market cap · hover or click a sector to explore
               </p>
             </div>
@@ -813,7 +818,7 @@ export default function IndicesPage() {
           {selected && (
             <div className="card" style={{ padding: 16 }}>
               {!selData ? (
-                <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--text-muted)' }}>
+                <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--text-secondary)' }}>
                   <span style={{ fontSize: 24 }}>📭</span>
                   <p style={{ marginTop: 8, fontWeight: 600, color: 'var(--text-primary)' }}>{selected}</p>
                   <p style={{ fontSize: 13 }}>No {kse?.label} stocks in this sector</p>
@@ -829,7 +834,7 @@ export default function IndicesPage() {
                         className="inline-flex items-center gap-1 shrink-0 lg:order-last lg:ml-auto"
                         style={{ padding: '4px 10px', borderRadius: 6, fontSize: 11,
                           background: 'var(--bg-hover)', border: '1px solid var(--bg-border)',
-                          color: 'var(--text-muted)', cursor: 'pointer' }}>
+                          color: 'var(--text-secondary)', cursor: 'pointer' }}>
                         <X size={12} /> Close
                       </button>
                     </div>
@@ -841,7 +846,7 @@ export default function IndicesPage() {
                         ['Mkt Cap (USD)', usdPkr ? formatCompactMC(selData.marketCap / usdPkr).replace('Rs ', '$') : '—', '#60a5fa'],
                       ].map(([l, v, c]) => (
                         <div key={String(l)} className="min-w-0">
-                          <div style={{ fontSize: 9, color: 'var(--text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 2 }}>{l}</div>
+                          <div style={{ fontSize: 9, color: 'var(--text-secondary)', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 2 }}>{l}</div>
                           <div className="text-[15px] sm:text-[17px] truncate" style={{ fontWeight: 700, color: String(c), fontVariantNumeric: 'tabular-nums' }}>{v}</div>
                         </div>
                       ))}
@@ -865,7 +870,7 @@ export default function IndicesPage() {
                           >
                             <div>
                               <div style={{ fontWeight: 700, fontSize: 13, color: '#FEA500' }}>{q.symbol}</div>
-                              <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 1 }}>
+                              <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginTop: 1 }}>
                                 {(q.name ?? '').slice(0, 24)}
                               </div>
                             </div>
@@ -889,10 +894,10 @@ export default function IndicesPage() {
           {/* Top Points Contributors */}
           <div className="card" style={{ padding: 16 }}>
             <div style={{ marginBottom: 10 }}>
-              <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+              <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-primary)', textTransform: 'uppercase' }}>
                 TOP POINTS CONTRIBUTORS — {kse?.label}
               </p>
-              <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+              <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
                 Stocks ranked by absolute index point impact
               </p>
             </div>

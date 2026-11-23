@@ -129,7 +129,7 @@ function SectorModal({ sector, onClose }: { sector: SectorGroup; onClose: () => 
               </span>
               <span className="text-[11px] text-green-600">▲ {advancers}</span>
               <span className="text-[11px] text-red-500">▼ {decliners}</span>
-              {unchanged > 0 && <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>― {unchanged}</span>}
+              {unchanged > 0 && <span className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>― {unchanged}</span>}
             </div>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:opacity-70 shrink-0"
@@ -145,21 +145,21 @@ function SectorModal({ sector, onClose }: { sector: SectorGroup; onClose: () => 
             <thead className="sticky top-0" style={{ backgroundColor: 'var(--bg-card)' }}>
               <tr style={{ borderBottom: '1px solid var(--bg-border)' }}>
                 <th className="text-left py-2.5 px-4 text-[10px] font-semibold uppercase tracking-wider"
-                    style={{ color: 'var(--text-muted)' }}>Symbol</th>
+                    style={{ color: 'var(--text-secondary)' }}>Symbol</th>
                 <th className="text-left py-2.5 px-4 text-[10px] font-semibold uppercase tracking-wider"
-                    style={{ color: 'var(--text-muted)' }}>Company</th>
+                    style={{ color: 'var(--text-secondary)' }}>Company</th>
                 <th className="text-right py-2.5 px-4 text-[10px] font-semibold uppercase tracking-wider cursor-pointer select-none"
-                    style={{ color: sortBy === 'price' ? '#FEA500' : 'var(--text-muted)' }}
+                    style={{ color: sortBy === 'price' ? '#FEA500' : 'var(--text-secondary)' }}
                     onClick={() => toggleSort('price')}>
                   <span className="flex items-center justify-end gap-1">Price <ArrowUpDown size={9}/></span>
                 </th>
                 <th className="text-right py-2.5 px-4 text-[10px] font-semibold uppercase tracking-wider cursor-pointer select-none"
-                    style={{ color: sortBy === 'change' ? '#FEA500' : 'var(--text-muted)' }}
+                    style={{ color: sortBy === 'change' ? '#FEA500' : 'var(--text-secondary)' }}
                     onClick={() => toggleSort('change')}>
                   <span className="flex items-center justify-end gap-1">Change % <ArrowUpDown size={9}/></span>
                 </th>
                 <th className="text-right py-2.5 px-4 text-[10px] font-semibold uppercase tracking-wider cursor-pointer select-none"
-                    style={{ color: sortBy === 'volume' ? '#FEA500' : 'var(--text-muted)' }}
+                    style={{ color: sortBy === 'volume' ? '#FEA500' : 'var(--text-secondary)' }}
                     onClick={() => toggleSort('volume')}>
                   <span className="flex items-center justify-end gap-1">Volume <ArrowUpDown size={9}/></span>
                 </th>
@@ -258,7 +258,7 @@ export default function SectorHeatmap() {
     </div>
   )
 
-  if (error) return <p className="text-sm text-center py-10" style={{ color: 'var(--text-muted)' }}>{error}</p>
+  if (error) return <p className="text-sm text-center py-10" style={{ color: 'var(--text-secondary)' }}>{error}</p>
 
   return (
     <div className="space-y-3">
@@ -311,7 +311,7 @@ export default function SectorHeatmap() {
                         style={{ color: 'var(--text-primary)' }}>
                     {sector.name}
                   </span>
-                  <span className="text-[9px] leading-none" style={{ color: 'var(--text-muted)' }}>
+                  <span className="text-[9px] leading-none" style={{ color: 'var(--text-secondary)' }}>
                     {volPct}% vol · {sector.stocks.length} stk
                   </span>
                 </div>
@@ -339,7 +339,7 @@ export default function SectorHeatmap() {
         })}
       </div>
 
-      <p className="text-[10px] pt-1" style={{ color: 'var(--text-muted)' }}>
+      <p className="text-[10px] pt-1" style={{ color: 'var(--text-secondary)' }}>
         Click a sector card to see all stocks · Click any symbol to open detail
       </p>
 

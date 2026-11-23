@@ -28,7 +28,7 @@ function MarketBadge() {
 
   return (
     <div className="flex items-center gap-2">
-      <span className="text-xs hidden sm:block" style={{ color: 'var(--text-muted)' }}>
+      <span className="text-xs hidden sm:block" style={{ color: 'var(--text-secondary)' }}>
         {timeStr}
       </span>
       <div className={`

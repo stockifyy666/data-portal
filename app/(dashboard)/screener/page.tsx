@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import Link                             from 'next/link'
-import { SlidersHorizontal, Search }    from 'lucide-react'
+import { SlidersHorizontal, Search, ArrowUp, ArrowDown, ArrowUpDown, ChevronLeft, ChevronRight, MoreHorizontal } from 'lucide-react'
 import { formatPrice, formatPercent, formatVolume, getChangeColor } from '@/lib/utils/format'
 import { cachedFetch } from '@/lib/utils/clientCache'
 import type { StockQuote }              from '@/types/market'
@@ -31,8 +31,8 @@ function FilterInput({
 }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
   return (
     <div>
-      <label className="text-[10px] uppercase tracking-wider block mb-1"
-             style={{ color: 'var(--text-muted)' }}>
+      <label className="text-[11px] font-semibold uppercase tracking-wider block mb-1"
+             style={{ color: 'var(--text-secondary)' }}>
         {label}
       </label>
       <input
@@ -62,6 +62,8 @@ export default function ScreenerPage() {
   const [sortKey,     setSortKey]     = useState<SortKey | null>(null)
   const [sortDir,     setSortDir]     = useState<SortDir>('desc')
   const [searchFocus, setSearchFocus] = useState(false)
+  const [page,        setPage]        = useState(1)
+  const [pageSize,    setPageSize]    = useState(50)
   const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const handleSearchFocus = useCallback(() => {
@@ -126,6 +128,11 @@ export default function ScreenerPage() {
     })
   }, [quotes, filters, search, sortKey, sortDir])
 
+  // Pagination: reset to page 1 when filters, search, sort or page size change
+  const totalPages = Math.max(1, Math.ceil(results.length / pageSize))
+  useEffect(() => { setPage(1) }, [filters, search, sortKey, sortDir, pageSize])
+  useEffect(() => { if (page > totalPages) setPage(totalPages) }, [page, totalPages])
+
   function update<K extends keyof Filters>(key: K, value: Filters[K]) {
     setFilters(prev => ({ ...prev, [key]: value }))
   }
@@ -153,7 +160,7 @@ export default function ScreenerPage() {
       {/* Search by symbol / company name */}
       <div className="relative" style={{ zIndex: 50 }}>
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-                style={{ color: 'var(--text-muted)', zIndex: 1 }} />
+                style={{ color: 'var(--text-secondary)', zIndex: 1 }} />
         <input
           type="text"
           value={search}
@@ -172,7 +179,7 @@ export default function ScreenerPage() {
           <button
             onClick={() => setSearch('')}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-xs hover:opacity-70"
-            style={{ color: 'var(--text-muted)' }}
+            style={{ color: 'var(--text-secondary)' }}
           >
             ✕
           </button>
@@ -208,7 +215,7 @@ export default function ScreenerPage() {
                         <span className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{q.symbol}</span>
                         {isKMI(q.indexKeys, q.symbol) && <KMIBadge />}
                       </div>
-                      <Link href={`/stocks/${q.symbol}`} prefetch={false} className="text-[11px] truncate max-w-[260px] hover:underline block" style={{ color: 'var(--text-muted)' }}>{q.name}</Link>
+                      <Link href={`/stocks/${q.symbol}`} prefetch={false} className="text-[11px] truncate max-w-[260px] hover:underline block" style={{ color: 'var(--text-secondary)' }}>{q.name}</Link>
                     </div>
                   </div>
                   <div className="text-right shrink-0 ml-4">
@@ -233,8 +240,8 @@ export default function ScreenerPage() {
           <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Price &amp; Volume</h2>
           <button
             onClick={() => setFilters(DEFAULT_FILTERS)}
-            className="ml-auto text-[10px] transition-colors hover:opacity-70"
-            style={{ color: 'var(--text-muted)' }}
+            className="ml-auto text-xs font-semibold transition-colors hover:opacity-70"
+            style={{ color: 'var(--text-secondary)' }}
           >
             Reset All
           </button>
@@ -279,13 +286,13 @@ export default function ScreenerPage() {
             </span>
           </label>
         </div>
-        <p className="text-[10px] mt-3" style={{ color: 'var(--text-muted)' }}>
+        <p className="text-[11px] mt-3" style={{ color: 'var(--text-secondary)' }}>
           P/E = Price ÷ EPS · EPS and DPS sourced from annual fundamentals (Capital Stake)
         </p>
       </div>
 
       {/* Match count */}
-      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+      <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
         {loading ? 'Loading…' : `${results.length} of ${quotes.length} stocks match`}
       </p>
 
@@ -296,8 +303,8 @@ export default function ScreenerPage() {
             <tr style={{ borderBottom: '1px solid var(--bg-border)' }}>
               {(['Symbol', 'Name'] as const).map(col => (
                 <th key={col}
-                    className="text-left py-2 px-2 text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap"
-                    style={{ color: 'var(--text-muted)' }}>
+                    className="text-left py-2.5 px-2 text-[11px] font-bold uppercase tracking-wider whitespace-nowrap"
+                    style={{ color: 'var(--text-primary)' }}>
                   {col}
                 </th>
               ))}
@@ -310,15 +317,16 @@ export default function ScreenerPage() {
                 { label: 'DPS',    key: 'dps'       as SortKey },
               ]).map(col => (
                 <th key={col.key}
-                    className="text-left py-2 px-2 text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap">
+                    className="text-left py-2.5 px-2 text-[11px] font-bold uppercase tracking-wider whitespace-nowrap">
                   <button
                     onClick={() => handleSort(col.key)}
-                    className="flex items-center gap-0.5 hover:opacity-80 transition-opacity"
-                    style={{ color: sortKey === col.key ? '#FEA500' : 'var(--text-muted)' }}>
+                    aria-label={`Sort by ${col.label}`}
+                    className="inline-flex items-center gap-1 hover:opacity-80 transition-opacity uppercase"
+                    style={{ color: sortKey === col.key ? '#FEA500' : 'var(--text-primary)' }}>
                     {col.label}
-                    <span className="ml-0.5 text-[9px]">
-                      {sortKey === col.key ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}
-                    </span>
+                    {sortKey === col.key
+                      ? (sortDir === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />)
+                      : <ArrowUpDown size={12} style={{ opacity: 0.5 }} />}
                   </button>
                 </th>
               ))}
@@ -338,12 +346,12 @@ export default function ScreenerPage() {
             ) : results.length === 0 ? (
               <tr>
                 <td colSpan={8} className="text-center py-10"
-                    style={{ color: 'var(--text-muted)' }}>
+                    style={{ color: 'var(--text-secondary)' }}>
                   No stocks match your filters
                 </td>
               </tr>
             ) : (
-              results.slice(0, 200).map(q => {
+              results.slice((page - 1) * pageSize, page * pageSize).map(q => {
                 const pe = q.eps > 0 ? (q.price / q.eps).toFixed(1) : '—'
                 return (
                   <tr key={q.symbol}
@@ -372,13 +380,13 @@ export default function ScreenerPage() {
                     <td className="py-2.5 px-2 font-number"
                         style={{ color: 'var(--text-secondary)' }}>{formatVolume(q.volume)}</td>
                     <td className="py-2.5 px-2 font-number"
-                        style={{ color: q.eps > 0 ? 'var(--text-primary)' : 'var(--text-muted)' }}>
+                        style={{ color: q.eps > 0 ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
                       {q.eps > 0 ? q.eps.toFixed(2) : '—'}
                     </td>
                     <td className="py-2.5 px-2 font-number"
                         style={{ color: 'var(--text-secondary)' }}>{pe}</td>
                     <td className="py-2.5 px-2 font-number"
-                        style={{ color: q.dps > 0 ? '#16a34a' : 'var(--text-muted)' }}>
+                        style={{ color: q.dps > 0 ? '#16a34a' : 'var(--text-secondary)' }}>
                       {q.dps > 0 ? q.dps.toFixed(2) : '—'}
                     </td>
                   </tr>
@@ -388,6 +396,56 @@ export default function ScreenerPage() {
           </tbody>
         </table>
       </div>
+
+      {/* Pagination */}
+      {!loading && results.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 mt-3">
+          <div className="flex items-center gap-3 text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+            <span>
+              Showing {((page - 1) * pageSize + 1).toLocaleString()}–{Math.min(page * pageSize, results.length).toLocaleString()} of {results.length.toLocaleString()}
+            </span>
+            <label className="inline-flex items-center gap-1.5">
+              Rows
+              <select value={pageSize} onChange={e => setPageSize(Number(e.target.value))}
+                className="rounded-md px-1.5 py-1 text-xs font-semibold outline-none cursor-pointer"
+                style={{ background: 'var(--bg-card)', border: '1px solid var(--bg-border)', color: 'var(--text-primary)' }}>
+                {[25, 50, 100].map(n => <option key={n} value={n}>{n}</option>)}
+              </select>
+            </label>
+          </div>
+
+          <div className="flex items-center gap-1 flex-wrap">
+            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} aria-label="Previous page"
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium border transition-colors disabled:opacity-30"
+              style={{ borderColor: 'var(--bg-border)', color: 'var(--text-secondary)', backgroundColor: 'var(--bg-card)' }}>
+              <ChevronLeft size={14} /> Prev
+            </button>
+            {(() => {
+              // 1 … (page-1) page (page+1) … last
+              const set = new Set([1, totalPages, page - 1, page, page + 1].filter(n => n >= 1 && n <= totalPages))
+              const nums = Array.from(set).sort((a, b) => a - b)
+              const out: (number | 'gap')[] = []
+              nums.forEach((n, i) => { if (i && n - nums[i - 1] > 1) out.push('gap'); out.push(n) })
+              return out.map((n, i) => n === 'gap'
+                ? <span key={`g${i}`} className="px-1 inline-flex items-center" style={{ color: 'var(--text-secondary)' }} aria-hidden="true"><MoreHorizontal size={14} /></span>
+                : (
+                  <button key={n} onClick={() => setPage(n)} aria-current={n === page ? 'page' : undefined}
+                    className="min-w-[30px] px-2 py-1 rounded text-xs font-semibold transition-colors"
+                    style={n === page
+                      ? { background: 'linear-gradient(135deg,#FEA500,#986300)', color: '#fff' }
+                      : { background: 'var(--bg-card)', color: 'var(--text-secondary)', border: '1px solid var(--bg-border)' }}>
+                    {n}
+                  </button>
+                ))
+            })()}
+            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} aria-label="Next page"
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium border transition-colors disabled:opacity-30"
+              style={{ borderColor: 'var(--bg-border)', color: 'var(--text-secondary)', backgroundColor: 'var(--bg-card)' }}>
+              Next <ChevronRight size={14} />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

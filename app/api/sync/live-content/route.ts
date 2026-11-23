@@ -12,6 +12,7 @@ import { saveContent }               from '@/lib/supabase/content'
 import { trackChartAPICall }         from '@/lib/utils/rateLimit'
 import { cronUnauthorized }          from '@/lib/utils/cronAuth'
 import { syncAllAnnouncements }      from '@/lib/announcements/sync'
+import { archiveNews, purgeOldNews } from '@/lib/news/archive'
 
 // Live / per-user data: always run on request, never prerender at build time
 export const dynamic = 'force-dynamic'
@@ -29,10 +30,30 @@ export async function GET(req: NextRequest) {
     const res   = await csUatGet<{ data: unknown[] }>(CS_ENDPOINTS.NEWS_GENERAL(0, 50))
     const items = res?.data ?? []
     if (items.length > 0) await saveContent('MARKET', 'general_news', items)
+    await archiveNews('general', items as { title?: string; link?: string; date?: string }[])
     out.generalNews = items.length
   } catch (err) {
     out.ok = false
     out.generalNewsError = err instanceof Error ? err.message : String(err)
+  }
+
+  // Market news feed → archive (powers the News page Today / This Week tabs)
+  try {
+    await trackChartAPICall('GET /3.0/news/company?symbol=GENERIC [sync]')
+    const res = await csUatGet<{ data: { title?: string; link?: string; date?: string; description?: string; image?: string; source?: string }[] }>(
+      CS_ENDPOINTS.COMPANY_NEWS('GENERIC'))
+    const items = res?.data ?? []
+    await archiveNews('market', items)
+    out.marketNews = items.length
+  } catch (err) {
+    out.marketNewsError = err instanceof Error ? err.message : String(err)
+  }
+
+  // Retention: drop stored news older than 14 days
+  try {
+    out.newsPurged = await purgeOldNews()
+  } catch (err) {
+    out.newsPurgeError = err instanceof Error ? err.message : String(err)
   }
 
   try {

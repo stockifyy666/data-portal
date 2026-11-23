@@ -21,7 +21,7 @@ const LIVE_FALLBACK = {
   inflation:   { value: 4.50,     change: 0, label: 'CPI Inflation',   note: 'IMF WEO 2025 annual avg' },
   forex:       { value: 21.57,    change: 0, label: 'Forex Reserves',  note: 'SBP holdings — Nov 26' },
   currentAcct: { value: -0.20,    change: 0, label: 'Current Account', note: 'FY2026 full-year (est.) — USD billion' },
-  gdpGrowth:   { value: 3.10,     change: 0, label: 'GDP Growth',      note: 'IMF WEO 2025 annual %' },
+  gdpGrowth:   { value: 3.70,     change: 0, label: 'GDP Growth',      note: 'Real GDP growth — latest estimate' },
   remittances: { value: 3.20,     change: 0, label: 'Remittances',     note: 'SBP — monthly (Jul 2026, USD billion)' },
   kse100:      { value: 115000,   change: 0, label: 'KSE-100',         note: 'Live — Capital Stake' },
 }
@@ -88,25 +88,30 @@ const RESERVES_DATA = [
   { month: 'Nov 26', sbp: 21.57, total: 26.84 },  // week ended Nov 06
 ]
 
-const CPEC_STOCKS = [
-  { symbol: 'HUBC',  name: 'Hub Power Co.',          sector: 'Power',       exposure: 'High',   shariah: true,  note: 'CPEC power projects' },
-  { symbol: 'NCPL',  name: 'Nishat Chunian Power',   sector: 'Power',       exposure: 'High',   shariah: false, note: 'Under CPEC framework' },
-  { symbol: 'LUCK',  name: 'Lucky Cement',            sector: 'Cement',      exposure: 'High',   shariah: true,  note: 'CPEC infrastructure demand' },
-  { symbol: 'PIOC',  name: 'Pioneer Cement',          sector: 'Cement',      exposure: 'High',   shariah: true,  note: 'Infrastructure projects' },
-  { symbol: 'CHCC',  name: 'Cherat Cement',           sector: 'Cement',      exposure: 'Medium', shariah: true,  note: 'Construction demand' },
-  { symbol: 'FFBL',  name: 'Fauji Fertilizer Bin Q.',sector: 'Fertilizer',  exposure: 'Medium', shariah: true,  note: 'Agricultural development' },
-  { symbol: 'NRSL',  name: 'Nishat Ruby Ltd.',        sector: 'Textile',     exposure: 'Low',    shariah: false, note: 'Export corridor benefit' },
-  { symbol: 'PKGS',  name: 'Packages Ltd.',           sector: 'Paper',       exposure: 'Low',    shariah: true,  note: 'Industrial growth' },
+// CPEC-linked PSX names. Exposure is general guidance from public project
+// information; name, live price, today's move and KMI status come from quotes.
+const CPEC_STOCKS: { symbol: string; sector: string; exposure: 'High' | 'Medium' | 'Low'; note: string }[] = [
+  { symbol: 'HUBC', sector: 'Power',  exposure: 'High',   note: 'China Power Hub & Thar coal plants' },
+  { symbol: 'LUCK', sector: 'Cement', exposure: 'High',   note: 'Lucky Electric (Chinese JV), cement demand' },
+  { symbol: 'CHCC', sector: 'Cement', exposure: 'High',   note: 'Northern plant near CPEC road projects' },
+  { symbol: 'KOHC', sector: 'Cement', exposure: 'High',   note: 'Northern cement for CPEC infrastructure' },
+  { symbol: 'PIOC', sector: 'Cement', exposure: 'Medium', note: 'Infrastructure construction demand' },
+  { symbol: 'FCCL', sector: 'Cement', exposure: 'Medium', note: 'Infrastructure construction demand' },
+  { symbol: 'DGKC', sector: 'Cement', exposure: 'Medium', note: 'Infrastructure construction demand' },
+  { symbol: 'PKGS', sector: 'Paper',  exposure: 'Low',    note: 'Industrial and packaging growth' },
 ]
 
-const PKR_IMPACT = [
-  { symbol: 'ENGRO', type: 'Exporter',  shariah: true,  impact5pct: '+3.2%', note: 'Revenue in USD' },
-  { symbol: 'LUCK',  type: 'Exporter',  shariah: true,  impact5pct: '+2.8%', note: 'Export earnings' },
-  { symbol: 'TGL',   type: 'Exporter',  shariah: true,  impact5pct: '+2.1%', note: 'Glass exports' },
-  { symbol: 'PSO',   type: 'Importer',  shariah: true,  impact5pct: '-4.1%', note: 'Oil import costs rise' },
-  { symbol: 'HCAR',  type: 'Importer',  shariah: true,  impact5pct: '-3.6%', note: 'CKD parts imported' },
-  { symbol: 'ICI',   type: 'Importer',  shariah: true,  impact5pct: '-2.9%', note: 'Raw material imports' },
-  { symbol: 'ATRL',  type: 'Importer',  shariah: true,  impact5pct: '-2.4%', note: 'Crude oil input' },
+// FX exposure of well-known PSX names. Live price, today's move and Shariah
+// (KMI index) status are filled in from /api/market/quotes — no estimates.
+const PKR_IMPACT: { symbol: string; type: 'Exporter' | 'Importer'; note: string }[] = [
+  { symbol: 'SYS',  type: 'Exporter', note: 'IT services billed in USD' },
+  { symbol: 'ILP',  type: 'Exporter', note: 'Textile exports (apparel)' },
+  { symbol: 'NML',  type: 'Exporter', note: 'Textile exports' },
+  { symbol: 'LUCK', type: 'Exporter', note: 'Cement exports + foreign ops' },
+  { symbol: 'PSO',  type: 'Importer', note: 'Imported fuel costs' },
+  { symbol: 'ATRL', type: 'Importer', note: 'Crude oil priced in USD' },
+  { symbol: 'HCAR', type: 'Importer', note: 'Imported CKD kits' },
+  { symbol: 'INDU', type: 'Importer', note: 'Imported CKD kits' },
 ]
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -234,7 +239,7 @@ function ReservesBar({ data }: { data: typeof RESERVES_DATA }) {
         return (
           <div key={d.month} className="flex items-center gap-3">
             <span className="text-[10px] w-12 shrink-0 font-medium"
-              style={{ color: isLast ? '#FEA500' : 'var(--text-muted)' }}>{d.month}</span>
+              style={{ color: isLast ? '#FEA500' : 'var(--text-secondary)' }}>{d.month}</span>
             <div className="flex-1 relative h-5 rounded-md overflow-hidden"
               style={{ backgroundColor: 'var(--bg-hover)' }}>
               {/* total bar */}
@@ -254,11 +259,11 @@ function ReservesBar({ data }: { data: typeof RESERVES_DATA }) {
       <div className="flex items-center gap-4 mt-3 pt-3" style={{ borderTop: '1px solid var(--bg-border)' }}>
         <div className="flex items-center gap-1.5">
           <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: 'var(--text-secondary)' }}/>
-          <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>SBP Reserves</span>
+          <span className="text-[10px]" style={{ color: 'var(--text-secondary)' }}>SBP Reserves</span>
         </div>
         <div className="flex items-center gap-1.5">
           <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: 'var(--bg-hover)', border: '1px solid var(--bg-border)' }}/>
-          <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Total (SBP + Banks)</span>
+          <span className="text-[10px]" style={{ color: 'var(--text-secondary)' }}>Total (SBP + Banks)</span>
         </div>
       </div>
     </div>
@@ -283,6 +288,25 @@ function ExposureBadge({ level }: { level: string }) {
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function MacroDashboard() {
   const [lastUpdated, setLastUpdated] = useState('')
+  const [rupeeQuotes, setRupeeQuotes] = useState<Record<string, { price: number; changePct: number; shariah: boolean; name: string }>>({})
+
+  // Live prices for the Rupee Impact stocks (shared, cached quotes endpoint)
+  useEffect(() => {
+    const want = new Set([...PKR_IMPACT, ...CPEC_STOCKS].map(x => x.symbol))
+    fetch('/api/market/quotes')
+      .then(r => r.json())
+      .then(j => {
+        const out: Record<string, { price: number; changePct: number; shariah: boolean; name: string }> = {}
+        for (const q of (j.quotes ?? []) as { symbol: string; name: string; price: number; changePct: number; indexKeys?: string[] }[]) {
+          if (want.has(q.symbol)) out[q.symbol] = {
+            price: q.price, changePct: q.changePct, name: q.name,
+            shariah: !!q.indexKeys?.some(k => k.startsWith('KMI')),
+          }
+        }
+        setRupeeQuotes(out)
+      })
+      .catch(() => {})
+  }, [])
   const [liveLoading, setLiveLoading] = useState(true)
 
   type KpiEntry = { value: number; change: number; label: string; note: string }
@@ -313,7 +337,7 @@ export default function MacroDashboard() {
     const LATEST = {
       inflation:   { value: 9.6,   change: 0, label: 'CPI Inflation',   note: 'PBS — Oct 2026 YoY (Sep: 10.3%)' },
       currentAcct: { value: -0.85, change: 0, label: 'Current Account', note: 'SBP — Jul–Oct FY27 deficit (Oct: +$39M surplus)' },
-      gdpGrowth:   { value: 4.0,   change: 0, label: 'GDP Growth',      note: 'SBP FY27 projection 3.5–4.5%' },
+      gdpGrowth:   { value: 3.7,   change: 0, label: 'GDP Growth',      note: 'Real GDP growth — latest estimate' },
     }
 
     Promise.all([
@@ -403,7 +427,7 @@ export default function MacroDashboard() {
         </div>
         <div className="flex items-center gap-2">
           <span className="text-[11px] flex items-center gap-1.5"
-            style={{ color: 'var(--text-muted)' }}>
+            style={{ color: 'var(--text-secondary)' }}>
             <RefreshCw size={10} className={liveLoading ? 'animate-spin' : ''} />
             Updated: {lastUpdated || '—'}
           </span>
@@ -464,7 +488,7 @@ export default function MacroDashboard() {
               <div key={k.label} className="card" style={{ padding:'16px 18px' }}>
                 <p style={{ fontSize:10, fontWeight:700, color:'var(--text-primary)', textTransform:'uppercase', letterSpacing:'.07em', marginBottom:8 }}>{k.label}</p>
                 <p style={{ fontSize:22, fontWeight:800, color:k.color, lineHeight:1, fontVariantNumeric:'tabular-nums' }}>{k.value}</p>
-                <p style={{ fontSize:10, color:'var(--text-muted)', marginTop:5 }}>{k.sub}</p>
+                <p style={{ fontSize:11, fontWeight:600, color:'var(--text-secondary)', marginTop:6 }}>{k.sub}</p>
               </div>
             ))}
           </div>
@@ -480,9 +504,9 @@ export default function MacroDashboard() {
               <div style={{ width:`${(IMF_PENDING / IMF_TOTAL) * 100}%`, background:'#f59e0b', opacity:.6 }}/>
             </div>
             <div style={{ display:'flex', gap:16, marginTop:6 }}>
-              <span style={{ fontSize:10, color:'var(--text-muted)' }}><span style={{ color:'#16a34a' }}>●</span> Received ({IMF_RECEIVED.length})</span>
-              <span style={{ fontSize:10, color:'var(--text-muted)' }}><span style={{ color:'#f59e0b' }}>●</span> In Progress ({IMF_TRANCHES.filter(t => t.status === 'upcoming').length})</span>
-              <span style={{ fontSize:10, color:'var(--text-muted)' }}><span style={{ color:'var(--bg-border)' }}>●</span> Pending ({IMF_TRANCHES.filter(t => t.status === 'future').length})</span>
+              <span style={{ fontSize:10, color:'var(--text-secondary)' }}><span style={{ color:'#16a34a' }}>●</span> Received ({IMF_RECEIVED.length})</span>
+              <span style={{ fontSize:10, color:'var(--text-secondary)' }}><span style={{ color:'#f59e0b' }}>●</span> In Progress ({IMF_TRANCHES.filter(t => t.status === 'upcoming').length})</span>
+              <span style={{ fontSize:10, color:'var(--text-secondary)' }}><span style={{ color:'var(--bg-border)' }}>●</span> Pending ({IMF_TRANCHES.filter(t => t.status === 'future').length})</span>
             </div>
           </div>
 
@@ -494,10 +518,10 @@ export default function MacroDashboard() {
                 const received = t.status === 'received'
                 const isNext   = t.status === 'upcoming'
                 const isFuture = t.status === 'future'
-                const amtC     = received ? '#16a34a' : isNext ? '#f59e0b' : 'var(--text-muted)'
+                const amtC     = received ? '#16a34a' : isNext ? '#f59e0b' : 'var(--text-secondary)'
                 const dotColor = received ? '#16a34a' : isNext ? '#f59e0b' : 'var(--bg-border)'
                 return (
-                  <div key={i} style={{ opacity: isFuture ? .45 : 1, display:'flex', flexDirection:'column' }}>
+                  <div key={i} style={{ opacity: isFuture ? .75 : 1, display:'flex', flexDirection:'column' }}>
                     {/* Connector line */}
                     <div style={{ display:'flex', alignItems:'center', marginBottom:8 }}>
                       <div style={{ width:12, height:12, borderRadius:'50%', backgroundColor: dotColor, flexShrink:0, border: isFuture ? '2px solid var(--bg-border)' : 'none', boxSizing:'border-box' }}/>
@@ -505,10 +529,10 @@ export default function MacroDashboard() {
                     </div>
                     {/* Card */}
                     <div className="macro-card" style={{ padding:'10px', borderRadius:10, backgroundColor:'var(--bg-hover)', border:'1px solid var(--bg-border)', flex:1, display:'flex', flexDirection:'column' }}>
-                      <p style={{ fontSize:9, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:5 }}>{t.tranche}</p>
+                      <p style={{ fontSize:9, fontWeight:700, color:'var(--text-secondary)', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:5 }}>{t.tranche}</p>
                       <p style={{ fontSize:14, fontWeight:800, color:amtC, fontVariantNumeric:'tabular-nums', lineHeight:1, marginBottom:4 }}>~${t.amt.toFixed(1)}B</p>
-                      <p style={{ fontSize:9, color: isNext ? '#f59e0b' : 'var(--text-muted)', fontWeight: isNext ? 700 : 400, marginBottom:4 }}>{t.date}</p>
-                      <p style={{ fontSize:8.5, color:'var(--text-muted)', lineHeight:1.4, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>{t.note}</p>
+                      <p style={{ fontSize:11, color: isNext ? '#f59e0b' : 'var(--text-secondary)', fontWeight: isNext ? 800 : 600, marginBottom:4 }}>{t.date}</p>
+                      <p style={{ fontSize:10.5, color:'var(--text-secondary)', lineHeight:1.4, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>{t.note}</p>
                     </div>
                   </div>
                 )
@@ -516,8 +540,8 @@ export default function MacroDashboard() {
             </div>
           </div>
 
-          <p style={{ fontSize:10, marginTop:14, color:'var(--text-muted)', display:'flex', alignItems:'center', gap:4 }}>
-            <Info size={9}/> USD values approximate (EFF is denominated in SDR). Source: IMF press releases; future dates estimated.
+          <p style={{ fontSize:11, marginTop:14, color:'var(--text-secondary)', display:'flex', alignItems:'center', gap:4 }}>
+            <Info size={11}/> USD values approximate (EFF is denominated in SDR). Source: IMF press releases; future dates estimated.
           </p>
         </Section>
 
@@ -535,7 +559,7 @@ export default function MacroDashboard() {
               <div key={k.label} className="card" style={{ padding:'14px 16px' }}>
                 <p style={{ fontSize:10, fontWeight:700, color:'var(--text-primary)', textTransform:'uppercase', letterSpacing:'.07em', marginBottom:7 }}>{k.label}</p>
                 <p style={{ fontSize:20, fontWeight:800, color:k.color, lineHeight:1, fontVariantNumeric:'tabular-nums' }}>{k.value}</p>
-                <p style={{ fontSize:10, color:'var(--text-muted)', marginTop:5 }}>{k.sub}</p>
+                <p style={{ fontSize:11, fontWeight:600, color:'var(--text-secondary)', marginTop:6 }}>{k.sub}</p>
               </div>
             ))}
           </div>
@@ -576,7 +600,7 @@ export default function MacroDashboard() {
             </table>
           </div>
 
-          <p style={{ fontSize:10, marginTop:10, color:'var(--text-muted)', display:'flex', alignItems:'center', gap:4 }}>
+          <p style={{ fontSize:10, marginTop:10, color:'var(--text-secondary)', display:'flex', alignItems:'center', gap:4 }}>
             <Info size={9}/> Dates from SBP&apos;s FY27 advance MPC calendar. Rate corridor: 11.00%–13.00%.
           </p>
         </Section>
@@ -597,15 +621,15 @@ export default function MacroDashboard() {
                 {/* ── KPI row ── */}
                 <div className="grid grid-cols-1 min-[380px]:grid-cols-2 lg:grid-cols-4" style={{ gap:10, marginBottom:24 }}>
                   {[
-                    { label:'SBP Holdings',   value:`$${latest.sbp}B`,   sub:`${latest.month}`,             accent: false },
-                    { label:'Total Reserves', value:`$${latest.total}B`, sub:'SBP + commercial banks',      accent: false },
-                    { label:'SBP Target',     value:'$23B',               sub:'By Dec 2026 · $25B by Jun 27', accent: true  },
-                    { label:'Change', value:`${gain6m >= 0 ? '+' : '−'}$${Math.abs(gain6m)}B`,      sub:`${first.month} → ${latest.month}`, accent: true  },
+                    { label:'Total Reserves',   value:`$${latest.total}B`, sub:`SBP + commercial banks · ${latest.month}`, accent: false },
+                    { label:'SBP Holdings',     value:`$${latest.sbp}B`,   sub:`${sbpPct}% of total`,                     accent: false },
+                    { label:'Commercial Banks', value:`$${banksPortion}B`, sub:`${bankPct}% of total`,                    accent: false },
+                    { label:'Change', value:`${gain6m >= 0 ? '+' : '−'}$${Math.abs(gain6m)}B`, sub:`SBP holdings · ${first.month} → ${latest.month}`, accent: true },
                   ].map((k) => (
                     <div key={k.label} className="card" style={{ padding:'16px 20px' }}>
                       <p style={{ fontSize:10, color:'var(--text-primary)', textTransform:'uppercase', letterSpacing:'.07em', marginBottom:10, fontWeight:700 }}>{k.label}</p>
                       <p style={{ fontSize:22, fontWeight:700, lineHeight:1, fontVariantNumeric:'tabular-nums', color: k.accent ? '#16a34a' : 'var(--text-primary)', marginBottom:6 }}>{k.value}</p>
-                      <p style={{ fontSize:11, color: k.accent ? '#16a34a' : 'var(--text-muted)' }}>{k.sub}</p>
+                      <p style={{ fontSize:11, color: k.accent ? '#16a34a' : 'var(--text-secondary)' }}>{k.sub}</p>
                     </div>
                   ))}
                 </div>
@@ -616,7 +640,7 @@ export default function MacroDashboard() {
                     <span style={{ fontSize:11, fontWeight:600, color:'var(--text-secondary)', textTransform:'uppercase', letterSpacing:'.06em' }}>
                       Reserve Composition — {latest.month}
                     </span>
-                    <span style={{ fontSize:12, color:'var(--text-muted)', flexShrink:0 }}>
+                    <span style={{ fontSize:12, color:'var(--text-secondary)', flexShrink:0 }}>
                       Total <strong style={{ color:'var(--text-primary)', fontVariantNumeric:'tabular-nums' }}>${latest.total}B</strong>
                     </span>
                   </div>
@@ -630,17 +654,17 @@ export default function MacroDashboard() {
                     <div>
                       <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:2 }}>
                         <div style={{ width:10, height:10, borderRadius:2, background:'#FEA500', flexShrink:0 }}/>
-                        <span style={{ fontSize:11, color:'var(--text-muted)' }}>SBP Holdings</span>
+                        <span style={{ fontSize:11, color:'var(--text-secondary)' }}>SBP Holdings</span>
                       </div>
-                      <p style={{ fontSize:18, fontWeight:700, color:'var(--text-primary)', fontVariantNumeric:'tabular-nums', paddingLeft:16 }}>${latest.sbp}B <span style={{ fontSize:12, fontWeight:400, color:'var(--text-muted)' }}>{sbpPct}%</span></p>
+                      <p style={{ fontSize:18, fontWeight:700, color:'var(--text-primary)', fontVariantNumeric:'tabular-nums', paddingLeft:16 }}>${latest.sbp}B <span style={{ fontSize:12, fontWeight:400, color:'var(--text-secondary)' }}>{sbpPct}%</span></p>
                     </div>
                     <div style={{ width:1, background:'var(--bg-border)' }}/>
                     <div>
                       <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:2 }}>
                         <div style={{ width:10, height:10, borderRadius:2, background:'var(--bg-border)', flexShrink:0, border:'1px solid var(--text-muted)' }}/>
-                        <span style={{ fontSize:11, color:'var(--text-muted)' }}>Commercial Banks</span>
+                        <span style={{ fontSize:11, color:'var(--text-secondary)' }}>Commercial Banks</span>
                       </div>
-                      <p style={{ fontSize:18, fontWeight:700, color:'var(--text-primary)', fontVariantNumeric:'tabular-nums', paddingLeft:16 }}>${banksPortion}B <span style={{ fontSize:12, fontWeight:400, color:'var(--text-muted)' }}>{bankPct}%</span></p>
+                      <p style={{ fontSize:18, fontWeight:700, color:'var(--text-primary)', fontVariantNumeric:'tabular-nums', paddingLeft:16 }}>${banksPortion}B <span style={{ fontSize:12, fontWeight:400, color:'var(--text-secondary)' }}>{bankPct}%</span></p>
                     </div>
                   </div>
                 </div>
@@ -648,17 +672,17 @@ export default function MacroDashboard() {
                 {/* ── Monthly Trend chart ── */}
                 <div>
                   <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, marginBottom:12, flexWrap:'wrap' }}>
-                    <span style={{ fontSize:11, fontWeight:600, color:'var(--text-secondary)', textTransform:'uppercase', letterSpacing:'.06em' }}>
-                      Monthly Trend
+                    <span style={{ fontSize:12, fontWeight:700, color:'var(--text-primary)', textTransform:'uppercase', letterSpacing:'.06em' }}>
+                      Monthly Trend · {RESERVES_DATA[0]?.month.split(' ')[1] ? `20${RESERVES_DATA[0].month.split(' ')[1]}` : ''}
                     </span>
                     <div style={{ display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
                       <div style={{ display:'flex', alignItems:'center', gap:5 }}>
                         <div style={{ width:10, height:10, borderRadius:2, background:'#FEA500' }}/>
-                        <span style={{ fontSize:10, color:'var(--text-muted)' }}>SBP Holdings</span>
+                        <span style={{ fontSize:11, fontWeight:600, color:'var(--text-secondary)' }}>SBP Holdings</span>
                       </div>
                       <div style={{ display:'flex', alignItems:'center', gap:5 }}>
                         <div style={{ width:10, height:10, borderRadius:2, background:'var(--text-secondary)', opacity:.5 }}/>
-                        <span style={{ fontSize:10, color:'var(--text-muted)' }}>Commercial Banks</span>
+                        <span style={{ fontSize:11, fontWeight:600, color:'var(--text-secondary)' }}>Commercial Banks</span>
                       </div>
                     </div>
                   </div>
@@ -670,17 +694,20 @@ export default function MacroDashboard() {
                         banks:   +(d.total - d.sbp).toFixed(1),
                         isLast:  i === RESERVES_DATA.length - 1,
                       }))}
-                      margin={{ top:4, right:0, left:-8, bottom:0 }}
-                      barCategoryGap="20%"
+                      margin={{ top:4, right:0, left:-6, bottom:0 }}
+                      barCategoryGap="16%"
                     >
                       <CartesianGrid vertical={false} stroke="var(--bg-border)" strokeDasharray="3 3" />
                       <XAxis
                         dataKey="month"
-                        tick={{ fontSize:10, fill:'var(--text-muted)' }}
+                        interval={0}
+                        tickFormatter={(m: string) => m.split(' ')[0]}
+                        tick={{ fontSize:10, fill:'var(--text-secondary)', fontWeight:600 }}
                         axisLine={false} tickLine={false}
                       />
                       <YAxis
-                        tick={{ fontSize:10, fill:'var(--text-muted)' }}
+                        width={40}
+                        tick={{ fontSize:10, fill:'var(--text-secondary)', fontWeight:600 }}
                         axisLine={false} tickLine={false}
                         tickFormatter={(v: number) => `$${v}B`}
                         domain={[0, 'auto']}
@@ -715,7 +742,7 @@ export default function MacroDashboard() {
                   </ResponsiveContainer>
                 </div>
 
-                <p style={{ fontSize:10, marginTop:14, color:'var(--text-muted)', display:'flex', alignItems:'center', gap:4 }}>
+                <p style={{ fontSize:10, marginTop:14, color:'var(--text-secondary)', display:'flex', alignItems:'center', gap:4 }}>
                   <Info size={9}/> Source: SBP weekly liquid FX reserves (latest week ended Nov 06, 2026).
                 </p>
               </>
@@ -724,145 +751,173 @@ export default function MacroDashboard() {
         </Section>
 
         {/* ── Rupee Impact Analysis ────────────────────────────────────────── */}
-        <Section title="Rupee Impact Analysis" subtitle="Estimated earnings impact of a 5% PKR depreciation" icon={ArrowLeftRight}>
-
-          {/* Exporters */}
-          <div style={{ marginBottom:20 }}>
-            <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:12 }}>
-              <TrendingUp size={10} color="#16a34a"/>
-              <span style={{ fontSize:9, fontWeight:700, color:'#16a34a', textTransform:'uppercase', letterSpacing:'.08em' }}>Exporters — Gain on PKR Drop</span>
-            </div>
-            <div className="grid grid-cols-1 min-[480px]:grid-cols-2 lg:grid-cols-3" style={{ gap:10 }}>
-              {PKR_IMPACT.filter(s => s.type === 'Exporter').map(s => {
-                const val = Math.abs(parseFloat(s.impact5pct))
-                return (
-                  <div key={s.symbol} className="card" style={{
-                    padding:'14px 16px', borderRadius:6,
-                    display:'flex', flexDirection:'column', gap:8,
-                    cursor:'pointer', transition:'border-color .15s, background .15s',
-                  }}>
-                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-                      <div style={{ display:'flex', alignItems:'center', gap:5 }}>
-                        <span style={{ fontSize:13, fontWeight:700, color:'#FEA500' }}>{s.symbol}</span>
-                        {s.shariah && (
-                          <span style={{ fontSize:8, fontWeight:700, color:'#16a34a', background:'rgba(22,163,74,0.1)',
-                            border:'1px solid rgba(22,163,74,0.25)', padding:'1px 5px', borderRadius:999,
-                            letterSpacing:'.04em', textTransform:'uppercase', lineHeight:1.6 }}>Shariah</span>
-                        )}
-                      </div>
-                      <span style={{ fontSize:14, fontWeight:700, color:'#16a34a', fontVariantNumeric:'tabular-nums' }}>{s.impact5pct}</span>
-                    </div>
-                    <div style={{ height:3, borderRadius:2, background:'var(--bg-border)', overflow:'hidden' }}>
-                      <div style={{ width:`${(val/5)*100}%`, height:'100%', borderRadius:2, background:'#16a34a' }}/>
-                    </div>
-                    <span style={{ fontSize:10, color:'var(--text-muted)' }}>{s.note}</span>
+        <Section title="Rupee Impact Analysis" subtitle="Who gains and who loses when the rupee weakens" icon={ArrowLeftRight}>
+          {(() => {
+            const fx = MACRO_DATA.usdPkr
+            const Group = ({ type }: { type: 'Exporter' | 'Importer' }) => {
+              const exp = type === 'Exporter'
+              const accent = exp ? '#16a34a' : '#dc2626'
+              return (
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    {exp ? <TrendingUp size={15} color={accent} /> : <TrendingDown size={15} color={accent} />}
+                    <span className="text-[13px] font-bold" style={{ color: 'var(--text-primary)' }}>
+                      {exp ? 'Exporters' : 'Importers'}
+                    </span>
+                    <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                      · {exp ? 'earn in USD — benefit when PKR falls' : 'pay in USD — costs rise when PKR falls'}
+                    </span>
                   </div>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* Importers */}
-          <div>
-            <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:12 }}>
-              <TrendingDown size={10} color="#dc2626"/>
-              <span style={{ fontSize:9, fontWeight:700, color:'#dc2626', textTransform:'uppercase', letterSpacing:'.08em' }}>Importers — Lose on PKR Drop</span>
-            </div>
-            <div className="grid grid-cols-1 min-[480px]:grid-cols-2 lg:grid-cols-4" style={{ gap:10 }}>
-              {PKR_IMPACT.filter(s => s.type === 'Importer').map(s => {
-                const val = Math.abs(parseFloat(s.impact5pct))
-                return (
-                  <div key={s.symbol} className="card" style={{
-                    padding:'14px 16px', borderRadius:6,
-                    display:'flex', flexDirection:'column', gap:8,
-                    cursor:'pointer', transition:'border-color .15s, background .15s',
-                  }}>
-                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-                      <div style={{ display:'flex', alignItems:'center', gap:5 }}>
-                        <span style={{ fontSize:13, fontWeight:700, color:'#FEA500' }}>{s.symbol}</span>
-                        {s.shariah && (
-                          <span style={{ fontSize:8, fontWeight:700, color:'#16a34a', background:'rgba(22,163,74,0.1)',
-                            border:'1px solid rgba(22,163,74,0.25)', padding:'1px 5px', borderRadius:999,
-                            letterSpacing:'.04em', textTransform:'uppercase', lineHeight:1.6 }}>Shariah</span>
-                        )}
-                      </div>
-                      <span style={{ fontSize:14, fontWeight:700, color:'#dc2626', fontVariantNumeric:'tabular-nums', flexShrink:0 }}>{s.impact5pct}</span>
-                    </div>
-                    <div style={{ height:3, borderRadius:2, background:'var(--bg-border)', overflow:'hidden' }}>
-                      <div style={{ width:`${(val/5)*100}%`, height:'100%', borderRadius:2, background:'#dc2626' }}/>
-                    </div>
-                    <span style={{ fontSize:10, color:'var(--text-muted)' }}>{s.note}</span>
+                  <div className="grid grid-cols-1 min-[480px]:grid-cols-2 xl:grid-cols-4 gap-3">
+                    {PKR_IMPACT.filter(x => x.type === type).map(x => {
+                      const q = rupeeQuotes[x.symbol]
+                      const chg = q ? q.changePct * 100 : null
+                      const up = (chg ?? 0) >= 0
+                      return (
+                        <a key={x.symbol} href={`/stocks/${x.symbol}`}
+                          className="rounded-xl px-4 py-3.5 flex items-center gap-3 min-w-0 transition-colors"
+                          style={{ background: 'var(--bg-card)', border: '1px solid var(--bg-border)' }}
+                          onMouseEnter={e => (e.currentTarget.style.borderColor = `${accent}66`)}
+                          onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--bg-border)')}>
+                          <span className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
+                            style={{ background: exp ? 'rgba(22,163,74,0.13)' : 'rgba(220,38,38,0.13)', color: accent }}>
+                            {exp ? <TrendingUp size={20} strokeWidth={2.2} /> : <TrendingDown size={20} strokeWidth={2.2} />}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-sm" style={{ color: '#FEA500', fontWeight: 800 }}>{x.symbol}</span>
+                              {q?.shariah && (
+                                <span className="text-[9px] font-bold px-1.5 rounded-full"
+                                  style={{ color: '#16a34a', background: 'rgba(22,163,74,0.12)', border: '1px solid rgba(22,163,74,0.3)' }}>KMI</span>
+                              )}
+                            </div>
+                            <p className="text-xs truncate" style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{x.note}</p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-[15px] tabular-nums" style={{ color: 'var(--text-primary)', fontWeight: 800 }}>
+                              {q ? q.price.toFixed(2) : '—'}
+                            </p>
+                            {chg != null && (
+                              <p className="text-xs tabular-nums" style={{ color: up ? '#16a34a' : '#dc2626', fontWeight: 700 }}>
+                                {up ? '+' : ''}{chg.toFixed(2)}%
+                              </p>
+                            )}
+                          </div>
+                        </a>
+                      )
+                    })}
                   </div>
-                )
-              })}
-            </div>
-          </div>
+                </div>
+              )
+            }
+            return (
+              <div className="space-y-5">
+                {/* Live rupee */}
+                <div className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-xl px-4 py-3"
+                  style={{ background: 'rgba(254,165,0,0.07)', border: '1px solid rgba(254,165,0,0.25)' }}>
+                  <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#FEA500' }}>USD / PKR now</span>
+                  <span className="text-xl tabular-nums" style={{ color: 'var(--text-primary)', fontWeight: 800 }}>
+                    {fx && fx.value > 0 ? fx.value.toFixed(2) : '—'}
+                  </span>
+                  {fx && fx.change !== 0 && (
+                    <span className="text-[13px] tabular-nums" style={{ color: fx.change > 0 ? '#dc2626' : '#16a34a', fontWeight: 700 }}>
+                      {fx.change > 0 ? '+' : ''}{fx.change.toFixed(2)}% · rupee {fx.change > 0 ? 'weaker' : 'stronger'}
+                    </span>
+                  )}
+                  <span className="text-xs ml-auto" style={{ color: 'var(--text-secondary)' }}>
+                    A weaker rupee favours exporters and hurts importers.
+                  </span>
+                </div>
+                <Group type="Exporter" />
+                <Group type="Importer" />
+              </div>
+            )
+          })()}
 
-          <p style={{ fontSize:10, marginTop:14, color:'var(--text-muted)', display:'flex', alignItems:'center', gap:4 }}>
-            <Info size={9}/> Estimated. Exporters gain, importers lose on PKR depreciation.
+          <p className="text-[11px] mt-4 flex items-center gap-1" style={{ color: 'var(--text-secondary)' }}>
+            <Info size={11}/> Prices and moves are live. FX exposure is general guidance, not a forecast or investment advice.
           </p>
         </Section>
       </div>
 
       {/* ── CPEC Beneficiary Stocks ──────────────────────────────────────────── */}
-      <Section title="CPEC Beneficiary Stocks" subtitle="Companies with significant CPEC revenue exposure" icon={TrendingUp}>
-        <div className="grid grid-cols-1 min-[480px]:grid-cols-2 lg:grid-cols-4" style={{ gap:10 }}>
-          {CPEC_STOCKS.map(s => {
-            const sectorColor: Record<string,string> = {
-              Power:'#FEA500', Cement:'#f59e0b', Fertilizer:'#16a34a', Textile:'var(--text-secondary)', Paper:'var(--text-muted)'
-            }
-            const col = sectorColor[s.sector] || 'var(--text-muted)'
-            const expColor = s.exposure === 'High' ? '#16a34a' : s.exposure === 'Medium' ? '#f59e0b' : 'var(--text-muted)'
-            const expBg    = s.exposure === 'High' ? 'rgba(22,163,74,0.1)' : s.exposure === 'Medium' ? 'rgba(245,158,11,0.1)' : 'var(--bg-hover)'
-            const expBdr   = s.exposure === 'High' ? 'rgba(22,163,74,0.25)' : s.exposure === 'Medium' ? 'rgba(245,158,11,0.25)' : 'var(--bg-border)'
-            return (
-              <div key={s.symbol} className="card" style={{
-                padding:'16px', borderRadius:6,
-                display:'flex', flexDirection:'column', gap:10,
-                cursor:'pointer', transition:'border-color .15s, background .15s',
-              }}>
-                {/* Symbol + exposure */}
-                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-                  <span style={{ fontSize:14, fontWeight:700, color:'#FEA500', letterSpacing:'.02em' }}>{s.symbol}</span>
-                  <span style={{ fontSize:9, fontWeight:700, padding:'2px 8px', borderRadius:999,
-                    color: expColor, background: expBg, border:`1px solid ${expBdr}`,
-                    textTransform:'uppercase', letterSpacing:'.06em' }}>
-                    {s.exposure}
-                  </span>
-                </div>
-                {/* Company name */}
-                <div>
-                  <p style={{ fontSize:11, fontWeight:600, color:'var(--text-primary)', marginBottom:3, lineHeight:1.3 }}>{s.name}</p>
-                  <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                    <p style={{ fontSize:10, fontWeight:600, color:col }}>{s.sector}</p>
-                    {s.shariah && (
-                      <span style={{ fontSize:8, fontWeight:700, color:'#16a34a', background:'rgba(22,163,74,0.1)',
-                        border:'1px solid rgba(22,163,74,0.25)', padding:'1px 5px', borderRadius:999,
-                        letterSpacing:'.04em', textTransform:'uppercase', lineHeight:1.6 }}>
-                        Shariah
-                      </span>
-                    )}
-                  </div>
-                </div>
-                {/* Role note */}
-                <p style={{ fontSize:10, color:'var(--text-muted)', lineHeight:1.4, borderTop:'1px solid var(--bg-border)', paddingTop:8, marginTop:'auto' }}>{s.note}</p>
-              </div>
-            )
-          })}
-        </div>
-        <p style={{ fontSize:10, marginTop:14, color:'var(--text-muted)', display:'flex', alignItems:'center', gap:4 }}>
-          <Info size={9}/> Exposure ratings are estimates based on publicly available project information.
+      <Section title="CPEC Beneficiary Stocks" subtitle="Listed companies linked to China–Pakistan Economic Corridor projects" icon={TrendingUp}>
+        {(() => {
+          const EXPO: Record<string, { fg: string; bg: string; bd: string }> = {
+            High:   { fg: '#16a34a', bg: 'rgba(22,163,74,0.12)',  bd: 'rgba(22,163,74,0.3)' },
+            Medium: { fg: '#d97706', bg: 'rgba(245,158,11,0.13)', bd: 'rgba(245,158,11,0.35)' },
+            Low:    { fg: 'var(--text-secondary)', bg: 'var(--bg-hover)', bd: 'var(--bg-border)' },
+          }
+          return (
+            <div className="grid grid-cols-1 min-[480px]:grid-cols-2 xl:grid-cols-4 gap-3">
+              {CPEC_STOCKS.map(x => {
+                const q   = rupeeQuotes[x.symbol]
+                const chg = q ? q.changePct * 100 : null
+                const up  = (chg ?? 0) >= 0
+                const ex  = EXPO[x.exposure]
+                return (
+                  <a key={x.symbol} href={`/stocks/${x.symbol}`}
+                    className="rounded-xl p-4 flex flex-col gap-3 min-w-0 transition-colors"
+                    style={{ background: 'var(--bg-card)', border: '1px solid var(--bg-border)' }}
+                    onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(254,165,0,0.5)')}
+                    onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--bg-border)')}>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
+                          style={{ background: 'rgba(254,165,0,0.14)', color: '#FEA500' }}>
+                          {x.sector === 'Power' ? <Building2 size={20} /> : x.sector === 'Paper' ? <Globe size={20} /> : <Shield size={20} />}
+                        </span>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-sm" style={{ color: '#FEA500', fontWeight: 800 }}>{x.symbol}</span>
+                            {q?.shariah && (
+                              <span className="text-[9px] font-bold px-1.5 rounded-full"
+                                style={{ color: '#16a34a', background: 'rgba(22,163,74,0.12)', border: '1px solid rgba(22,163,74,0.3)' }}>KMI</span>
+                            )}
+                          </div>
+                          <p className="text-[13px] truncate" style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{q?.name ?? x.sector}</p>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full shrink-0"
+                        style={{ color: ex.fg, background: ex.bg, border: `1px solid ${ex.bd}` }}>{x.exposure}</span>
+                    </div>
+
+                    <div className="flex items-end justify-between gap-2">
+                      <div>
+                        <p className="text-xl tabular-nums leading-none" style={{ color: 'var(--text-primary)', fontWeight: 800 }}>
+                          {q ? q.price.toFixed(2) : '—'}
+                        </p>
+                        {chg != null && (
+                          <p className="text-xs tabular-nums mt-1" style={{ color: up ? '#16a34a' : '#dc2626', fontWeight: 700 }}>
+                            {up ? '+' : ''}{chg.toFixed(2)}% today
+                          </p>
+                        )}
+                      </div>
+                      <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{x.sector}</span>
+                    </div>
+
+                    <p className="text-xs leading-snug pt-2.5 mt-auto" style={{ color: 'var(--text-secondary)', borderTop: '1px solid var(--bg-border)' }}>
+                      {x.note}
+                    </p>
+                  </a>
+                )
+              })}
+            </div>
+          )
+        })()}
+        <p className="text-[11px] mt-4 flex items-center gap-1" style={{ color: 'var(--text-secondary)' }}>
+          <Info size={11}/> Prices are live. Exposure ratings are general guidance from public project information, not investment advice.
         </p>
       </Section>
 
       {/* Data sources note */}
       <div className="rounded-xl px-4 py-3 flex items-start gap-2"
         style={{ backgroundColor: 'var(--bg-hover)', border: '1px solid var(--bg-border)' }}>
-        <Info size={13} className="shrink-0 mt-0.5" style={{ color: 'var(--text-muted)' }} />
-        <p className="text-[11px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+        <Info size={13} className="shrink-0 mt-0.5" style={{ color: 'var(--text-secondary)' }} />
+        <p className="text-[11px] leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
           <strong style={{ color: 'var(--text-secondary)' }}>Data sources (when live API connected):</strong> SBP.gov.pk (reserves, policy rate),
           PBS.gov.pk (CPI inflation), IMF.org (program tracker), investing.com / tradingeconomics.com (Brent crude, USD/PKR),
-          SBP MPC calendar (rate decisions). All current values are static placeholders — connect live APIs to auto-update.
+          SBP MPC calendar (rate decisions). Prices, FX, oil and gold update live; official releases (SBP, PBS, IMF) are updated as they are published.
         </p>
       </div>
     </div>

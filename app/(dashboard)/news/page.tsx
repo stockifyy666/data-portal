@@ -108,58 +108,47 @@ export default function NewsPage() {
   const [query,       setQuery]       = useState('')
   const [filter,      setFilter]      = useState<'all' | 'today' | 'week'>('today')
 
-  const loadMarket = useCallback(() => {
+  // Each range is fetched from the server:
+  //   today / week → stored archive (Supabase news_items, kept 14 days)
+  //   all          → live feed straight from the API
+  const loadMarket = useCallback((range: string) => {
     setLoading(true)
-    fetch('/api/market/news', { signal: AbortSignal.timeout(20_000) })
+    fetch(`/api/market/news?range=${range}`, { signal: AbortSignal.timeout(20_000) })
       .then(r => r.json())
       .then(j => {
-        if (Array.isArray(j.data)) {
-          // All PSX API news is market news, but filter out anything clearly non-market
-          setMarketNews(j.data.filter(isMarketNews))
-        }
+        // All PSX API news is market news, but filter out anything clearly non-market
+        setMarketNews(Array.isArray(j.data) ? j.data.filter(isMarketNews) : [])
       })
-      .catch(() => {})
+      .catch(() => setMarketNews([]))
       .finally(() => setLoading(false))
   }, [])
 
-  const loadGeneral = useCallback(() => {
+  const loadGeneral = useCallback((range: string) => {
     setGenLoading(true)
-    fetch('/api/market/news-general', { signal: AbortSignal.timeout(20_000) })
+    fetch(`/api/market/news-general?range=${range}`, { signal: AbortSignal.timeout(20_000) })
       .then(r => r.json())
-      .then(j => { if (Array.isArray(j.data)) setGeneralNews(j.data) })
-      .catch(() => {})
+      .then(j => setGeneralNews(Array.isArray(j.data) ? j.data : []))
+      .catch(() => setGeneralNews([]))
       .finally(() => setGenLoading(false))
   }, [])
 
-  useEffect(() => { loadMarket() }, [loadMarket])
-
-  // Lazy-load general news when tab is first opened
+  // (Re)load whenever the tab or the time range changes
   useEffect(() => {
-    if (tab === 'general' && generalNews.length === 0 && !genLoading) loadGeneral()
-  }, [tab, generalNews.length, genLoading, loadGeneral])
+    if (tab === 'market') loadMarket(filter)
+    else loadGeneral(filter)
+  }, [tab, filter, loadMarket, loadGeneral])
 
   function refresh() {
-    if (tab === 'market') loadMarket()
-    else loadGeneral()
+    if (tab === 'market') loadMarket(filter)
+    else loadGeneral(filter)
   }
 
-  const now = Date.now()
   const source = tab === 'market' ? marketNews : generalNews
   const isLoading = tab === 'market' ? loading : genLoading
 
   const filtered = source.filter(item => {
     const q = query.trim().toLowerCase()
-    const matchQ = !q || item.title.toLowerCase().includes(q) || item.source.toLowerCase().includes(q)
-    if (!matchQ) return false
-    if (filter === 'today') {
-      const d = new Date(item.date)
-      return !isNaN(d.getTime()) && (now - d.getTime()) < 86400000
-    }
-    if (filter === 'week') {
-      const d = new Date(item.date)
-      return !isNaN(d.getTime()) && (now - d.getTime()) < 604800000
-    }
-    return true
+    return !q || item.title.toLowerCase().includes(q) || item.source.toLowerCase().includes(q)
   })
 
   const tabs: { id: TabId; label: string; icon: React.ReactNode; desc: string }[] = [
@@ -251,7 +240,7 @@ export default function NewsPage() {
             />
           </div>
 
-          {(['all', 'today', 'week'] as const).map(f => (
+          {(['today', 'week', 'all'] as const).map(f => (
             <button
               key={f}
               onClick={() => setFilter(f)}
@@ -291,7 +280,7 @@ export default function NewsPage() {
                 : filter === 'week' ? 'No stories this week.'
                 : 'No news available right now.'}
             </p>
-            {!query && filter !== 'all' && source.length > 0 && (
+            {!query && filter !== 'all' && (
               <div className="flex gap-2">
                 {filter === 'today' && (
                   <button onClick={() => setFilter('week')} className="px-3 py-1.5 rounded-lg text-xs font-semibold"

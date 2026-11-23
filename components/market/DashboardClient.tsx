@@ -35,6 +35,7 @@ const PAGE_SIZE = 10
 
 function IndexChart({ symbol }: { symbol: string }) {
   const [candles, setCandles] = useState<Candle[]>([])
+  const [hover, setHover]     = useState<number | null>(null)   // index of hovered candle
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -47,7 +48,7 @@ function IndexChart({ symbol }: { symbol: string }) {
   }, [symbol])
 
   if (loading) return <div className="h-full w-full rounded animate-pulse" style={{ backgroundColor: 'var(--bg-hover)' }} />
-  if (!candles.length) return <p className="text-xs text-center py-8" style={{ color: 'var(--text-muted)' }}>No chart data</p>
+  if (!candles.length) return <p className="text-xs text-center py-8" style={{ color: 'var(--text-secondary)' }}>No chart data</p>
 
   const prices = candles.map(c => c.close)
   const min    = Math.min(...prices)
@@ -62,11 +63,69 @@ function IndexChart({ symbol }: { symbol: string }) {
   const areaPath = `M ${pts[0]} L ${pts.join(' L ')} L ${W},${H} L 0,${H} Z`
   const linePath = `M ${pts.join(' L ')}`
 
+  // Hover: map pointer x to the nearest candle
+  const pick = (clientX: number, el: HTMLElement) => {
+    const r = el.getBoundingClientRect()
+    const f = Math.min(1, Math.max(0, (clientX - r.left) / r.width))
+    setHover(Math.round(f * (candles.length - 1)))
+  }
+  const hc    = hover != null ? candles[hover] : null
+  const hx    = hover != null ? (hover / (candles.length - 1)) * 100 : 0                  // % across
+  const hy    = hc ? ((H - ((hc.close - min) / range) * (H - 8) - 4) / H) * 100 : 0      // % down
+  const open  = prices[0]
+  const diff  = hc ? hc.close - open : 0
+  const pct   = hc && open ? (diff / open) * 100 : 0
+  // Capital Stake intraday candles carry `time` (Unix seconds); older shapes used `t` or `date`
+  const rawT  = (() => {
+    if (!hc) return NaN
+    const c = hc as unknown as { time?: number; t?: number; date?: string }
+    if (c.time) return c.time * 1000
+    if (c.t)    return c.t * 1000
+    return c.date ? Date.parse(c.date) : NaN
+  })()
+  const time  = Number.isFinite(rawT)
+    ? new Date(rawT).toLocaleString('en-PK', {
+        weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Karachi',
+      })
+    : ''
+
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="w-full h-full">
-      <path d={areaPath} fill={fill} />
-      <path d={linePath} fill="none" stroke={color} strokeWidth="2" />
-    </svg>
+    <div className="relative w-full h-full select-none" style={{ cursor: 'crosshair' }}
+      onMouseMove={e => pick(e.clientX, e.currentTarget)}
+      onMouseLeave={() => setHover(null)}
+      onTouchStart={e => pick(e.touches[0].clientX, e.currentTarget)}
+      onTouchMove={e => pick(e.touches[0].clientX, e.currentTarget)}
+      onTouchEnd={() => setHover(null)}>
+      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="w-full h-full">
+        <path d={areaPath} fill={fill} />
+        <path d={linePath} fill="none" stroke={color} strokeWidth="2" />
+      </svg>
+
+      {hc && (
+        <>
+          {/* crosshair + dot (HTML so they don't stretch with the SVG) */}
+          <span className="absolute top-0 bottom-0 w-px pointer-events-none"
+            style={{ left: `${hx}%`, background: 'var(--text-secondary)', opacity: 0.45 }} />
+          <span className="absolute w-3 h-3 rounded-full -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+            style={{ left: `${hx}%`, top: `${hy}%`, background: color, border: '2px solid var(--bg-card)', boxShadow: `0 0 0 3px ${color}33` }} />
+          {/* tooltip, flips side near the right edge */}
+          <div className="absolute top-1 pointer-events-none rounded-lg px-3 py-2 shadow-lg whitespace-nowrap"
+            style={{
+              left: `${hx}%`, transform: hx > 70 ? 'translateX(calc(-100% - 10px))' : 'translateX(10px)',
+              background: 'var(--bg-card)', border: '1px solid var(--bg-border)',
+            }}>
+            {time && <p className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{time} PKT</p>}
+            <p className="text-sm tabular-nums" style={{ color: 'var(--text-primary)', fontWeight: 800 }}>
+              {hc.close.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </p>
+            <p className="text-[11px] tabular-nums" style={{ color: diff >= 0 ? '#16a34a' : '#dc2626', fontWeight: 700 }}>
+              {diff >= 0 ? '+' : ''}{diff.toFixed(2)} ({pct >= 0 ? '+' : ''}{pct.toFixed(2)}%) vs open
+            </p>
+          </div>
+        </>
+      )}
+    </div>
   )
 }
 
@@ -240,10 +299,10 @@ export default function DashboardClient() {
       <div className="card">
         <div className="flex items-center justify-between mb-3">
           <div>
-            <p className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+            <p className="text-sm font-bold uppercase tracking-wider" style={{ color: 'var(--text-primary)' }}>
               {activeIndex.label}
             </p>
-            <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Intraday · Today</p>
+            <p className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Intraday · Today</p>
           </div>
           {(() => {
             const d = indexData(activeIndex.key)
@@ -293,7 +352,7 @@ export default function DashboardClient() {
           {/* Search */}
           <div className="relative sm:ml-auto w-full sm:w-52">
             <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
-              style={{ color: 'var(--text-muted)' }} />
+              style={{ color: 'var(--text-secondary)' }} />
             <input type="text" value={search} onChange={e => setSearch(e.target.value)}
               placeholder={`Search ${activeIndex.label}…`}
               className="w-full rounded-lg pl-8 pr-3 py-1.5 text-xs border focus:outline-none"
@@ -302,7 +361,7 @@ export default function DashboardClient() {
         </div>
 
         {!qtLoading && (
-          <p className="text-[10px] px-3 sm:px-4 pt-2" style={{ color: 'var(--text-muted)' }}>
+          <p className="text-xs font-medium px-3 sm:px-4 pt-2" style={{ color: 'var(--text-secondary)' }}>
             {filtered.length} symbols · {activeIndex.label}
             {totalPages > 1 && ` · p${page}/${totalPages}`}
           </p>
@@ -319,7 +378,7 @@ export default function DashboardClient() {
                   return (
                     <th key={col} onClick={() => handleSort(col)}
                         className={`text-left py-2 px-2 sm:px-3 text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap cursor-pointer select-none hover:opacity-80 transition-opacity${mobileHide ? ' hidden sm:table-cell' : ''}`}
-                        style={{ color: active ? '#FEA500' : 'var(--text-muted)' }}>
+                        style={{ color: active ? '#FEA500' : 'var(--text-secondary)' }}>
                       <span className="flex items-center gap-0.5">{label} <Icon size={9} /></span>
                     </th>
                   )
@@ -339,7 +398,7 @@ export default function DashboardClient() {
                 ))
               ) : pageData.length === 0 ? (
                 <tr>
-                  <td colSpan={TABLE_COLS.length} className="text-center py-10 text-xs" style={{ color: 'var(--text-muted)' }}>
+                  <td colSpan={TABLE_COLS.length} className="text-center py-10 text-xs" style={{ color: 'var(--text-secondary)' }}>
                     {search ? `No results for "${search}"` : `No ${tab === 'gainers' ? 'gaining' : tab === 'losers' ? 'losing' : ''} stocks today`}
                   </td>
                 </tr>
@@ -360,7 +419,7 @@ export default function DashboardClient() {
                         {isKMI(q.indexKeys, q.symbol) && <KMIBadge />}
                       </div>
                       {/* Name shown below symbol on mobile */}
-                      <p className="sm:hidden text-[10px] truncate max-w-[90px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                      <p className="sm:hidden text-[10px] truncate max-w-[90px] mt-0.5" style={{ color: 'var(--text-secondary)' }}>
                         {q.name}
                       </p>
                     </td>
@@ -418,7 +477,7 @@ export default function DashboardClient() {
                 else if (i === 0) pg = 1
                 else if (i === 4) pg = totalPages
                 else { const mid = Math.min(Math.max(page, 2), totalPages - 1); pg = mid - 1 + i; if (pg <= 1 || pg >= totalPages) pg = null }
-                if (!pg) return <span key={i} className="px-1 text-xs self-center" style={{ color: 'var(--text-muted)' }}>…</span>
+                if (!pg) return <span key={i} className="px-1 text-xs self-center" style={{ color: 'var(--text-secondary)' }}>…</span>
                 return (
                   <button key={pg} onClick={() => setPage(pg!)}
                     className="w-7 h-7 rounded-md text-xs font-semibold transition-colors"
