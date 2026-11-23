@@ -1,7 +1,8 @@
 'use client'
 
 import { useRef, useEffect, useState } from 'react'
-import { TrendingDown, TrendingUp } from 'lucide-react'
+import { TrendingDown, TrendingUp, Building2, Scale, Coins, Layers, Users, CalendarDays, BadgeDollarSign,
+  ShieldCheck, FileText, MapPin, Globe, Package, Gauge, Factory } from 'lucide-react'
 import { SectionHeading } from '../stock-detail-helpers'
 import { formatPrice, formatChange, formatPercent, formatVolume } from '@/lib/utils/format'
 import type { Overview, StatementData, ProfileData } from '../stock-detail-types'
@@ -218,17 +219,6 @@ export function StockOverviewTab({ symbol, overview, overviewLoad, snapFunds, sn
     { label: 'PEG Ratio',          key: 'peg',          value: fmtSnap('peg',          snap.peg)          },
   ]
 
-  const SnapCell = ({ label, value, loading = false }: { label: string; value: string; loading?: boolean }) => (
-    <div className="flex flex-col gap-1 px-4 py-3"
-      style={{ borderRight: '1px solid var(--bg-border)', borderBottom: '1px solid var(--bg-border)' }}>
-      <p className="text-[10px] font-semibold uppercase tracking-wider leading-none" style={{ color: 'var(--text-muted)' }}>{label}</p>
-      {loading
-        ? <div className="h-4 w-16 rounded animate-pulse mt-0.5" style={{ backgroundColor: 'var(--bg-hover)' }} />
-        : <p className="text-sm font-bold font-number leading-none mt-0.5" style={{ color: 'var(--text-primary)' }}>{value}</p>
-      }
-    </div>
-  )
-
   /* ── About the company ── */
   const ov         = profile?.overview
   const leg        = profile?.profile?.data
@@ -255,179 +245,275 @@ export function StockOverviewTab({ symbol, overview, overviewLoad, snapFunds, sn
   return (
     <div className="space-y-4">
       {/* Price card */}
-      <div className="card">
-        <div className="flex items-end gap-4 mb-4">
+      {(() => {
+        const price = Number(overview.price), lo = Number(overview.low), hi = Number(overview.high)
+        const lo52 = Number(overview.low52), hi52 = Number(overview.high52)
+        const pos = (v: number, a: number, b: number) => (b > a ? Math.min(100, Math.max(0, ((v - a) / (b - a)) * 100)) : 50)
+        const dir = isUp ? '#16a34a' : '#dc2626'
+        const bid = Number(overview.bidPrice), ask = Number(overview.askPrice)
+        const spread = bid > 0 && ask > 0 ? ask - bid : null
+        const Range = ({ label, a, b, v }: { label: string; a: number; b: number; v: number }) => (
           <div>
-            <p className="text-3xl sm:text-4xl font-black font-number" style={{ color: 'var(--text-primary)' }}>
-              {formatPrice(Number(overview.price))}
-            </p>
-            <p className={`text-sm sm:text-base font-semibold font-number mt-1 ${isUp ? 'text-green-600' : 'text-red-500'}`}>
-              {isUp ? <TrendingUp size={14} className="inline mr-1" /> : <TrendingDown size={14} className="inline mr-1" />}
-              {formatChange(Number(overview.change))} ({formatPercent(Number(overview.changePct))})
-            </p>
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>{label}</span>
+              <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{pos(v, a, b).toFixed(0)}% of range</span>
+            </div>
+            <div className="relative h-2 rounded-full" style={{ background: 'linear-gradient(90deg, rgba(220,38,38,0.35), rgba(148,163,184,0.25), rgba(22,163,74,0.35))' }}>
+              <span className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full"
+                style={{ left: `${pos(v, a, b)}%`, background: '#FEA500', border: '2px solid var(--bg-card)', boxShadow: '0 0 0 2px rgba(254,165,0,0.35)' }} />
+            </div>
+            <div className="flex justify-between mt-1.5 text-xs font-bold font-number tabular-nums" style={{ color: 'var(--text-primary)' }}>
+              <span>{formatPrice(a)}</span><span>{formatPrice(b)}</span>
+            </div>
           </div>
-        </div>
-        <div className="grid grid-cols-4 sm:grid-cols-8 gap-4 pt-4" style={{ borderTop: '1px solid var(--bg-border)' }}>
-          <Stat label="Open"     value={formatPrice(Number(overview.open))} />
-          <Stat label="High"     value={formatPrice(Number(overview.high))} />
-          <Stat label="Low"      value={formatPrice(Number(overview.low))} />
-          <Stat label="Volume"   value={formatVolume(Number(overview.volume))} />
-          <Stat label="52W High" value={formatPrice(Number(overview.high52))} />
-          <Stat label="52W Low"  value={formatPrice(Number(overview.low52))} />
-          {overview.bidPrice > 0 && <Stat label="Bid" value={formatPrice(overview.bidPrice)} />}
-          {overview.askPrice > 0 && <Stat label="Ask" value={formatPrice(overview.askPrice)} />}
-        </div>
-      </div>
+        )
+        return (
+          <div className="card grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
+            {/* Price + change */}
+            <div className="flex flex-col justify-between gap-5">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Last price</p>
+                <p className="text-4xl sm:text-[44px] font-black font-number tabular-nums leading-tight mt-1" style={{ color: 'var(--text-primary)' }}>
+                  {formatPrice(price)}
+                </p>
+                <span className="inline-flex items-center gap-1.5 mt-2 px-3 py-1 rounded-full text-sm font-bold font-number"
+                  style={{ color: dir, background: isUp ? 'rgba(22,163,74,0.12)' : 'rgba(220,38,38,0.12)' }}>
+                  {isUp ? <TrendingUp size={15} /> : <TrendingDown size={15} />}
+                  {formatChange(Number(overview.change))} ({formatPercent(Number(overview.changePct))})
+                </span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {[
+                  { l: 'Open',   v: formatPrice(Number(overview.open)) },
+                  { l: 'Volume', v: formatVolume(Number(overview.volume)) },
+                  { l: 'Bid',    v: bid > 0 ? formatPrice(bid) : '—' },
+                  { l: 'Ask',    v: ask > 0 ? formatPrice(ask) : '—' },
+                ].map(x => (
+                  <div key={x.l} className="rounded-lg px-3 py-2" style={{ background: 'var(--bg-hover)', border: '1px solid var(--bg-border)' }}>
+                    <p className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{x.l}</p>
+                    <p className="text-sm font-bold font-number tabular-nums mt-0.5" style={{ color: 'var(--text-primary)' }}>{x.v}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {/* Ranges */}
+            <div className="flex flex-col justify-center gap-5 lg:pl-6 lg:border-l" style={{ borderColor: 'var(--bg-border)' }}>
+              <Range label="Today&apos;s range" a={lo} b={hi} v={price} />
+              <Range label="52-week range" a={lo52} b={hi52} v={price} />
+              {spread != null && (
+                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                  Bid–ask spread <b className="font-number" style={{ color: 'var(--text-primary)' }}>{formatPrice(spread)}</b>
+                  {price > 0 && <> · {((spread / price) * 100).toFixed(2)}% of price</>}
+                </p>
+              )}
+            </div>
+          </div>
+        )
+      })()}
 
-      {/* Company Snapshot */}
+      {/* Company Snapshot — grouped */}
       <div className="card">
         <SectionHeading>Company Snapshot</SectionHeading>
-        <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--bg-border)' }}>
-          <div className="px-4 py-2" style={{ backgroundColor: 'var(--bg-hover)', borderBottom: '1px solid var(--bg-border)' }}>
-            <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--brand)' }}>Company Info</span>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
-            {fundRows.map(r => <SnapCell key={r.label} label={r.label} value={r.value} loading={snapLoad} />)}
-          </div>
+        <div className="grid gap-3 md:grid-cols-3">
+          {[
+            { title: 'Size & float',        icon: Building2, accent: '#3b82f6', keys: ['mktCap', 'sharesOut', 'freeFloat', 'freeFloatPct'] },
+            { title: 'Valuation',           icon: Scale,     accent: '#8b5cf6', keys: ['pe', 'pb', 'peg', 'divYield'] },
+            { title: 'Earnings & activity', icon: Coins,     accent: '#10b981', keys: ['eps', 'netMargin', 'lastDayVol'] },
+          ].map(g => (
+            <div key={g.title} className="rounded-xl overflow-hidden"
+              style={{ background: `linear-gradient(160deg, ${g.accent}14, transparent 55%)`, border: `1px solid ${g.accent}38` }}>
+              <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: '1px solid var(--bg-border)' }}>
+                <span className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: `${g.accent}26`, color: g.accent }}>
+                  <g.icon size={14} />
+                </span>
+                <span className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{g.title}</span>
+              </div>
+              <dl>
+                {g.keys.map((k, i) => {
+                  const r = fundRows.find(f => f.key === k)!
+                  return (
+                    <div key={k} className="flex items-center justify-between gap-3 px-4 py-2.5" style={{ borderTop: i ? '1px solid var(--bg-border)' : 'none' }}>
+                      <dt className="text-[13px]" style={{ color: 'var(--text-secondary)' }}>{r.label}</dt>
+                      {snapLoad
+                        ? <div className="h-4 w-16 rounded animate-pulse" style={{ backgroundColor: 'var(--bg-hover)' }} />
+                        : <dd className="text-[15px] font-bold font-number tabular-nums" style={{ color: r.value === '-' ? 'var(--text-secondary)' : 'var(--text-primary)' }}>{r.value === '-' ? '—' : r.value}</dd>}
+                    </div>
+                  )
+                })}
+              </dl>
+            </div>
+          ))}
         </div>
       </div>
 
       {/* About the Company */}
-      <div className="card space-y-4">
+      <div className="card space-y-5">
         <SectionHeading>About the Company</SectionHeading>
         {profLoad ? (
           <div className="h-20 rounded animate-pulse" style={{ backgroundColor: 'var(--bg-hover)' }} />
         ) : !description && !auditor && !people.length ? (
-          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Company profile not available.</p>
-        ) : (
-          <div className="space-y-4">
-            {description && (
-              <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{description}</p>
-            )}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {sectorName && (
-                <div className="rounded-xl p-3" style={{ backgroundColor: 'var(--bg-hover)' }}>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>Sector</p>
-                  <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{sectorName}</p>
+          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Company profile not available.</p>
+        ) : (() => {
+          const details = [
+            sectorName       && { icon: Layers,    label: 'Sector',     value: <span className="capitalize">{String(sectorName).toLowerCase()}</span> },
+            employees !== null && { icon: Users,   label: 'Employees',  value: employees.toLocaleString() },
+            yearEnd          && { icon: CalendarDays, label: 'Financial year end', value: yearEnd },
+            parValue !== null && { icon: BadgeDollarSign, label: 'Face value', value: `Rs. ${parValue}` },
+            auditor          && { icon: ShieldCheck, label: 'Auditor',  value: auditor },
+            registrar        && { icon: FileText,  label: 'Registrar',  value: registrar },
+            address          && { icon: MapPin,    label: 'Head office', value: address },
+            website          && { icon: Globe,     label: 'Website', value: (
+              <a href={website.startsWith('http') ? website : `https://${website}`} target="_blank" rel="noopener noreferrer"
+                className="hover:underline" style={{ color: '#FEA500' }}>{website.replace(/^https?:\/\//, '')}</a>) },
+          ].filter(Boolean) as { icon: typeof Users; label: string; value: React.ReactNode }[]
+
+          const LEAD = /(chief executive|\bceo\b|managing director|chief financial|\bcfo\b|chair|company secretary|secretary)/i
+          const leaders   = people.filter(p => LEAD.test(p.position))
+          const directors = people.filter(p => !LEAD.test(p.position))
+          const initials  = (n: string) => n.replace(/\b(Lt\.?|Gen\.?|Brig\.?|Maj\.?|Capt\.?|Mr\.?|Mrs\.?|Ms\.?|Dr\.?|Syed|\(.*?\))\s*/gi, '')
+            .split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase() || n[0]
+          const Label = ({ children }: { children: React.ReactNode }) => (
+            <p className="text-xs font-bold uppercase tracking-wider mb-2.5" style={{ color: 'var(--text-primary)' }}>{children}</p>
+          )
+
+          return (
+            <div className="space-y-6">
+              {description && (
+                <p className="text-[15px] leading-relaxed" style={{ color: 'var(--text-primary)', opacity: 0.85 }}>{description}</p>
+              )}
+
+              {/* Company details */}
+              {details.length > 0 && (
+                <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--bg-border)' }}>
+                  <dl className="grid md:grid-cols-2">
+                    {details.map((d, i) => (
+                      <div key={d.label}
+                        className={`flex items-start gap-3 px-4 py-3 ${i === 0 ? '' : i === 1 ? 'border-t md:border-t-0' : 'border-t'}`}
+                        style={{ borderColor: 'var(--bg-border)' }}>
+                        <span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                          style={{ background: 'rgba(254,165,0,0.12)', color: '#FEA500' }}>
+                          <d.icon size={15} />
+                        </span>
+                        <div className="min-w-0">
+                          <dt className="text-xs" style={{ color: 'var(--text-secondary)' }}>{d.label}</dt>
+                          <dd className="text-sm font-semibold mt-0.5 break-words" style={{ color: 'var(--text-primary)' }}>{d.value}</dd>
+                        </div>
+                      </div>
+                    ))}
+                  </dl>
                 </div>
               )}
-              {auditor && (
-                <div className="rounded-xl p-3" style={{ backgroundColor: 'var(--bg-hover)' }}>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>Auditor</p>
-                  <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{auditor}</p>
+
+              {/* Production capacity */}
+              {(capacity.length > 0 || capacityUtil.length > 0) && (
+                <div>
+                  <Label>Production capacity</Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {capacity.map((c: string, i: number) => (
+                      <div key={`c${i}`} className="flex items-center gap-3 rounded-xl px-4 py-3"
+                        style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.12), transparent)', border: '1px solid rgba(59,130,246,0.3)' }}>
+                        <span className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'rgba(59,130,246,0.18)', color: '#3b82f6' }}>
+                          <Package size={17} />
+                        </span>
+                        <div>
+                          <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Installed capacity</p>
+                          <p className="text-base font-bold font-number" style={{ color: 'var(--text-primary)' }}>{c}</p>
+                        </div>
+                      </div>
+                    ))}
+                    {capacityUtil.map((c: string, i: number) => (
+                      <div key={`u${i}`} className="flex items-center gap-3 rounded-xl px-4 py-3"
+                        style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.12), transparent)', border: '1px solid rgba(16,185,129,0.3)' }}>
+                        <span className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'rgba(16,185,129,0.18)', color: '#10b981' }}>
+                          <Gauge size={17} />
+                        </span>
+                        <div>
+                          <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Capacity utilization</p>
+                          <p className="text-base font-bold font-number" style={{ color: 'var(--text-primary)' }}>{c}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
-              {registrar && (
-                <div className="rounded-xl p-3" style={{ backgroundColor: 'var(--bg-hover)' }}>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>Registrar</p>
-                  <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{registrar}</p>
+
+              {/* Leadership */}
+              {leaders.length > 0 && (
+                <div>
+                  <Label>Leadership</Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+                    {leaders.map((p, i) => (
+                      <div key={i} className="flex items-center gap-3 rounded-xl p-3.5"
+                        style={{ background: 'linear-gradient(135deg, rgba(254,165,0,0.12), transparent)', border: '1px solid rgba(254,165,0,0.3)' }}>
+                        <span className="w-11 h-11 rounded-full flex items-center justify-center shrink-0 text-white text-sm font-bold"
+                          style={{ background: 'linear-gradient(135deg,#FEA500,#986300)' }}>
+                          {initials(p.name)}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold leading-snug" style={{ color: 'var(--text-primary)' }}>{p.name}</p>
+                          <p className="text-xs font-semibold mt-0.5" style={{ color: '#FEA500' }}>{p.position}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
-              {address && (
-                <div className="rounded-xl p-3 sm:col-span-2 lg:col-span-2" style={{ backgroundColor: 'var(--bg-hover)' }}>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>Address</p>
-                  <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{address}</p>
+
+              {/* Board of directors */}
+              {directors.length > 0 && (
+                <div>
+                  <Label>Board of directors <span className="font-semibold normal-case tracking-normal" style={{ color: 'var(--text-secondary)' }}>· {directors.length}</span></Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                    {directors.map((p, i) => (
+                      <div key={i} className="flex items-center gap-3 rounded-lg px-3 py-2.5"
+                        style={{ background: 'var(--bg-hover)', border: '1px solid var(--bg-border)' }}>
+                        <span className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-[11px] font-bold"
+                          style={{ background: 'rgba(148,163,184,0.18)', color: 'var(--text-primary)' }}>
+                          {initials(p.name)}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="text-[13px] font-semibold truncate" style={{ color: 'var(--text-primary)' }} title={p.name}>{p.name}</p>
+                          <p className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>{p.position}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
-              {employees !== null && (
-                <div className="rounded-xl p-3" style={{ backgroundColor: 'var(--bg-hover)' }}>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>Employees</p>
-                  <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{employees.toLocaleString()}</p>
+
+              {/* Factories */}
+              {factories.length > 0 && (
+                <div>
+                  <Label>Factories &amp; plants</Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {factories.map((f: string, i: number) => (
+                      <div key={i} className="flex items-start gap-3 rounded-lg px-3 py-2.5"
+                        style={{ background: 'var(--bg-hover)', border: '1px solid var(--bg-border)' }}>
+                        <Factory size={15} className="shrink-0 mt-0.5" style={{ color: '#FEA500' }} />
+                        <span className="text-[13px]" style={{ color: 'var(--text-primary)' }}>{f}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
-              {website && (
-                <div className="rounded-xl p-3" style={{ backgroundColor: 'var(--bg-hover)' }}>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>Website</p>
-                  <a href={website.startsWith('http') ? website : `https://${website}`}
-                     target="_blank" rel="noopener noreferrer"
-                     className="text-sm font-semibold hover:underline" style={{ color: '#FEA500' }}>
-                    {website.replace(/^https?:\/\//, '')}
-                  </a>
-                </div>
-              )}
-              {yearEnd && (
-                <div className="rounded-xl p-3" style={{ backgroundColor: 'var(--bg-hover)' }}>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>Year End</p>
-                  <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{yearEnd}</p>
-                </div>
-              )}
-              {parValue !== null && (
-                <div className="rounded-xl p-3" style={{ backgroundColor: 'var(--bg-hover)' }}>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>Face Value</p>
-                  <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Rs. {parValue}</p>
+
+              {/* Associated companies */}
+              {associated.length > 0 && (
+                <div>
+                  <Label>Associated companies</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {associated.map((x: string, i: number) => (
+                      <span key={i} className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full"
+                        style={{ background: 'var(--bg-hover)', color: 'var(--text-primary)', border: '1px solid var(--bg-border)' }}>
+                        <Building2 size={12} style={{ color: '#FEA500' }} /> {x}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
-
-            {(capacity.length > 0 || capacityUtil.length > 0) && (
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>Production Capacity</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {capacity.map((c: string, i: number) => (
-                    <div key={i} className="flex items-start gap-2 text-xs rounded-lg px-3 py-2"
-                         style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-secondary)' }}>
-                      <span className="mt-0.5 shrink-0">📦</span>{c}
-                    </div>
-                  ))}
-                  {capacityUtil.map((c: string, i: number) => (
-                    <div key={i} className="flex items-start gap-2 text-xs rounded-lg px-3 py-2"
-                         style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-secondary)' }}>
-                      <span className="mt-0.5 shrink-0">⚙️</span>Utilization: {c}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {people.length > 0 && (
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>Key People</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                  {people.map((p, i) => (
-                    <div key={i} className="flex items-center gap-2 p-2 rounded-lg" style={{ backgroundColor: 'var(--bg-hover)' }}>
-                      <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-white text-[10px] font-bold"
-                           style={{ background: 'linear-gradient(135deg,#FEA500,#986300)' }}>
-                        {p.name.charAt(0)}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-xs font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{p.name}</p>
-                        <p className="text-[9px]" style={{ color: 'var(--text-muted)' }}>{p.position}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {factories.length > 0 && (
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>Factories / Plants</p>
-                <div className="flex flex-col gap-1.5">
-                  {factories.map((f: string, i: number) => (
-                    <div key={i} className="flex items-start gap-2 text-xs rounded-lg px-3 py-2"
-                         style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-secondary)' }}>
-                      <span className="mt-0.5 shrink-0 text-[10px]">🏭</span>{f}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {associated.length > 0 && (
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>Associated Companies</p>
-                <div className="flex flex-wrap gap-2">
-                  {associated.map((a: string, i: number) => (
-                    <span key={i} className="text-[11px] font-medium px-2.5 py-1 rounded-full"
-                          style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-secondary)', border: '1px solid var(--bg-border)' }}>
-                      {a}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+          )
+        })()}
       </div>
     </div>
   )

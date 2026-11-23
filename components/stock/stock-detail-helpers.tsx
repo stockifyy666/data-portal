@@ -3,7 +3,7 @@
 export function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
     <h3 className="text-xs font-bold uppercase tracking-wider mb-3"
-        style={{ color: 'var(--text-muted)' }}>
+        style={{ color: 'var(--text-primary)' }}>
       {children}
     </h3>
   )

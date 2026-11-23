@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { Building2, Landmark, Users, Crown, TrendingUp, TrendingDown, Minus } from 'lucide-react'
 
 type StatementData = {
@@ -48,72 +48,6 @@ function ChangePill({ now, prev }: { now: number | null; prev: number | null }) 
   )
 }
 
-/* ── Sparkline ── */
-function Sparkline({ values, color }: { values: (number | null)[]; color: string }) {
-  const nums = values.filter((v): v is number => v != null).slice(0, 6).reverse()
-  if (nums.length < 2) return <span style={{ width: 56 }} />
-  const min = Math.min(...nums), max = Math.max(...nums), range = max - min || 1
-  const W = 56, H = 22
-  const pts = nums.map((v, i) => [(i / (nums.length - 1)) * W, H - ((v - min) / range) * (H - 4) - 2])
-  const line = pts.map(p => p.join(',')).join(' ')
-  const area = `0,${H} ${line} ${W},${H}`
-  const id = `sg-${color.replace('#', '')}`
-  return (
-    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="shrink-0">
-      <defs>
-        <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.35" />
-          <stop offset="100%" stopColor={color} stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <polygon points={area} fill={`url(#${id})`} />
-      <polyline points={line} fill="none" stroke={color} strokeWidth="1.75" strokeLinejoin="round" strokeLinecap="round" />
-      <circle cx={pts.at(-1)![0]} cy={pts.at(-1)![1]} r="2.2" fill={color} />
-    </svg>
-  )
-}
-
-/* ── Donut ── */
-function Donut({ rows, active, onHover }: { rows: Row[]; active: string | null; onHover: (l: string | null) => void }) {
-  const S = 220, c = S / 2, R = 92, W = 26
-  const total = rows.reduce((s, r) => s + (r.values[0] ?? 0), 0) || 1
-  const circ = 2 * Math.PI * R
-  let acc = 0
-  const focus = rows.find(r => r.label === active) ?? rows[0]
-  return (
-    <div className="relative mx-auto" style={{ width: S, maxWidth: '100%' }}>
-      <svg viewBox={`0 0 ${S} ${S}`} className="w-full h-auto -rotate-90">
-        <circle cx={c} cy={c} r={R} fill="none" stroke="var(--bg-border)" strokeWidth={W} />
-        {rows.map(r => {
-          const frac = (r.values[0] ?? 0) / total
-          const len = Math.max(0, frac * circ - (rows.length > 1 ? 1.5 : 0))
-          const el = (
-            <circle key={r.label} cx={c} cy={c} r={R} fill="none" stroke={r.color}
-              strokeWidth={active === r.label ? W + 6 : W}
-              strokeDasharray={`${len} ${circ - len}`} strokeDashoffset={-acc * circ}
-              style={{ transition: 'stroke-width .2s, opacity .2s', cursor: 'pointer',
-                       opacity: active && active !== r.label ? 0.35 : 1 }}
-              onMouseEnter={() => onHover(r.label)} onMouseLeave={() => onHover(null)} />
-          )
-          acc += frac
-          return el
-        })}
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-10 pointer-events-none">
-        <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
-          {active ? 'Holding' : 'Largest holder'}
-        </span>
-        <span className="text-2xl font-black font-number tabular-nums mt-0.5" style={{ color: focus.color }}>
-          {pct(focus.values[0])}
-        </span>
-        <span className="text-[10px] font-semibold leading-tight mt-0.5 line-clamp-2" style={{ color: 'var(--text-secondary)' }}>
-          {focus.label}
-        </span>
-      </div>
-    </div>
-  )
-}
-
 /* ── KPI card ── */
 function Kpi({ icon: Icon, label, value, sub, accent }: {
   icon: typeof Users; label: string; value: string; sub: string; accent: string
@@ -129,77 +63,108 @@ function Kpi({ icon: Icon, label, value, sub, accent }: {
         <span className="text-[10px] font-bold uppercase tracking-wider truncate" style={{ color: 'var(--text-secondary)' }}>{label}</span>
       </div>
       <p className="text-xl font-black font-number tabular-nums mt-2 relative" style={{ color: 'var(--text-primary)' }}>{value}</p>
-      <p className="text-[10px] truncate relative" style={{ color: 'var(--text-muted)' }}>{sub}</p>
+      <p className="text-[11px] font-medium truncate relative mt-0.5" style={{ color: 'var(--text-secondary)' }}>{sub}</p>
     </div>
   )
 }
 
-/* ── Section table ── */
+/* ── History mini-chart: one bar per year, oldest → newest, value on top ── */
+function HistoryBars({ values, periods, color }: { values: (number | null)[]; periods: StatementData['periods']; color: string }) {
+  const pts = periods.map((p, i) => ({ year: p.year, v: values[i] ?? null })).reverse()   // oldest first
+  const max = Math.max(0.0001, ...pts.map(p => p.v ?? 0))
+  return (
+    <div className="flex items-end gap-2 h-[74px]">
+      {pts.map((p, i) => {
+        const latest = i === pts.length - 1
+        const h = p.v == null ? 0 : Math.max(3, (p.v / max) * 40)
+        return (
+          <div key={p.year + i} className="flex flex-col items-center justify-end h-full w-12">
+            <span className="text-[11px] font-number tabular-nums mb-1 whitespace-nowrap"
+              style={{ color: 'var(--text-primary)', fontWeight: latest ? 800 : 600 }}>
+              {p.v == null ? '—' : `${(p.v * 100).toFixed(1)}%`}
+            </span>
+            <div className="w-6 rounded-t" style={{
+              height: h, background: color, opacity: latest ? 1 : 0.45,
+            }} />
+            <span className="text-[11px] mt-1" style={{ color: latest ? 'var(--text-primary)' : 'var(--text-secondary)', fontWeight: latest ? 700 : 500 }}>{p.year}</span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+/* ── Section: one card per category, one readable row per holder ── */
 function SectionTable({ section, rows, periods }: { section: Section; rows: Row[]; periods: StatementData['periods'] }) {
   const total = rows.reduce((s, r) => s + (r.values[0] ?? 0), 0)
-  const hist  = periods.slice(1)
-  const cols  = `minmax(200px,1fr) 64px 92px 84px${hist.map(() => ' 64px').join('')}`
+  const prevTotal = rows.reduce((s, r) => s + (r.values[1] ?? 0), 0)
   return (
     <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--bg-border)', background: 'var(--bg-card)' }}>
-      <div className="flex items-center justify-between gap-3 px-4 py-3"
+      {/* Header */}
+      <div className="flex items-center justify-between gap-3 px-5 py-3.5"
         style={{ background: `linear-gradient(90deg, ${section.accent}1a, transparent 70%)`, borderBottom: '1px solid var(--bg-border)' }}>
-        <div className="flex items-center gap-2.5 min-w-0">
-          <span className="w-1.5 h-8 rounded-full shrink-0" style={{ background: section.accent }} />
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="w-1.5 h-9 rounded-full shrink-0" style={{ background: section.accent }} />
           <div className="min-w-0">
-            <p className="text-sm font-bold truncate" style={{ color: 'var(--text-primary)' }}>{section.title}</p>
-            <p className="text-[10px] truncate" style={{ color: 'var(--text-muted)' }}>{section.subtitle} · {rows.length} {rows.length === 1 ? 'group' : 'groups'}</p>
+            <p className="text-[15px] font-bold truncate" style={{ color: 'var(--text-primary)' }}>{section.title}</p>
+            <p className="text-xs truncate" style={{ color: 'var(--text-secondary)' }}>
+              {section.subtitle} · {rows.length} {rows.length === 1 ? 'group' : 'groups'}
+            </p>
           </div>
         </div>
-        <div className="text-right shrink-0">
-          <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Total stake</p>
-          <p className="text-lg font-black font-number tabular-nums leading-tight" style={{ color: section.accent }}>{pct(total)}</p>
+        <div className="flex items-center gap-3 shrink-0">
+          <ChangePill now={total} prev={periods.length > 1 ? prevTotal : null} />
+          <div className="text-right">
+            <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Total stake</p>
+            <p className="text-xl font-black font-number tabular-nums leading-tight" style={{ color: section.accent }}>{pct(total)}</p>
+          </div>
         </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <div style={{ minWidth: 520 + hist.length * 64 }}>
-          <div className="grid text-[9px] font-bold uppercase tracking-wider px-4 py-2"
-            style={{ gridTemplateColumns: cols, color: 'var(--text-muted)', borderBottom: '1px solid var(--bg-border)' }}>
-            <span>Shareholder</span>
-            <span className="text-right">Trend</span>
-            <span className="text-right">{periods[0]?.year ?? 'Latest'}</span>
-            <span className="text-right">vs {hist[0]?.year ?? 'prev'}</span>
-            {hist.map(p => <span key={p.period_end} className="text-right">{p.year}</span>)}
-          </div>
-          {rows.map((r, i) => (
-            <div key={r.label} className="grid items-center px-4 py-3 transition-colors"
-              style={{ gridTemplateColumns: cols, borderBottom: i === rows.length - 1 ? 'none' : '1px solid var(--bg-border)' }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-hover)')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-              <div className="min-w-0 pr-4">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-[3px] shrink-0" style={{ background: r.color }} />
-                  <p className="text-xs font-semibold truncate" style={{ color: 'var(--text-primary)' }} title={r.label}>{r.label}</p>
-                </div>
-                <div className="mt-1.5 ml-[18px] h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--bg-border)' }}>
+      {/* Holders */}
+      {rows.map((r, i) => {
+        const now = r.values[0] ?? null
+        return (
+          <div key={r.label}
+            className="grid items-center gap-x-6 gap-y-3 px-5 py-4 md:grid-cols-[minmax(0,1fr)_auto_auto]"
+            style={{ borderTop: i ? '1px solid var(--bg-border)' : 'none' }}>
+            {/* Name + share bar */}
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-[3px] shrink-0" style={{ background: r.color }} />
+                <p className="text-[13px] font-semibold leading-snug" style={{ color: 'var(--text-primary)' }}>{r.label}</p>
+              </div>
+              <div className="mt-2 ml-[18px] flex items-center gap-2 max-w-md">
+                <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: 'var(--bg-border)' }}>
                   <div className="h-full rounded-full" style={{
-                    width: `${Math.max(1.5, Math.min(100, (r.values[0] ?? 0) * 100))}%`,
+                    width: `${Math.max(1.5, Math.min(100, (now ?? 0) * 100))}%`,
                     background: `linear-gradient(90deg, ${r.color}99, ${r.color})`, transition: 'width .6s' }} />
                 </div>
+                <span className="text-[11px] font-medium shrink-0" style={{ color: 'var(--text-secondary)' }}>of company</span>
               </div>
-              <div className="flex justify-end"><Sparkline values={r.values} color={r.color} /></div>
-              <span className="text-right text-sm font-black font-number tabular-nums" style={{ color: 'var(--text-primary)' }}>{pct(r.values[0])}</span>
-              <span className="flex justify-end"><ChangePill now={r.values[0] ?? null} prev={r.values[1] ?? null} /></span>
-              {hist.map((p, j) => (
-                <span key={p.period_end} className="text-right text-[11px] font-number tabular-nums" style={{ color: 'var(--text-secondary)' }}>
-                  {pct(r.values[j + 1])}
-                </span>
-              ))}
             </div>
-          ))}
-        </div>
-      </div>
+
+            {/* Current holding + change */}
+            <div className="flex md:flex-col items-center md:items-end gap-2 md:gap-1 md:w-28">
+              <span className="text-2xl font-black font-number tabular-nums leading-none" style={{ color: 'var(--text-primary)' }}>{pct(now)}</span>
+              <span className="flex items-center gap-1.5">
+                <ChangePill now={now} prev={r.values[1] ?? null} />
+              </span>
+              {periods[1] && <span className="text-[11px] font-medium" style={{ color: 'var(--text-secondary)' }}>vs {periods[1].year}</span>}
+            </div>
+
+            {/* History */}
+            <div className="overflow-x-auto">
+              <HistoryBars values={r.values} periods={periods} color={r.color} />
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }
 
 export function ShareholdersView({ data }: { data: StatementData }) {
-  const [hover, setHover] = useState<string | null>(null)
   const periods = data.periods.slice(0, 5)
 
   // Rows sorted by latest holding; each gets one colour used everywhere
@@ -250,39 +215,6 @@ export function ShareholdersView({ data }: { data: StatementData }) {
         <Kpi icon={Building2} label="Promoters"        value={pct(stake('Corporate & Promoters'))} sub="Associated companies & sponsors" accent="#f97316" />
         <Kpi icon={Landmark}  label="Institutional"    value={pct(stake('Institutional') + stake('Government & State'))} sub="Banks, funds, DFIs & state" accent="#10b981" />
         <Kpi icon={Users}     label="Retail & Foreign" value={pct(stake('Retail & Local') + stake('Foreign'))}           sub="Individuals & foreign investors" accent="#06b6d4" />
-      </div>
-
-      {/* Donut + ranked holders */}
-      <div className="grid gap-6 lg:grid-cols-[240px_1fr] items-center rounded-2xl p-4 sm:p-5"
-        style={{ border: '1px solid var(--bg-border)', background: 'var(--bg-card)' }}>
-        <Donut rows={rows} active={hover} onHover={setHover} />
-        <div className="min-w-0 space-y-2.5">
-          <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
-            Ownership breakdown · {periods[0]?.year}
-          </p>
-          {rows.map(r => {
-            const on = hover === r.label
-            return (
-              <div key={r.label} className="cursor-default rounded-lg px-2 py-1.5 -mx-2 transition-colors"
-                style={{ background: on ? 'var(--bg-hover)' : 'transparent', opacity: hover && !on ? 0.55 : 1 }}
-                onMouseEnter={() => setHover(r.label)} onMouseLeave={() => setHover(null)}>
-                <div className="flex items-center gap-2.5">
-                  <span className="w-2.5 h-2.5 rounded-[3px] shrink-0" style={{ background: r.color }} />
-                  <span className="text-xs font-semibold truncate flex-1" style={{ color: 'var(--text-primary)' }} title={r.label}>{r.label}</span>
-                  <ChangePill now={r.values[0] ?? null} prev={r.values[1] ?? null} />
-                  <span className="text-xs font-black font-number tabular-nums w-14 text-right" style={{ color: 'var(--text-primary)' }}>
-                    {pct(r.values[0])}
-                  </span>
-                </div>
-                <div className="mt-1.5 ml-5 h-2 rounded-full overflow-hidden" style={{ background: 'var(--bg-border)' }}>
-                  <div className="h-full rounded-full" style={{
-                    width: `${Math.max(1, ((r.values[0] ?? 0) / (lead || 1)) * 100)}%`,
-                    background: `linear-gradient(90deg, ${r.color}88, ${r.color})`, transition: 'width .6s' }} />
-                </div>
-              </div>
-            )
-          })}
-        </div>
       </div>
 
       {/* Category tables */}

@@ -2,6 +2,7 @@
 
 import React from 'react'
 import SymbolLogo from '@/components/ui/SymbolLogo'
+import { Scale, HandCoins, TrendingUp, Coins } from 'lucide-react'
 import type { Overview, StatementData } from '../stock-detail-types'
 
 type PeerData = {
@@ -57,7 +58,7 @@ function PremiumCard({ label, entries, getValue, fmt, lowerBetter = false }: {
       <div className="flex items-center justify-between px-4 py-2.5"
         style={{ background: 'var(--bg-hover)', borderBottom: '1px solid var(--bg-border)' }}>
         <div className="flex items-center gap-2">
-          <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{label}</span>
+          <span className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-primary)' }}>{label}</span>
           {selfVal != null && (
             <span className="text-xs font-bold" style={{ color: '#FEA500' }}>{fmt(selfVal)}</span>
           )}
@@ -93,7 +94,7 @@ function PremiumCard({ label, entries, getValue, fmt, lowerBetter = false }: {
               <div style={{ width: 20, flexShrink: 0, textAlign: 'center', position: 'relative', zIndex: 1 }}>
                 {i < 3
                   ? <span style={{ fontSize: 11 }}>{MEDALS[i]}</span>
-                  : <span style={{ fontSize: 9, color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{i + 1}</span>
+                  : <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>{i + 1}</span>
                 }
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 5, width: 72, flexShrink: 0, position: 'relative', zIndex: 1 }}>
@@ -134,7 +135,7 @@ export function StockPeersTab({ symbol, overview, snapFunds, peers, peersLoad }:
   }
 
   if (peers.length === 0) {
-    return <div className="card text-sm py-8 text-center" style={{ color: 'var(--text-muted)' }}>No peer data available.</div>
+    return <div className="card text-sm py-8 text-center" style={{ color: 'var(--text-secondary)' }}>No peer data available.</div>
   }
 
   const selfPrice = overview?.price ?? 0
@@ -186,20 +187,51 @@ export function StockPeersTab({ symbol, overview, snapFunds, peers, peersLoad }:
 
   return (
     <div className="space-y-4">
-      {/* KPI Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      {/* KPI Summary Cards — styled like the Shareholders summary cards */}
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
         {[
-          { label: 'P / E',          val: selfPe    != null ? selfPe.toFixed(1)         : '—', sub: sectorPe   ? `Sector ${sectorPe.toFixed(1)} · ${validPe.length} profitable`    : 'Sector avg n/a', pos: true },
-          { label: 'Dividend Yield', val: selfDivY  != null ? `${selfDivY.toFixed(2)}%`  : '—', sub: sectorDivY ? `Sector ${sectorDivY.toFixed(2)}% · ${validDivY.length} payers`   : 'Sector avg n/a', pos: true },
-          { label: 'ROE',            val: selfRoe   != null ? `${selfRoe.toFixed(2)}%`   : '—', sub: sectorRoe  ? `Sector ${sectorRoe.toFixed(2)}% · ${validRoe.length} companies`  : 'Sector avg n/a', pos: (selfRoe ?? 0) >= 0 },
-          { label: 'EPS',            val: selfEps   != null ? `Rs ${selfEps.toFixed(2)}` : '—', sub: sectorEps  ? `Sector avg Rs ${sectorEps.toFixed(2)}`                           : 'Sector avg n/a', pos: (selfEps ?? 0) >= 0 },
-        ].map(c => (
-          <div key={c.label} className="card" style={{ background: 'rgba(254,165,0,0.04)', border: '1px solid rgba(254,165,0,0.15)' }}>
-            <p className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>{c.label}</p>
-            <p className="text-lg font-bold" style={{ color: c.pos ? 'var(--text-primary)' : '#dc2626' }}>{c.val}</p>
-            <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{c.sub}</p>
-          </div>
-        ))}
+          { label: 'P / E',          icon: Scale,      accent: '#3b82f6', self: selfPe,   sector: sectorPe,   lowerIsBetter: true,
+            val: selfPe   != null ? selfPe.toFixed(1)          : '—', sub: sectorPe   ? `Sector ${sectorPe.toFixed(1)} · ${validPe.length} profitable`  : 'Sector avg n/a' },
+          { label: 'Dividend Yield', icon: HandCoins,  accent: '#8b5cf6', self: selfDivY, sector: sectorDivY, lowerIsBetter: false,
+            val: selfDivY != null ? `${selfDivY.toFixed(2)}%`  : '—', sub: sectorDivY ? `Sector ${sectorDivY.toFixed(2)}% · ${validDivY.length} payers` : 'Sector avg n/a' },
+          { label: 'ROE',            icon: TrendingUp, accent: '#10b981', self: selfRoe,  sector: sectorRoe,  lowerIsBetter: false,
+            val: selfRoe  != null ? `${selfRoe.toFixed(2)}%`   : '—', sub: sectorRoe  ? `Sector ${sectorRoe.toFixed(2)}% · ${validRoe.length} companies` : 'Sector avg n/a' },
+          { label: 'EPS',            icon: Coins,      accent: '#FEA500', self: selfEps,  sector: sectorEps,  lowerIsBetter: false,
+            val: selfEps  != null ? `Rs ${selfEps.toFixed(2)}` : '—', sub: sectorEps  ? `Sector avg Rs ${sectorEps.toFixed(2)}`                          : 'Sector avg n/a' },
+        ].map(c => {
+          const has   = c.self != null && c.sector != null && c.sector !== 0
+          const diff  = has ? ((c.self! - c.sector!) / Math.abs(c.sector!)) * 100 : null
+          const same  = diff != null && Math.abs(diff) < 0.5
+          const good  = diff != null && (c.lowerIsBetter ? diff < 0 : diff > 0)
+          const negVal = c.self != null && c.self < 0
+          return (
+            <div key={c.label} className="rounded-xl p-4 relative overflow-hidden min-w-0"
+              style={{ background: `linear-gradient(135deg, ${c.accent}1f, ${c.accent}08)`, border: `1px solid ${c.accent}40` }}>
+              <div className="absolute -top-5 -right-5 w-16 h-16 rounded-full" style={{ background: `${c.accent}22` }} />
+              <div className="flex items-center justify-between gap-2 relative">
+                <span className="flex items-center gap-1.5 min-w-0">
+                  <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${c.accent}2e`, color: c.accent }}>
+                    <c.icon size={14} strokeWidth={2.4} />
+                  </span>
+                  <span className="text-[11px] font-bold uppercase tracking-wider truncate" style={{ color: 'var(--text-primary)' }}>{c.label}</span>
+                </span>
+                {diff != null && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap"
+                    style={same
+                      ? { background: 'var(--bg-hover)', color: 'var(--text-secondary)' }
+                      : good
+                        ? { background: 'rgba(22,163,74,0.14)', color: '#16a34a' }
+                        : { background: 'rgba(220,38,38,0.14)', color: '#dc2626' }}>
+                    {same ? 'At sector' : `${diff > 0 ? '▲' : '▼'} ${Math.abs(diff) >= 999 ? '999+' : Math.abs(diff).toFixed(0)}% vs sector`}
+                  </span>
+                )}
+              </div>
+              <p className="text-2xl font-black font-number tabular-nums mt-3 relative truncate"
+                style={{ color: negVal ? '#dc2626' : 'var(--text-primary)' }}>{c.val}</p>
+              <p className="text-[11px] font-medium truncate relative mt-0.5" style={{ color: 'var(--text-secondary)' }}>{c.sub}</p>
+            </div>
+          )
+        })}
       </div>
 
       {/* Comparison card */}
@@ -210,7 +242,8 @@ export function StockPeersTab({ symbol, overview, snapFunds, peers, peersLoad }:
         <div className="space-y-5">
           <SectionGroup title="Price & Market">
             <PremiumCard label="Price"       entries={allEntries} getValue={e => e.price}    fmt={v => `Rs ${v.toFixed(0)}`} />
-            <PremiumCard label="Chg %"       entries={allEntries} getValue={e => e.changePct} fmt={v => `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`} />
+            {/* changePct is a fraction from Capital Stake (0.0123 = 1.23%) */}
+            <PremiumCard label="Chg %"       entries={allEntries} getValue={e => e.changePct} fmt={v => `${v >= 0 ? '+' : ''}${(v * 100).toFixed(2)}%`} />
             <PremiumCard label="Mkt Cap"     entries={allEntries} getValue={e => e.mc}        fmt={v => v >= 1e9 ? `${(v / 1e9).toFixed(1)}B` : `${(v / 1e6).toFixed(0)}M`} />
             <PremiumCard label="52W Position" entries={allEntries} getValue={e => e.pos52w}  fmt={v => `${v.toFixed(0)}%`} />
           </SectionGroup>

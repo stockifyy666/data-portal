@@ -55,7 +55,7 @@ export async function GET() {
       if (!q || q.close <= 0) continue
 
       const price     = q.close
-      const changePct = +q.change_percent.toFixed(2)
+      const changePct = q.change_percent   // fraction
 
       if (s.xd) events.push({ symbol: s.symbol, name: s.name, sector: s.sector ?? '', eventType: 'Dividend', dps: 0, price, changePct })
       if (s.xb) events.push({ symbol: s.symbol, name: s.name, sector: s.sector ?? '', eventType: 'Bonus',    dps: 0, price, changePct })
@@ -67,7 +67,7 @@ export async function GET() {
       .filter(s => s.status === 1 && (qMap.get(s.symbol)?.close ?? 0) > 0)
       .map(s => {
         const q = qMap.get(s.symbol)!
-        return { symbol: s.symbol, name: s.name, sector: s.sector ?? '', eventType: 'Dividend' as const, dps: 0, price: q.close, changePct: +q.change_percent.toFixed(2) }
+        return { symbol: s.symbol, name: s.name, sector: s.sector ?? '', eventType: 'Dividend' as const, dps: 0, price: q.close, changePct: q.change_percent }
       })
       .sort((a, b) => b.price - a.price)
       .slice(0, 30)

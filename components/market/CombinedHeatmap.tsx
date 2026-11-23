@@ -120,7 +120,7 @@ export default function CombinedHeatmap() {
 
   useEffect(() => {
     cachedFetch<{ quotes: StockQuote[] }>('/api/market/quotes', 5 * 60_000)
-      .then(json => { if (json.quotes) setQuotes(json.quotes) })
+      .then(json => { if (json.quotes) setQuotes(json.quotes.map(q => ({ ...q, changePct: q.changePct * 100 }))) })   // fraction -> %
       .catch(() => setError('Failed to load data'))
       .finally(() => setLoading(false))
   }, [])

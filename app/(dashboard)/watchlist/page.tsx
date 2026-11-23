@@ -180,7 +180,7 @@ export default function WatchlistPage() {
           {item.price > 0
             ? <span className="flex items-center gap-1">
                 {isUp ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
-                {isUp ? '+' : ''}{item.changePct.toFixed(2)}%
+                {isUp ? '+' : ''}{(item.changePct * 100).toFixed(2)}%
               </span>
             : '—'}
         </td>

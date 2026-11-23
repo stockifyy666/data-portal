@@ -216,7 +216,7 @@ export default function ScreenerPage() {
                       {q.price.toFixed(2)}
                     </p>
                     <p className="text-[11px] font-semibold font-number" style={{ color: up ? '#16a34a' : '#dc2626' }}>
-                      {up ? '+' : ''}{q.changePct.toFixed(2)}%
+                      {up ? '+' : ''}{(q.changePct * 100).toFixed(2)}%
                     </p>
                   </div>
                 </Link>
@@ -367,7 +367,7 @@ export default function ScreenerPage() {
                     <td className="py-2.5 px-2 font-number font-semibold"
                         style={{ color: 'var(--text-primary)' }}>{formatPrice(q.price)}</td>
                     <td className={`py-2.5 px-2 font-number font-semibold ${getChangeColor(q.changePct)}`}>
-                      {formatPercent(q.changePct / 100)}
+                      {formatPercent(q.changePct)}
                     </td>
                     <td className="py-2.5 px-2 font-number"
                         style={{ color: 'var(--text-secondary)' }}>{formatVolume(q.volume)}</td>

@@ -44,97 +44,55 @@ function timeAgo(dateStr: string): string {
 
 function SkeletonCard() {
   return (
-    <div className="rounded-2xl overflow-hidden animate-pulse"
-      style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--bg-border)' }}>
-      <div className="h-36 w-full" style={{ backgroundColor: 'var(--bg-hover)' }} />
-      <div className="p-4 space-y-2.5">
-        <div className="h-3 rounded-full w-4/5" style={{ backgroundColor: 'var(--bg-border)' }} />
-        <div className="h-3 rounded-full w-3/5" style={{ backgroundColor: 'var(--bg-border)' }} />
-        <div className="h-2.5 rounded-full w-2/5 mt-3" style={{ backgroundColor: 'var(--bg-border)' }} />
+    <div className="card !p-4 flex gap-4 animate-pulse">
+      <div className="w-28 h-20 sm:w-32 sm:h-[84px] rounded-lg shrink-0" style={{ backgroundColor: 'var(--bg-hover)' }} />
+      <div className="flex-1 space-y-2.5 py-1">
+        <div className="h-3.5 rounded-full w-11/12" style={{ backgroundColor: 'var(--bg-hover)' }} />
+        <div className="h-3.5 rounded-full w-3/4" style={{ backgroundColor: 'var(--bg-hover)' }} />
+        <div className="h-2.5 rounded-full w-1/3 mt-3" style={{ backgroundColor: 'var(--bg-hover)' }} />
       </div>
     </div>
   )
 }
 
-function NewsCard({ item }: { item: NewsItem }) {
-  const hasImage = Boolean(item.image)
-  return (
-    <a
-      href={item.link || '#'}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="group flex flex-col rounded-2xl overflow-hidden transition-all duration-200 hover:-translate-y-0.5"
-      style={{
-        backgroundColor: 'var(--bg-card)',
-        border: '1px solid var(--bg-border)',
-        boxShadow: '0 1px 3px rgba(0,0,0,.06)',
-      }}
-      onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,.12)')}
-      onMouseLeave={e => (e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,.06)')}
-    >
-      {hasImage ? (
-        <div className="relative h-36 overflow-hidden">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={item.image}
-            alt={item.title}
-            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-            onError={e => {
-              const img = e.currentTarget
-              img.style.display = 'none'
-              const placeholder = img.parentElement?.querySelector('.img-placeholder') as HTMLElement | null
-              if (placeholder) placeholder.style.display = 'flex'
-            }}
-          />
-          {/* shown when image fails to load */}
-          <div
-            className="img-placeholder absolute inset-0 items-end pb-3 px-3"
-            style={{
-              display: 'none',
-              background: 'linear-gradient(135deg,#1a1a2e,#16213e)',
-            }}
-          >
-            <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: 'rgba(255,255,255,.5)' }}>
-              {item.source}
-            </span>
-          </div>
-          <span
-            className="absolute top-2 left-2 text-[9px] font-semibold px-2 py-0.5 rounded-full"
-            style={{ backgroundColor: 'rgba(0,0,0,.55)', color: '#fff', backdropFilter: 'blur(4px)' }}
-          >
-            {item.source}
-          </span>
-        </div>
-      ) : (
-        <div className="h-10 flex items-center px-4" style={{ backgroundColor: 'var(--bg-hover)' }}>
-          <span className="text-[9px] font-semibold uppercase tracking-wide"
-            style={{ color: 'var(--text-muted)' }}>{item.source}</span>
-        </div>
-      )}
+function Thumb({ src }: { src?: string }) {
+  const [failed, setFailed] = useState(false)
+  const cls = 'w-28 h-20 sm:w-32 sm:h-[84px] rounded-lg shrink-0'
+  if (!src || failed) {
+    return (
+      <div className={`${cls} flex items-center justify-center`} style={{ background: 'var(--bg-hover)', color: 'var(--text-secondary)' }}>
+        <Newspaper size={20} />
+      </div>
+    )
+  }
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={src} alt="" loading="lazy" className={`${cls} object-cover`} onError={() => setFailed(true)} />
+}
 
-      <div className="flex-1 flex flex-col p-4 gap-2">
-        <p className="text-[13px] font-semibold leading-snug line-clamp-3"
+function NewsCard({ item }: { item: NewsItem }) {
+  return (
+    <a href={item.link || '#'} target="_blank" rel="noopener noreferrer"
+      className="group card !p-4 flex gap-4 items-start transition-colors"
+      onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(254,165,0,0.45)')}
+      onMouseLeave={e => (e.currentTarget.style.borderColor = '')}>
+      <Thumb src={item.image} />
+      <div className="min-w-0 flex-1">
+        <p className="text-[15px] font-semibold leading-snug line-clamp-2 group-hover:text-[#FEA500] transition-colors"
           style={{ color: 'var(--text-primary)' }}>
           {item.title}
         </p>
         {item.description && (
-          <p className="text-[11px] leading-relaxed line-clamp-2"
-            style={{ color: 'var(--text-secondary)' }}>
+          <p className="text-[13px] leading-relaxed line-clamp-2 mt-1.5" style={{ color: 'var(--text-primary)', opacity: 0.75 }}>
             {item.description}
           </p>
         )}
-        <div className="flex items-center justify-between mt-auto pt-2"
-          style={{ borderTop: '1px solid var(--bg-border)' }}>
-          <div className="flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
-            <Clock size={9} />
-            <span className="text-[10px]">{timeAgo(item.date)}</span>
-          </div>
-          <div className="flex items-center gap-1 text-[10px] font-medium opacity-0 group-hover:opacity-100 transition-opacity"
-            style={{ color: '#FEA500' }}>
-            Read more <ExternalLink size={9} />
-          </div>
+        <div className="flex items-center gap-2 mt-2.5 text-xs font-medium">
+          <span className="font-semibold truncate" style={{ color: '#FEA500' }}>{item.source}</span>
+          <span style={{ color: 'var(--text-secondary)' }}>·</span>
+          <span className="shrink-0" style={{ color: 'var(--text-secondary)' }}>{timeAgo(item.date)}</span>
         </div>
       </div>
+      <ExternalLink size={15} className="shrink-0 mt-1 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: '#FEA500' }} />
     </a>
   )
 }
@@ -148,11 +106,11 @@ export default function NewsPage() {
   const [loading,     setLoading]     = useState(true)
   const [genLoading,  setGenLoading]  = useState(false)
   const [query,       setQuery]       = useState('')
-  const [filter,      setFilter]      = useState<'all' | 'today' | 'week'>('all')
+  const [filter,      setFilter]      = useState<'all' | 'today' | 'week'>('today')
 
   const loadMarket = useCallback(() => {
     setLoading(true)
-    fetch('/api/market/news')
+    fetch('/api/market/news', { signal: AbortSignal.timeout(20_000) })
       .then(r => r.json())
       .then(j => {
         if (Array.isArray(j.data)) {
@@ -166,7 +124,7 @@ export default function NewsPage() {
 
   const loadGeneral = useCallback(() => {
     setGenLoading(true)
-    fetch('/api/market/news-general')
+    fetch('/api/market/news-general', { signal: AbortSignal.timeout(20_000) })
       .then(r => r.json())
       .then(j => { if (Array.isArray(j.data)) setGeneralNews(j.data) })
       .catch(() => {})
@@ -231,7 +189,7 @@ export default function NewsPage() {
             </div>
             <div>
               <h1 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>News</h1>
-              <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+              <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
                 {tab === 'market' ? 'Business, markets & economy' : 'Pakistan, politics & society'}
               </p>
             </div>
@@ -268,7 +226,7 @@ export default function NewsPage() {
               {t.icon}
               {t.label}
               {tab !== t.id && (
-                <span className="text-[10px] font-normal opacity-60 hidden sm:inline">— {t.desc}</span>
+                <span className="text-[11px] font-normal hidden sm:inline" style={{ color: 'var(--text-secondary)' }}>— {t.desc}</span>
               )}
             </button>
           ))}
@@ -311,7 +269,7 @@ export default function NewsPage() {
           ))}
 
           {!isLoading && (
-            <span className="text-[11px] ml-auto" style={{ color: 'var(--text-muted)' }}>
+            <span className="text-xs font-semibold ml-auto" style={{ color: 'var(--text-secondary)' }}>
               {filtered.length} article{filtered.length !== 1 ? 's' : ''}
             </span>
           )}
@@ -321,23 +279,36 @@ export default function NewsPage() {
       {/* News grid */}
       <div className="flex-1 p-6">
         {isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {Array.from({ length: 12 }).map((_, i) => <SkeletonCard key={i} />)}
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+            {Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)}
           </div>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 gap-3">
-            <Newspaper size={40} style={{ color: 'var(--text-muted)', opacity: 0.4 }} />
-            <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
-              {query ? 'No results for your search.' : 'No news available right now.'}
+            <Newspaper size={40} style={{ color: 'var(--text-secondary)', opacity: 0.6 }} />
+            <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+              {query ? 'No results for your search.'
+                : filter === 'today' ? 'No stories published today yet.'
+                : filter === 'week' ? 'No stories this week.'
+                : 'No news available right now.'}
             </p>
+            {!query && filter !== 'all' && source.length > 0 && (
+              <div className="flex gap-2">
+                {filter === 'today' && (
+                  <button onClick={() => setFilter('week')} className="px-3 py-1.5 rounded-lg text-xs font-semibold"
+                    style={{ background: 'rgba(254,165,0,0.15)', color: '#FEA500' }}>Show this week</button>
+                )}
+                <button onClick={() => setFilter('all')} className="px-3 py-1.5 rounded-lg text-xs font-semibold"
+                  style={{ background: 'var(--bg-hover)', color: 'var(--text-primary)', border: '1px solid var(--bg-border)' }}>Show all</button>
+              </div>
+            )}
             {query && (
               <button onClick={() => setQuery('')} className="text-xs underline"
                 style={{ color: '#FEA500' }}>Clear search</button>
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {filtered.map((item, i) => <NewsCard key={i} item={item} />)}
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+            {filtered.map((item, i) => <NewsCard key={item.link + i} item={item} />)}
           </div>
         )}
       </div>

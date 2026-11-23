@@ -56,7 +56,7 @@ export async function GET(request: Request) {
           name:      s.name,
           price:     q.close,
           change:    q.change,
-          changePct: +q.change_percent.toFixed(2),
+          changePct: q.change_percent,   // fraction
           volume:    q.volume,
         }
       })

@@ -25,20 +25,20 @@ export function StatementTable({ data, maxCols = 6 }: { data: StatementData; max
   const periods = data.periods.slice(0, maxCols)
   return (
     <div className="space-y-2">
-      <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+      <p className="text-[11px] font-medium" style={{ color: 'var(--text-secondary)' }}>
         All numbers in thousands (000s) except EPS · Source: Capital Stake
       </p>
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
           <thead>
             <tr style={{ borderBottom: '2px solid var(--bg-border)' }}>
-              <th className="text-left py-2 px-2 min-w-[200px] font-semibold"
-                  style={{ color: 'var(--text-muted)' }}>
+              <th className="text-left py-2.5 px-2 min-w-[200px] font-bold text-[13px]"
+                  style={{ color: 'var(--text-primary)' }}>
                 Item
               </th>
               {periods.map(p => (
-                <th key={p.period_end} className="text-right py-2 px-3 whitespace-nowrap font-semibold"
-                    style={{ color: 'var(--text-muted)' }}>
+                <th key={p.period_end} className="text-right py-2.5 px-3 whitespace-nowrap font-bold text-[13px]"
+                    style={{ color: 'var(--text-primary)' }}>
                   {p.quarter ? `${p.year} ${p.quarter}` : p.year}
                 </th>
               ))}

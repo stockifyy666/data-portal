@@ -69,7 +69,7 @@ export async function GET(
       high:         quote?.high             ?? 0,
       low:          quote?.low              ?? 0,
       change:       quote?.change           ?? 0,
-      changePct:    +(quote?.change_percent ?? 0).toFixed(2),
+      changePct:    quote?.change_percent ?? 0,   // fraction (0.0037 = 0.37%) — never round a fraction to 2 dp
       volume:       quote?.volume           ?? 0,
       high52:       stock?.high52           ?? 0,
       low52:        stock?.low52            ?? 0,

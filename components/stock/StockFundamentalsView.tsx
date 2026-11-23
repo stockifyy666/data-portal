@@ -216,7 +216,7 @@ function MetricModal({
     return (
       <div>
         <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
-          <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Quarterly — by year</p>
+          <p className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--text-primary)' }}>Quarterly — by year</p>
           <div className="flex items-center gap-3">
             {QS.map((q, i) => (
               <span key={q} className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: 'var(--text-secondary)' }}>
@@ -230,7 +230,7 @@ function MetricModal({
           <div style={{ minWidth: AXIS_W + years.length * MIN_GROUP, position: 'relative', height: LABEL + PLOT + 24 }}>
             {ticks.map((v, i) => (
               <div key={i} style={{ position: 'absolute', left: AXIS_W, right: 0, top: yOf(v),
-                borderTop: v === 0 ? '1px solid var(--text-muted)' : '1px dashed var(--bg-border)', opacity: v === 0 ? 0.45 : 1 }}>
+                borderTop: v === 0 ? '1px solid rgba(148,163,184,0.45)' : '1px dashed var(--bg-border)',  }}>
                 <span style={{ position: 'absolute', right: '100%', marginRight: 6, top: -6, fontSize: 10, fontWeight: 600,
                   color: 'var(--text-secondary)', whiteSpace: 'nowrap', lineHeight: 1 }}>{fmtFundVal(row.label, v)}</span>
               </div>
@@ -281,11 +281,15 @@ function MetricModal({
           <table className="w-full text-[12px]" style={{ minWidth: 420 }}>
             <thead>
               <tr style={{ background: 'var(--bg-hover)' }}>
-                <th className="text-left py-2 px-3 text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Year</th>
+                <th className="text-left py-2.5 px-3 text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-primary)' }}>Year</th>
                 {QS.map((q, i) => (
-                  <th key={q} className="text-right py-2 px-3 text-[10px] font-bold uppercase tracking-wider" style={{ color: Q_COLORS[i] }}>{q}</th>
+                  <th key={q} className="text-right py-2.5 px-3 text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-primary)' }}>
+                    <span className="inline-flex items-center gap-1.5 justify-end">
+                      <span className="w-2.5 h-2.5 rounded-sm" style={{ background: Q_COLORS[i] }} />{q}
+                    </span>
+                  </th>
                 ))}
-                <th className="text-right py-2 px-3 text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                <th className="text-right py-2.5 px-3 text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-primary)' }}>
                   {isFlow ? 'Year total' : 'Year avg'}
                 </th>
               </tr>
@@ -302,16 +306,16 @@ function MetricModal({
                       const latest = latestKey === `${y}-${qi}`
                       return (
                         <td key={qi} className="py-2 px-3 text-right font-number tabular-nums"
-                          style={{ color: v == null ? 'var(--text-muted)' : v < 0 ? '#dc2626' : 'var(--text-primary)',
+                          style={{ color: v == null ? 'var(--text-secondary)' : v < 0 ? '#dc2626' : 'var(--text-primary)',
                                    fontWeight: latest ? 800 : 500,
                                    background: latest ? 'rgba(254,165,0,0.12)' : 'transparent' }}>
                           {v == null ? '—' : fmtFundVal(row.label, v)}
                         </td>
                       )
                     })}
-                    <td className="py-2 px-3 text-right font-number tabular-nums font-bold" style={{ color: 'var(--text-secondary)' }}>
+                    <td className="py-2 px-3 text-right font-number tabular-nums font-extrabold" style={{ color: 'var(--text-primary)' }}>
                       {agg == null ? '—' : fmtFundVal(row.label, agg)}
-                      {isFlow && !complete && agg != null && <span className="text-[9px] font-semibold ml-1" style={{ color: 'var(--text-muted)' }}>YTD</span>}
+                      {isFlow && !complete && agg != null && <span className="text-[10px] font-bold ml-1.5 px-1.5 py-0.5 rounded" style={{ color: '#FEA500', background: 'rgba(254,165,0,0.14)' }}>YTD</span>}
                     </td>
                   </tr>
                 )
@@ -327,7 +331,7 @@ function MetricModal({
     const paired = buildPaired(ps, vals)
     if (!paired.length) return (
       <div>
-        <p className="text-[11px] font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--text-muted)' }}>{title}</p>
+        <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--text-primary)' }}>{title}</p>
         <p className="text-xs" style={{ color: 'var(--text-muted)' }}>No data available</p>
       </div>
     )
@@ -348,15 +352,15 @@ function MetricModal({
 
     return (
       <div>
-        <p className="text-[11px] font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--text-muted)' }}>{title}</p>
+        <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--text-primary)' }}>{title}</p>
         <div className="overflow-x-auto mb-4 pb-1">
           <div style={{ minWidth: AXIS_W + paired.length * colW, position: 'relative', height: LABEL + PLOT + 22 }}>
             {/* Gridlines + y-axis labels (behind bars) */}
             {ticks.map((v, i) => (
               <div key={i} style={{
                 position: 'absolute', left: AXIS_W, right: 0, top: yOf(v),
-                borderTop: v === 0 ? '1px solid var(--text-muted)' : '1px dashed var(--bg-border)',
-                opacity: v === 0 ? 0.45 : 1, zIndex: 0,
+                borderTop: v === 0 ? '1px solid rgba(148,163,184,0.45)' : '1px dashed var(--bg-border)',
+                 zIndex: 0,
               }}>
                 <span style={{ position: 'absolute', right: '100%', marginRight: 6, top: -6,
                   fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', whiteSpace: 'nowrap', lineHeight: 1 }}>
@@ -380,8 +384,8 @@ function MetricModal({
                     <span style={{
                       position: 'absolute', left: 0, right: 0, textAlign: 'center',
                       top: pos ? y1 - 15 : y1 + h + 3,
-                      fontSize: 10, fontWeight: isLast ? 800 : 600, whiteSpace: 'nowrap',
-                      color: isLast ? color : 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums',
+                      fontSize: 11, fontWeight: isLast ? 800 : 700, whiteSpace: 'nowrap',
+                      color: isLast ? color : 'var(--text-primary)', fontVariantNumeric: 'tabular-nums',
                     }}>
                       {fmtFundVal(row.label, v)}
                     </span>
@@ -395,8 +399,8 @@ function MetricModal({
                     {/* period label */}
                     <span style={{
                       position: 'absolute', left: 0, right: 0, top: LABEL + PLOT + 6, textAlign: 'center',
-                      fontSize: 9, fontWeight: isLast ? 700 : 500, whiteSpace: 'nowrap',
-                      color: isLast ? 'var(--text-primary)' : 'var(--text-muted)',
+                      fontSize: 11, fontWeight: isLast ? 800 : 600, whiteSpace: 'nowrap',
+                      color: isLast ? 'var(--text-primary)' : 'var(--text-secondary)',
                     }}>
                       {d.label}
                     </span>
@@ -411,9 +415,9 @@ function MetricModal({
           <table className="w-full text-sm">
             <thead>
               <tr style={{ borderBottom: '1px solid var(--bg-border)' }}>
-                <th className="text-left py-2 pr-4 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Period</th>
-                <th className="text-right py-2 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Value</th>
-                <th className="text-right py-2 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Change</th>
+                <th className="text-left py-2 pr-4 text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-primary)' }}>Period</th>
+                <th className="text-right py-2 text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-primary)' }}>Value</th>
+                <th className="text-right py-2 text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-primary)' }}>Change</th>
               </tr>
             </thead>
             <tbody>
@@ -423,14 +427,20 @@ function MetricModal({
                 const up     = change != null ? change >= 0 : null
                 return (
                   <tr key={i} style={{ borderBottom: '1px solid var(--bg-border)' }}>
-                    <td className="py-2 pr-4 text-[12px] font-medium" style={{ color: 'var(--text-secondary)' }}>{d.label}</td>
-                    <td className="py-2 text-right text-[12px] font-bold font-number tabular-nums"
+                    <td className="py-2.5 pr-4 text-[13px] font-semibold" style={{ color: 'var(--text-primary)' }}>{d.label}</td>
+                    <td className="py-2.5 text-right text-[13px] font-bold font-number tabular-nums"
                       style={{ color: (d.value ?? 0) < 0 ? '#dc2626' : 'var(--text-primary)' }}>
                       {fmtFundVal(row.label, d.value ?? null)}
                     </td>
-                    <td className="py-2 text-right text-[11px] font-semibold font-number tabular-nums"
-                      style={{ color: up == null ? 'var(--text-muted)' : up ? '#16a34a' : '#dc2626' }}>
-                      {change == null ? '—' : `${up ? '+' : ''}${fmtFundVal(row.label, change)}`}
+                    <td className="py-2.5 text-right">
+                      {change == null ? (
+                        <span className="text-[12px]" style={{ color: 'var(--text-secondary)' }}>—</span>
+                      ) : (
+                        <span className="inline-flex items-center gap-0.5 text-[12px] font-bold font-number tabular-nums px-2 py-0.5 rounded-full"
+                          style={{ color: up ? '#16a34a' : '#dc2626', background: up ? 'rgba(22,163,74,0.12)' : 'rgba(220,38,38,0.12)' }}>
+                          {up ? '▲' : '▼'} {up ? '+' : ''}{fmtFundVal(row.label, change)}
+                        </span>
+                      )}
                     </td>
                   </tr>
                 )
@@ -467,7 +477,7 @@ function MetricModal({
           style={{ borderBottom: '1px solid var(--bg-border)', flexShrink: 0 }}>
           <div>
             <h2 className="text-[15px] font-bold" style={{ color: 'var(--text-primary)' }}>{row.label}</h2>
-            <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
+            <p className="text-[13px] font-medium mt-0.5" style={{ color: 'var(--text-primary)', opacity: 0.8 }}>
               Annual &amp; Quarterly history
             </p>
           </div>
@@ -485,7 +495,7 @@ function MetricModal({
           <div style={{ borderTop: '1px solid var(--bg-border)' }} />
           {qLoading ? (
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--text-muted)' }}>Quarterly</p>
+              <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--text-primary)' }}>Quarterly</p>
               <div className="flex gap-1.5">
                 {Array.from({ length: 6 }).map((_, i) => (
                   <div key={i} className="flex-1 h-20 rounded-lg animate-pulse" style={{ backgroundColor: 'var(--bg-hover)' }} />
@@ -496,7 +506,7 @@ function MetricModal({
             ? (renderQuarterly(qSeries.periods, qSeries.values) ?? renderSection('Quarterly', qSeries.periods, qSeries.values))
             : (
               <div>
-                <p className="text-[11px] font-bold uppercase tracking-widest mb-2" style={{ color: 'var(--text-muted)' }}>Quarterly</p>
+                <p className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: 'var(--text-primary)' }}>Quarterly</p>
                 <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
                   {PRICE_BASED.test(row.label)
                     ? 'Annual only — this metric depends on the share price or dividends, which are not available per quarter.'

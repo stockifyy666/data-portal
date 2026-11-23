@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import Link                              from 'next/link'
-import { TrendingUp, TrendingDown, Search, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
+import { TrendingUp, TrendingDown, Minus, Search, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 import { formatPrice, formatChange, formatPercent, formatVolume, getChangeColor } from '@/lib/utils/format'
 import { cachedFetch } from '@/lib/utils/clientCache'
 import type { StockQuote } from '@/types/market'
@@ -77,61 +77,42 @@ function IndexChart({ symbol }: { symbol: string }) {
 function IndexStatCard({ label, data, loading, active, onClick }: {
   label: string; code: string; data?: IndexItem; loading: boolean; active: boolean; onClick: () => void
 }) {
-  // Styled to match the Macro Dashboard KpiCard: tinted bg/border by direction,
-  // decorative corner circle, uppercase label + LIVE dot, 24px value, change line.
-  const up        = data ? data.change > 0 : false
-  const isNeutral = !data || data.change === 0
-  const dirColor  = up ? '#16a34a' : '#dc2626'
-  const bgColor   = isNeutral ? 'var(--bg-card)' : up ? 'rgba(22,163,74,0.12)' : 'rgba(220,38,38,0.12)'
-  const bdrColor  = isNeutral ? 'var(--bg-border)' : up ? 'rgba(22,163,74,0.35)' : 'rgba(220,38,38,0.35)'
+  // Option B · arrow badge: trend-icon tile on the left, label / value / % on the right.
+  const up   = data ? data.change > 0 : false
+  const flat = !data || data.change === 0
+  const fg   = flat ? 'var(--text-secondary)' : up ? '#16a34a' : '#dc2626'
+  const bg   = flat ? 'var(--bg-hover)' : up ? 'rgba(22,163,74,0.13)' : 'rgba(220,38,38,0.13)'
+  const Icon = flat ? Minus : up ? TrendingUp : TrendingDown
 
   return (
-    <button onClick={onClick} aria-pressed={active} className="card text-left w-full"
+    <button onClick={onClick} aria-pressed={active}
+      className="text-left w-full rounded-xl px-4 py-3.5 flex items-center gap-3 transition-colors"
       style={{
-        backgroundColor: bgColor, border: `1px solid ${bdrColor}`,
-        display: 'flex', flexDirection: 'column', gap: 6,
-        position: 'relative', overflow: 'hidden',
-        outline: active ? '2px solid #FEA500' : '2px solid transparent', outlineOffset: 2,
+        background: 'var(--bg-card)',
+        border: `1px solid ${active ? '#FEA500' : 'var(--bg-border)'}`,
+        boxShadow: active ? '0 0 0 3px rgba(254,165,0,0.16)' : 'none',
       }}>
-      {!isNeutral && (
-        <div style={{
-          position: 'absolute', top: -18, right: -18, width: 80, height: 80, borderRadius: '50%',
-          backgroundColor: up ? 'rgba(22,163,74,0.15)' : 'rgba(220,38,38,0.12)', pointerEvents: 'none',
-        }} />
-      )}
-
-      <div className="flex items-center justify-between" style={{ position: 'relative' }}>
-        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '.05em' }}>
-          {label}
-        </span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 9, fontWeight: 700, color: '#16a34a' }}>
-          <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#22c55e' }} />
-          LIVE
-        </span>
+      <span className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ background: bg, color: fg }}>
+        {loading ? null : <Icon size={24} strokeWidth={2.2} />}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-[13px] truncate" style={{ color: 'var(--text-secondary)', fontWeight: 700 }}>{label}</p>
+        {loading ? (
+          <>
+            <div className="h-5 w-28 rounded animate-pulse mt-1" style={{ backgroundColor: 'var(--bg-hover)' }} />
+            <div className="h-3 w-14 rounded animate-pulse mt-1.5" style={{ backgroundColor: 'var(--bg-hover)' }} />
+          </>
+        ) : data ? (
+          <>
+            <p className="text-[24px] leading-tight font-number tabular-nums truncate" style={{ color: 'var(--text-primary)', fontWeight: 800 }}>
+              {data.current.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </p>
+            <p className="text-[13px] font-number tabular-nums mt-0.5" style={{ color: fg, fontWeight: 700 }}>
+              {formatChange(data.change)} · {formatPercent(data.changePct)}
+            </p>
+          </>
+        ) : <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>Unavailable</p>}
       </div>
-
-      {loading ? (
-        <>
-          <div className="h-6 w-28 rounded animate-pulse" style={{ backgroundColor: 'var(--bg-border)' }} />
-          <div className="h-3 w-20 rounded animate-pulse" style={{ backgroundColor: 'var(--bg-border)' }} />
-        </>
-      ) : data ? (
-        <>
-          <p style={{ fontSize: 24, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1, fontVariantNumeric: 'tabular-nums', position: 'relative' }}>
-            {data.current.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </p>
-          <div style={{ marginTop: 2, position: 'relative' }}>
-            {isNeutral ? (
-              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>0.00 (0.00%)</span>
-            ) : (
-              <span style={{ fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3, color: dirColor, fontVariantNumeric: 'tabular-nums' }}>
-                {up ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
-                {formatChange(data.change)} ({formatPercent(data.changePct)})
-              </span>
-            )}
-          </div>
-        </>
-      ) : <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Unavailable</p>}
     </button>
   )
 }

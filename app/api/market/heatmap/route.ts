@@ -78,7 +78,7 @@ export async function GET() {
         symbol:    s.symbol,
         name:      s.name,
         price:     q.close,
-        changePct: +q.change_percent.toFixed(2),
+        changePct: +(q.change_percent * 100).toFixed(2),   // CS sends a fraction; expose percent
         volume:    q.volume,
       })
     }

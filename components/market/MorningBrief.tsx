@@ -114,7 +114,7 @@ export default function MorningBrief({ userName }: { userName?: string }) {
             .filter(q => q.changePct > 0)
             .sort((a, b) => b.changePct - a.changePct)
             .slice(0, 3)
-            .map(q => ({ symbol: q.symbol, name: q.name, price: q.price, changePct: q.changePct }))
+            .map(q => ({ symbol: q.symbol, name: q.name, price: q.price, changePct: q.changePct * 100 }))   // fraction -> %
         )
       }
 
@@ -212,7 +212,7 @@ export default function MorningBrief({ userName }: { userName?: string }) {
                     {kse100.current.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                   </span>
                   <span className={`text-xs font-bold mb-0.5 ${kse100.changePct >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                    {kse100.changePct >= 0 ? '▲' : '▼'} {Math.abs(kse100.changePct).toFixed(2)}%
+                    {kse100.changePct >= 0 ? '▲' : '▼'} {Math.abs(kse100.changePct * 100).toFixed(2)}%
                   </span>
                 </div>
                 <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>

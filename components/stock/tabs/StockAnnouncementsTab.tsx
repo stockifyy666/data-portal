@@ -103,12 +103,9 @@ export function StockAnnouncementsTab({ anns, annLoad }: { anns: Announcement[];
                  onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.backgroundColor = 'transparent'}>
 
               {/* Date */}
-              <div className="shrink-0 w-14 text-center">
-                <p className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>
-                  {new Date(ann.date).toLocaleDateString('en-PK', { day: '2-digit', month: 'short' })}
-                </p>
-                <p className="text-[9px]" style={{ color: 'var(--text-secondary)' }}>
-                  {new Date(ann.date).getFullYear()}
+              <div className="shrink-0 w-[92px]">
+                <p className="text-xs font-semibold whitespace-nowrap font-number" style={{ color: 'var(--text-secondary)' }}>
+                  {new Date(ann.date).toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })}
                 </p>
               </div>
 

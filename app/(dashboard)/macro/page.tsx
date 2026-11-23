@@ -8,13 +8,14 @@ import {
 import {
   DollarSign, Percent, Droplets, TrendingUp, TrendingDown,
   AlertCircle, Calendar, Shield, Building2, ArrowLeftRight,
-  RefreshCw, Globe, Info,
+  RefreshCw, Globe, Info, BarChart3, Landmark, Wallet, Send, Coins,
 } from 'lucide-react'
 
 // Live fallbacks while fetching
 const LIVE_FALLBACK = {
   usdPkr:      { value: 278.40,   change: 0, label: 'USD / PKR',       note: 'Live — open.er-api.com' },
   oilBrent:    { value: 82.40,    change: 0, label: 'Brent Crude',     note: 'Live — Yahoo Finance (BZ=F)' },
+  gold:        { value: 0,        change: 0, label: 'Gold',            note: 'Live — COMEX gold (USD / oz)' },
   wti:         { value: 78.20,    change: 0, label: 'WTI Crude',       note: 'Live — Yahoo Finance (CL=F)' },
   sbpRate:     { value: 12.00,    change: 0, label: 'SBP Policy Rate', note: 'MPC Oct 26, 2026 — Hike 50bps' },
   inflation:   { value: 4.50,     change: 0, label: 'CPI Inflation',   note: 'IMF WEO 2025 annual avg' },
@@ -112,6 +113,7 @@ const PKR_IMPACT = [
 function formatVal(key: string, val: number) {
   if (key === 'usdPkr')      return val.toFixed(2)
   if (key === 'oilBrent')    return `$${val.toFixed(2)}`
+  if (key === 'gold')        return val <= 0 ? '—' : `$${val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   if (key === 'wti')         return `$${val.toFixed(2)}`
   if (key === 'forex')       return `$${val.toFixed(1)}B`
   if (key === 'currentAcct') return `${val < 0 ? '−' : ''}$${Math.abs(val).toFixed(2)}B`
@@ -130,101 +132,68 @@ function getIcon(key: string) {
   return Globe
 }
 
-const LIVE_IDS = new Set(['usdPkr', 'oilBrent', 'wti', 'sbpRate', 'inflation', 'forex', 'currentAcct', 'gdpGrowth', 'remittances', 'kse100'])
+const LIVE_IDS = new Set(['usdPkr', 'oilBrent', 'gold', 'wti', 'sbpRate', 'inflation', 'forex', 'currentAcct', 'gdpGrowth', 'remittances', 'kse100'])
 
 // ── KPI skeleton ──────────────────────────────────────────────────────────────
 function KpiSkeleton() {
   return (
-    <div className="card" style={{
-      display: 'flex', flexDirection: 'column', gap: 10,
-      animation: 'sk-pulse 1.6s ease-in-out infinite', cursor: 'default',
-    }}>
-      <div style={{ height: 11, width: 90, borderRadius: 3, background: 'var(--bg-hover)' }} />
-      <div style={{ height: 30, width: 110, borderRadius: 3, background: 'var(--bg-hover)' }} />
-      <div style={{ height: 10, width: 130, borderRadius: 3, background: 'var(--bg-hover)' }} />
+    <div className="rounded-xl px-4 py-3.5 flex items-center gap-3 animate-pulse"
+      style={{ background: 'var(--bg-card)', border: '1px solid var(--bg-border)' }}>
+      <div className="w-12 h-12 rounded-xl shrink-0" style={{ background: 'var(--bg-hover)' }} />
+      <div className="flex-1 space-y-2">
+        <div className="h-3 w-20 rounded" style={{ background: 'var(--bg-hover)' }} />
+        <div className="h-6 w-28 rounded" style={{ background: 'var(--bg-hover)' }} />
+        <div className="h-3 w-32 rounded" style={{ background: 'var(--bg-hover)' }} />
+      </div>
     </div>
   )
 }
 
-// ── KPI Card ─────────────────────────────────────────────────────────────────
+// Icon per metric, used when the figure has no daily change to show
+const KPI_ICONS: Record<string, React.ElementType> = {
+  kse100: BarChart3, usdPkr: DollarSign, sbpRate: Landmark, inflation: Percent,
+  oilBrent: Droplets, gold: Coins, wti: Droplets, forex: Wallet, currentAcct: ArrowLeftRight,
+  gdpGrowth: TrendingUp, remittances: Send,
+}
+
+// Arrow-badge card (same style as the dashboard index cards):
+// icon tile on the left; label, value and detail line on the right.
 function KpiCard({ id, d, loading }: { id: string; d: { value: number; change: number; label: string; note: string } | null; loading?: boolean }) {
   if (!d) return <KpiSkeleton />
-  const direction = d.change !== 0 ? d.change : d.value
-  const up        = direction > 0
-  const isNeutral = direction === 0
-  const isLive    = LIVE_IDS.has(id)
-  const dirColor  = up ? '#16a34a' : '#dc2626'
-
-  const bgColor  = up ? 'rgba(22,163,74,0.12)' : isNeutral ? 'var(--bg-card)' : 'rgba(220,38,38,0.12)'
-  const bdrColor = up ? 'rgba(22,163,74,0.35)' : isNeutral ? 'var(--bg-border)' : 'rgba(220,38,38,0.35)'
+  const moving = d.change !== 0
+  const up     = moving ? d.change > 0 : d.value >= 0
+  const neg    = !moving && d.value < 0
+  const fg = moving ? (up ? '#16a34a' : '#dc2626') : neg ? '#dc2626' : '#FEA500'
+  const bg = moving ? (up ? 'rgba(22,163,74,0.13)' : 'rgba(220,38,38,0.13)')
+           : neg ? 'rgba(220,38,38,0.13)' : 'rgba(254,165,0,0.14)'
+  const Icon = moving ? (up ? TrendingUp : TrendingDown) : (KPI_ICONS[id] ?? BarChart3)
+  const isLive = LIVE_IDS.has(id)
 
   return (
-    <div className="card" style={{
-      backgroundColor: bgColor, border: `1px solid ${bdrColor}`,
-      display: 'flex', flexDirection: 'column', gap: 6,
-      position: 'relative', overflow: 'hidden',
-    }}>
-      {!isNeutral && (
-        <div style={{
-          position: 'absolute', top: -18, right: -18,
-          width: 80, height: 80, borderRadius: '50%',
-          backgroundColor: up ? 'rgba(22,163,74,0.15)' : 'rgba(220,38,38,0.12)',
-          pointerEvents: 'none',
-        }} />
-      )}
-      {/* Mobile: horizontal layout */}
-      <div className="flex sm:hidden items-center justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '.05em' }}>
-              {d.label}
-            </span>
-            {isLive && (
-              <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 9, fontWeight: 700, color: '#16a34a' }}>
-                <span style={{ width: 5, height: 5, borderRadius: '50%', backgroundColor: '#22c55e', flexShrink: 0 }} />
-                LIVE
-              </span>
-            )}
-          </div>
-          {!isNeutral && (
-            <span style={{ fontSize: 10, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 2, marginTop: 2, color: dirColor }}>
-              {up ? <TrendingUp size={10}/> : <TrendingDown size={10}/>}
-              {d.change !== 0 ? `${up ? '+' : ''}${d.change.toFixed(2)}%` : (up ? 'Positive' : 'Negative')}
-            </span>
-          )}
+    <div className="rounded-xl px-4 py-3.5 flex items-center gap-3 min-w-0"
+      style={{ background: 'var(--bg-card)', border: '1px solid var(--bg-border)', opacity: loading ? 0.7 : 1 }}
+      title={d.note}>
+      <span className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ background: bg, color: fg }}>
+        <Icon size={24} strokeWidth={2.2} />
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <p className="text-[13px] truncate" style={{ color: 'var(--text-secondary)', fontWeight: 700 }}>{d.label}</p>
+          {isLive && <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: '#22c55e' }} title="Live data" />}
         </div>
-        <p style={{ fontSize: 26, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+        <p className="text-[24px] leading-tight tabular-nums truncate" style={{ color: 'var(--text-primary)', fontWeight: 800 }}>
           {formatVal(id, d.value)}
         </p>
-      </div>
-
-      {/* Desktop: vertical layout */}
-      <div className="hidden sm:flex items-center justify-between">
-        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '.05em' }}>
-          {d.label}
-        </span>
-        {isLive && (
-          <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 9, fontWeight: 700, color: '#16a34a' }}>
-            <span style={{
-              width: 6, height: 6, borderRadius: '50%', backgroundColor: '#22c55e',
-              animation: loading ? 'sk-pulse 1.2s ease-in-out infinite' : 'none',
-            }} />
-            LIVE
-          </span>
+        {moving ? (
+          <p className="text-[13px] tabular-nums mt-0.5" style={{ color: fg, fontWeight: 700 }}>
+            {up ? '+' : ''}{d.change.toFixed(2)}% today
+            {id === 'gold' && d.note.startsWith('≈') && (
+              <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}> · {d.note}</span>
+            )}
+          </p>
+        ) : (
+          <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{d.note}</p>
         )}
-      </div>
-      <p className="hidden sm:block" style={{ fontSize: 24, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
-        {formatVal(id, d.value)}
-      </p>
-      <div className="hidden sm:block" style={{ marginTop: 2 }}>
-        {!isNeutral ? (
-          <span style={{ fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3, color: dirColor }}>
-            {up ? <TrendingUp size={11}/> : <TrendingDown size={11}/>}
-            {d.change !== 0
-              ? `${up ? '+' : ''}${d.change.toFixed(2)}%`
-              : (up ? 'Positive' : 'Negative')}
-          </span>
-        ) : <span />}
       </div>
     </div>
   )
@@ -318,7 +287,7 @@ export default function MacroDashboard() {
 
   type KpiEntry = { value: number; change: number; label: string; note: string }
   const [liveData, setLiveData] = useState<Record<string, KpiEntry | null>>({
-    usdPkr: null, oilBrent: null, wti: null,
+    usdPkr: null, oilBrent: null, gold: null, wti: null,
     sbpRate: null, inflation: null, forex: null,
     currentAcct: null, gdpGrowth: null, remittances: null, kse100: null,
   })
@@ -373,6 +342,16 @@ export default function MacroDashboard() {
         setLiveData({
           usdPkr:      pick('usdPkr',      'usdPkr',      'USD / PKR',       'Live — open.er-api.com'),
           oilBrent:    pick('brent',        'oilBrent',    'Brent Crude',     'Live — Yahoo Finance (BZ=F)'),
+          gold:        (() => {
+            // Gold per troy ounce (USD) + local equivalent per tola (11.6638 g) in PKR
+            const g = pick('gold', 'gold', 'Gold (per oz)', 'Live — COMEX gold futures')
+            const fx = j.usdPkr?.value
+            if (g.value > 0 && fx > 0) {
+              const tola = (g.value * fx * 11.6638) / 31.1035
+              g.note = `≈ Rs ${Math.round(tola).toLocaleString('en-US')} per tola`
+            }
+            return g
+          })(),
           wti:         pick('wti',          'wti',         'WTI Crude',       'Live — Yahoo Finance (CL=F)'),
           sbpRate:     sbpEntry,
           inflation:   inflationEntry,
@@ -445,7 +424,7 @@ export default function MacroDashboard() {
         <KpiCard id="usdPkr"      d={MACRO_DATA.usdPkr}      loading={liveLoading} />
         <KpiCard id="sbpRate"     d={MACRO_DATA.sbpRate}     loading={liveLoading} />
         <KpiCard id="inflation"   d={MACRO_DATA.inflation}   loading={liveLoading} />
-        <KpiCard id="oilBrent"    d={MACRO_DATA.oilBrent}    loading={liveLoading} />
+        <KpiCard id="gold"        d={MACRO_DATA.gold}        loading={liveLoading} />
         <KpiCard id="wti"         d={MACRO_DATA.wti}         loading={liveLoading} />
         <KpiCard id="forex"       d={MACRO_DATA.forex}       loading={liveLoading} />
         <KpiCard id="currentAcct" d={MACRO_DATA.currentAcct} loading={liveLoading} />

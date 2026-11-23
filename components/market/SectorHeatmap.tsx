@@ -234,7 +234,7 @@ export default function SectorHeatmap() {
     for (const q of list) {
       const code = q.sector || '0000'
       if (!map[code]) map[code] = { stocks: [], totalVolume: 0 }
-      map[code].stocks.push({ symbol: q.symbol, name: q.name, price: q.price, changePct: q.changePct, volume: q.volume })
+      map[code].stocks.push({ symbol: q.symbol, name: q.name, price: q.price, changePct: q.changePct * 100, volume: q.volume })
       map[code].totalVolume += q.volume
     }
 

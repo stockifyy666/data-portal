@@ -142,7 +142,7 @@ export default function GainersLosers({ type }: Props) {
 
               <div className="w-16 text-right">
                 <span className={`text-xs font-semibold font-number px-1.5 py-0.5 rounded ${bgBadge}`}>
-                  {formatPercent(m.changePct / 100)}
+                  {formatPercent(m.changePct)}
                 </span>
               </div>
 

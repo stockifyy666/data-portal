@@ -123,7 +123,7 @@ export async function GET() {
   //   RA         = Reserve assets, total incl gold (USD billions)
   //   BM_TRF     = Net secondary income / personal transfers (USD billions) — remittances proxy
 
-  const [usdPkr, brent, wti, gdpGrowth, inflation, currentAcct] =
+  const [usdPkr, brent, wti, gdpGrowth, inflation, currentAcct, gold] =
     await Promise.allSettled([
       withCache('macro:usdpkr', TTL, fetchUsdPkr),
       withCache('macro:brent',  TTL, () => fetchYahooFuture('BZ=F')),
@@ -131,6 +131,7 @@ export async function GET() {
       withCache('macro:imf2:gdp',         TTL_1D, () => fetchIMF('NGDP_RPCH')),
       withCache('macro:imf2:inflation',   TTL_1D, () => fetchIMF('PCPIPCH')),
       withCache('macro:imf2:currentacct', TTL_1D, () => fetchIMF('BCA')),
+      withCache('macro:gold',   TTL, () => fetchYahooFuture('GC=F')),   // gold, USD per troy ounce
     ])
 
   function val<T>(r: PromiseSettledResult<T>, label: string): T | null {
@@ -146,6 +147,7 @@ export async function GET() {
     gdpGrowth:   val(gdpGrowth,   'gdpGrowth'),
     inflation:   val(inflation,   'inflation'),
     currentAcct: val(currentAcct, 'currentAcct'),
+    gold:        val(gold,        'gold'),
     policyRate:  null,
     ncpi:        null,
     spi:         null,

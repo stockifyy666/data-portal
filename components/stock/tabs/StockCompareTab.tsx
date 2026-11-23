@@ -164,7 +164,7 @@ export function StockCompareTab({ symbol, overview, snapFunds, peers, peersLoad 
       <div className="card space-y-4">
         <div>
           <SectionHeading>Compare Sector</SectionHeading>
-          <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
+          <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-secondary)' }}>
             {symbol} is always included · select up to 3 sector peers to compare
           </p>
         </div>
@@ -186,7 +186,7 @@ export function StockCompareTab({ symbol, overview, snapFunds, peers, peersLoad 
             </div>
           ))}
           {cmpSelected.length < 3 && (
-            <span className="text-[11px]" style={{ color:'var(--text-muted)' }}>
+            <span className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>
               {3 - cmpSelected.length} more slot{3-cmpSelected.length!==1?'s':''}
             </span>
           )}
@@ -215,7 +215,7 @@ export function StockCompareTab({ symbol, overview, snapFunds, peers, peersLoad 
                 {cmpSearch && (
                   <button onClick={() => { setCmpSearch(''); setCmpDropOpen(false) }}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-xs opacity-50 hover:opacity-100"
-                    style={{ color:'var(--text-muted)' }}>{'✕'}</button>
+                    style={{ color: 'var(--text-secondary)' }}>{'✕'}</button>
                 )}
               </div>
 
@@ -225,7 +225,7 @@ export function StockCompareTab({ symbol, overview, snapFunds, peers, peersLoad 
                   <div className="absolute z-20 top-full mt-1 w-full rounded-xl overflow-hidden shadow-xl max-h-56 overflow-y-auto"
                     style={{ backgroundColor:'var(--bg-card)', border:'1px solid var(--bg-border)' }}>
                     {dropItems.length === 0 ? (
-                      <p className="px-4 py-3 text-xs" style={{ color:'var(--text-muted)' }}>No matches</p>
+                      <p className="px-4 py-3 text-xs" style={{ color: 'var(--text-secondary)' }}>No matches</p>
                     ) : dropItems.map(item => {
                       const isSel = cmpSelected.includes(item.symbol)
                       const isFull = !isSel && cmpSelected.length >= 3
@@ -258,7 +258,7 @@ export function StockCompareTab({ symbol, overview, snapFunds, peers, peersLoad 
                             </div>
                             <div className="min-w-0">
                               <p className="text-xs font-bold" style={{ color:'var(--text-primary)' }}>{item.symbol}</p>
-                              <p className="text-[10px] truncate" style={{ color:'var(--text-muted)' }}>{item.name}</p>
+                              <p className="text-[10px] truncate" style={{ color: 'var(--text-secondary)' }}>{item.name}</p>
                             </div>
                           </div>
                           {peerMap.get(item.symbol)?.price != null && (
@@ -279,14 +279,14 @@ export function StockCompareTab({ symbol, overview, snapFunds, peers, peersLoad 
         {/* Metric selector */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold" style={{ color:'var(--text-secondary)' }}>
+            <span className="text-xs font-bold" style={{ color:'var(--text-primary)' }}>
               Compare by Metrics
-              <span className="font-normal opacity-60 ml-1">(optional - replaces default)</span>
+              <span className="font-normal ml-1" style={{ color: 'var(--text-secondary)' }}>(optional · replaces default)</span>
             </span>
             {cmpMetricSelected.length > 0 && (
               <button onMouseDown={e => e.preventDefault()}
                 onClick={() => { setCmpMetricSelected([]); setCmpMetricCustom(''); setCmpMetricData({}); setCmpResults(null) }}
-                className="text-[10px] opacity-50 hover:opacity-100" style={{ color:'var(--text-muted)' }}>
+                className="text-[11px] font-semibold px-2 py-0.5 rounded-md transition-colors hover:bg-[rgba(254,165,0,0.12)]" style={{ color: 'var(--brand)' }}>
                 Clear all
               </button>
             )}
@@ -322,7 +322,7 @@ export function StockCompareTab({ symbol, overview, snapFunds, peers, peersLoad 
                   {METRIC_GROUPS.map(g => (
                     <div key={g.label}>
                       <div className="px-3 pt-3 pb-1">
-                        <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color:'var(--text-muted)' }}>{g.label}</p>
+                        <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-primary)' }}>{g.label}</p>
                       </div>
                       {g.items.map(m => {
                         const sel = cmpMetricSelected.includes(m)
@@ -354,7 +354,7 @@ export function StockCompareTab({ symbol, overview, snapFunds, peers, peersLoad 
 
                   {/* Custom field */}
                   <div className="px-3 pt-3 pb-3 border-t mt-1" style={{ borderColor:'var(--bg-border)' }}>
-                    <p className="text-[9px] font-bold uppercase tracking-wider mb-2" style={{ color:'var(--text-muted)' }}>Custom Field</p>
+                    <p className="text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--text-primary)' }}>Custom Field</p>
                     <div className="flex gap-2">
                       <input
                         type="text"
@@ -570,21 +570,21 @@ export function StockCompareTab({ symbol, overview, snapFunds, peers, peersLoad 
                       <SectionHeading>{metric}</SectionHeading>
                       {!noData && (
                         <span className="text-[10px] font-semibold px-2 py-1 rounded-lg tabular-nums"
-                          style={{ backgroundColor:'var(--bg-hover)', color:'var(--text-muted)' }}>
+                          style={{ backgroundColor:'var(--bg-hover)', color: 'var(--text-secondary)' }}>
                           Figures in {unit.label}
                         </span>
                       )}
                     </div>
 
                     {noData ? (
-                      <div className="rounded-xl px-4 py-4 text-center text-xs" style={{ backgroundColor:'var(--bg-hover)', color:'var(--text-muted)' }}>
+                      <div className="rounded-xl px-4 py-4 text-center text-xs" style={{ backgroundColor:'var(--bg-hover)', color: 'var(--text-secondary)' }}>
                         No data found for &ldquo;{metric}&rdquo; in any company&apos;s statements.
                       </div>
                     ) : (
                       <>
                         {/* Bar chart - latest value */}
                         <div className="space-y-2.5">
-                          <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color:'var(--text-muted)' }}>
+                          <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
                             Latest Year - {allYears[0] ?? ''}
                           </p>
                           {latestVals.map(s => (
@@ -612,7 +612,7 @@ export function StockCompareTab({ symbol, overview, snapFunds, peers, peersLoad 
                             <table className="w-full text-xs">
                               <thead>
                                 <tr style={{ borderBottom:'1px solid var(--bg-border)' }}>
-                                  <th className="py-2 px-3 text-left font-semibold" style={{ color:'var(--text-muted)' }}>Year</th>
+                                  <th className="py-2 px-3 text-left font-semibold" style={{ color: 'var(--text-secondary)' }}>Year</th>
                                   {compareStocks.map(s => (
                                     <th key={s.symbol} className="py-2 px-3 text-right font-bold" style={{ color: s.color }}>{s.symbol}</th>
                                   ))}
@@ -772,7 +772,7 @@ export function StockCompareTab({ symbol, overview, snapFunds, peers, peersLoad 
                     <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor:s.color }}/>
                     <span className="text-xs font-bold" style={{ color:'var(--text-primary)' }}>{s.symbol}</span>
                     {s.symbol === symbol && <span className="text-[8px] font-bold px-1 py-0.5 rounded" style={{ background:'linear-gradient(135deg,#FEA500,#986300)',color:'white' }}>You</span>}
-                    <span className="text-[10px] truncate" style={{ color:'var(--text-muted)' }}>{s.name}</span>
+                    <span className="text-[10px] truncate" style={{ color: 'var(--text-secondary)' }}>{s.name}</span>
                   </div>
                   <table className="w-full text-xs">
                     <tbody>
@@ -788,7 +788,7 @@ export function StockCompareTab({ symbol, overview, snapFunds, peers, peersLoad 
                         { label:'Mkt Cap',   value: fmtMC(s.mc) },
                       ].map((row,ri,arr) => (
                         <tr key={row.label} style={{ borderBottom: ri<arr.length-1 ? '1px solid var(--bg-border)' : 'none' }}>
-                          <td className="py-2 px-3 font-medium" style={{ color:'var(--text-muted)' }}>{row.label}</td>
+                          <td className="py-2 px-3 font-medium" style={{ color: 'var(--text-secondary)' }}>{row.label}</td>
                           <td className="py-2 px-3 text-right font-bold tabular-nums" style={{ color:'var(--text-primary)' }}>{row.value}</td>
                         </tr>
                       ))}
