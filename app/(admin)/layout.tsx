@@ -4,8 +4,9 @@ import Link            from 'next/link'
 import Image           from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useState }    from 'react'
-import { LayoutDashboard, Users, Settings, LogOut, ChevronRight, Menu, X, Activity } from 'lucide-react'
+import { LayoutDashboard, Users, Settings, LogOut, ChevronRight, Menu, X, Activity, Sun, Moon } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { useTheme }     from '@/components/providers/ThemeProvider'
 
 const NAV = [
   { href: '/admin',              label: 'Dashboard',       icon: LayoutDashboard },
@@ -18,6 +19,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname    = usePathname()
   const supabase    = createClient()
   const [open, setOpen] = useState(false)
+  const { theme, toggle } = useTheme()   // shared with the user side; light by default
+  const isDark = theme === 'dark'
+  const ThemeIcon = isDark ? Sun : Moon
 
   async function handleSignOut() {
     await supabase.auth.signOut()
@@ -70,8 +74,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         })}
       </nav>
 
-      {/* Sign out */}
+      {/* Theme + sign out */}
       <div style={{ padding: '12px 10px', borderTop: '1px solid var(--bg-border)' }}>
+        <button onClick={toggle} aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'} style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          width: '100%', padding: '10px 12px',
+          background: 'none', border: 'none', cursor: 'pointer',
+          color: 'var(--text-secondary)', fontSize: 13, fontFamily: 'inherit',
+        }}>
+          <ThemeIcon size={15} style={{ color: isDark ? '#FEA500' : undefined }} />
+          {isDark ? 'Light mode' : 'Dark mode'}
+        </button>
         <button onClick={handleSignOut} style={{
           display: 'flex', alignItems: 'center', gap: 10,
           width: '100%', padding: '10px 12px',
@@ -138,7 +151,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Menu size={22} />
           </button>
           <Image src="/images/logo.svg" alt="Stockifyy" width={100} height={26} style={{ objectFit: 'contain' }} />
-          <div style={{ width: 30 }} />
+          <button onClick={toggle} aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: isDark ? '#FEA500' : 'var(--text-primary)', padding: 4 }}>
+            <ThemeIcon size={20} />
+          </button>
         </div>
 
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
