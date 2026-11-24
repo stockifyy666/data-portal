@@ -10,7 +10,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { cachedFetch } from '@/lib/utils/clientCache'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { BarChart2, FileText, Users, Newspaper, Bell } from 'lucide-react'
+import { BarChart2, FileText, Users, Newspaper, Bell, ArrowLeftRight } from 'lucide-react'
 import type { StockQuote } from '@/types/market'
 import KMIBadge, { isKMI } from '@/components/ui/KMIBadge'
 import type { Overview, StatementData, ProfileData, NewsItem, Announcement } from './stock-detail-types'
@@ -22,6 +22,7 @@ import { StockPeersTab }         from './tabs/StockPeersTab'
 import { StockFinancialsTab }    from './tabs/StockFinancialsTab'
 import { StockFundamentalsTab }  from './tabs/StockFundamentalsTab'
 import { StockShareholdersTab }  from './tabs/StockShareholdersTab'
+import { StockInsiderTab }       from './tabs/StockInsiderTab'
 import SymbolLogo from '@/components/ui/SymbolLogo'
 
 const TABS = [
@@ -31,6 +32,7 @@ const TABS = [
   { id: 'financials',    label: 'Financials',     Icon: FileText  },
   { id: 'fundamentals',  label: 'Fundamentals',   Icon: BarChart2 },
   { id: 'shareholders',  label: 'Shareholders',   Icon: Users     },
+  { id: 'insider',       label: 'Insider Trades', Icon: ArrowLeftRight },
   { id: 'news',          label: 'News',           Icon: Newspaper },
   { id: 'announcements', label: 'Announcements',  Icon: Bell      },
 ] as const
@@ -422,6 +424,8 @@ export default function StockDetailClient({
           shLoad={shLoad}
         />
       )}
+
+      {tab === 'insider' && <StockInsiderTab symbol={symbol} />}
 
       {tab === 'news' && <StockNewsTab news={news} newsLoad={newsLoad} />}
 

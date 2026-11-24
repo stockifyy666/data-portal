@@ -15,6 +15,10 @@
     {
       "path": "/api/sync/sector-news",
       "schedule": "0 */2 * * *"
+    },
+    {
+      "path": "/api/sync/insider",
+      "schedule": "0 12 * * 1-5"
     }
   ]
 }

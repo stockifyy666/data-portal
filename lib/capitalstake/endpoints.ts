@@ -42,4 +42,8 @@ export const CS_ENDPOINTS = {
   ANNOUNCEMENTS_ALL: (offset = 0, count = 50) =>
     `${UAT_BASE}/3.0/announcements?offset=${offset}&count=${count}`,
 
+  // ── INSIDER TRANSACTIONS ─────────────────────────────────────────────────────
+  INSIDER: (offset = 0, count = 50) =>
+    `${UAT_BASE}/3.0/insider?offset=${offset}&count=${count}`,
+
 } as const
