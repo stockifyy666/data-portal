@@ -429,7 +429,7 @@ export default function StockDetailClient({
 
       {tab === 'news' && <StockNewsTab news={news} newsLoad={newsLoad} />}
 
-      {tab === 'announcements' && <StockAnnouncementsTab anns={anns} annLoad={annLoad} />}
+      {tab === 'announcements' && <StockAnnouncementsTab symbol={symbol} anns={anns} annLoad={annLoad} />}
 
     </div>
   )

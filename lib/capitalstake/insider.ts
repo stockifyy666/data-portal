@@ -1,6 +1,5 @@
 // Insider transactions — stored in Supabase `insider_transactions` (migration 009).
 //   syncInsider()        — called ONLY by the cron (/api/sync/insider), Mon–Fri 5 PM PKT
-//   getInsiderPage()     — Insider page (all companies), read from the database
 //   getCompanyInsider()  — stock "Insider Trades" tab, read from the database
 // Pages never call Capital Stake directly.
 
@@ -92,19 +91,6 @@ export async function syncInsider(): Promise<{ calls: number; fetched: number; s
 }
 
 /* ── Reads (database only) ────────────────────────────────────────────────── */
-
-export async function getInsiderPage(page: number, pageSize: number, q = '') {
-  let query = createServiceClient().from(TABLE).select(COLS, { count: 'exact' })
-  const term = q.trim().replace(/[%_,()]/g, ' ').trim()
-  if (term) query = query.or(`symbol.ilike.%${term}%,company_name.ilike.%${term}%,name.ilike.%${term}%`)
-  const from = (page - 1) * pageSize
-  const { data, count, error } = await query
-    .order('notice_date', { ascending: false, nullsFirst: false })
-    .order('id', { ascending: false })
-    .range(from, from + pageSize - 1)
-  if (error) throw new Error(error.message)
-  return { data: ((data ?? []) as DbRow[]).map(toTxn), total: count ?? 0 }
-}
 
 export async function getCompanyInsider(symbol: string): Promise<InsiderTxn[]> {
   const { data, error } = await createServiceClient().from(TABLE).select(COLS)

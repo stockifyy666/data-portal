@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, Fragment } from 'react'
 import { Activity, Zap, Clock, AlertTriangle, CheckCircle, Database, List, RefreshCw, TrendingUp, FileText,
-  BarChart3, Building2, Bell, Newspaper, LineChart, Layers } from 'lucide-react'
+  BarChart3, Building2, Bell, Newspaper, LineChart, Layers, ArrowLeftRight, Banknote, Scale, Wallet, Info, Users, Globe } from 'lucide-react'
 import type { EndpointStat } from '@/lib/utils/rateLimit'
 
 const POLL_INTERVAL = 30_000 // 30 seconds
@@ -32,8 +32,8 @@ export default function APIUsagePage() {
       const json = await res.json()
       if (res.ok) {
         setUsage(json.usage)
-        setFsCount(json.fsCount)
-        setScCount(json.scCount)
+        setFsCount(json.fsCount ?? 0)
+        setScCount(json.scCount ?? 0)
         if (json.tables) setTables(json.tables)
         setLastFetch(new Date().toLocaleTimeString('en-PK', { timeZone: 'Asia/Karachi', hour: '2-digit', minute: '2-digit', second: '2-digit' }))
         setOffline(false)
@@ -107,11 +107,18 @@ export default function APIUsagePage() {
     .sort((a, b) => b.total - a.total)
 
   const tableStats = tables ? [
-    { label: 'Financial statements', value: tables.financial_statements, sub: 'Income · balance · cash flow',     icon: FileText,  accent: '#3b82f6' },
-    { label: 'Fundamentals',         value: tables.fundamentals,         sub: 'Key metrics per company',          icon: BarChart3, accent: '#10b981' },
-    { label: 'Company profiles',     value: tables.company_profiles,     sub: 'Overview · detail · shareholders', icon: Building2, accent: '#8b5cf6' },
-    { label: 'Announcements',        value: tables.announcements,        sub: 'Companies with filings stored',    icon: Bell,      accent: '#f97316' },
-    { label: 'News',                 value: tables.news,                 sub: 'General + sector feeds',           icon: Newspaper, accent: '#06b6d4' },
+    { label: 'Income statements',  value: (tables.income_annual ?? 0),   sub: `Annual ${(tables.income_annual ?? 0).toLocaleString()} · Quarterly ${(tables.income_quarterly ?? 0).toLocaleString()}`,   icon: TrendingUp,     accent: '#3b82f6' },
+    { label: 'Balance sheets',     value: (tables.balance_annual ?? 0),  sub: `Annual ${(tables.balance_annual ?? 0).toLocaleString()} · Quarterly ${(tables.balance_quarterly ?? 0).toLocaleString()}`,  icon: Scale,          accent: '#6366f1' },
+    { label: 'Cash flow',          value: (tables.cashflow_annual ?? 0), sub: `Annual ${(tables.cashflow_annual ?? 0).toLocaleString()} · Quarterly ${(tables.cashflow_quarterly ?? 0).toLocaleString()}`, icon: Wallet,         accent: '#0ea5e9' },
+    { label: 'Fundamentals',       value: (tables.fundamentals ?? 0),      sub: 'Key metrics per company',          icon: BarChart3,      accent: '#10b981' },
+    { label: 'Profile overview',   value: (tables.profile_overview ?? 0),  sub: 'Company summary',                  icon: Building2,      accent: '#8b5cf6' },
+    { label: 'Profile detail',     value: (tables.profile_detail ?? 0),    sub: 'Board, auditors, address',         icon: Info,           accent: '#a855f7' },
+    { label: 'Shareholders',       value: (tables.shareholders ?? 0),      sub: 'Shareholding pattern',             icon: Users,          accent: '#ec4899' },
+    { label: 'Payouts',            value: (tables.payouts ?? 0),           sub: 'Companies with dividends / bonus', icon: Banknote,       accent: '#22c55e' },
+    { label: 'Insider transactions', value: (tables.insider_transactions ?? 0), sub: 'Director & major-holder trades', icon: ArrowLeftRight, accent: '#ef4444' },
+    { label: 'Announcements',      value: (tables.announcements ?? 0),     sub: 'Companies with filings stored',    icon: Bell,           accent: '#f97316' },
+    { label: 'General news',       value: (tables.news_general ?? 0),      sub: 'Articles stored (last 14 days)',            icon: Newspaper,      accent: '#06b6d4' },
+    { label: 'Sector news',        value: (tables.news_sector ?? 0),       sub: 'Sectors with news stored',         icon: Globe,          accent: '#14b8a6' },
   ] : [
     { label: 'Financial data', value: fsCount, sub: 'Statements + fundamentals', icon: FileText,  accent: '#3b82f6' },
     { label: 'Content',        value: scCount, sub: 'Profiles, news, announcements', icon: Newspaper, accent: '#06b6d4' },
@@ -287,13 +294,13 @@ export default function APIUsagePage() {
           <span className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Stored in Supabase</span>
           <span className="text-xs" style={{ color: 'var(--text-muted)' }}>· rows served without any API call</span>
         </div>
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {tableStats.map(s => (
             <div key={s.label} className="rounded-xl p-4" style={{ background: 'var(--bg-card)', border: '1px solid var(--bg-border)' }}>
               <span className="w-8 h-8 rounded-lg flex items-center justify-center mb-3" style={{ background: `${s.accent}1f`, color: s.accent }}>
                 <s.icon size={15} />
               </span>
-              <p className="text-2xl font-extrabold font-number tabular-nums leading-none" style={{ color: 'var(--text-primary)' }}>{s.value.toLocaleString()}</p>
+              <p className="text-2xl font-extrabold font-number tabular-nums leading-none" style={{ color: 'var(--text-primary)' }}>{(Number(s.value) || 0).toLocaleString()}</p>
               <p className="text-[13px] font-semibold mt-1.5" style={{ color: 'var(--text-primary)' }}>{s.label}</p>
               <p className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>{s.sub}</p>
             </div>
@@ -330,6 +337,7 @@ const CATS: (Cat & { re: RegExp })[] = [
   { key: 'fin',      label: 'Financials',        color: '#10b981', icon: FileText,  re: /financials|fundamentals/ },
   { key: 'profile',  label: 'Profiles',          color: '#8b5cf6', icon: Building2, re: /profile|shareholders/ },
   { key: 'news',     label: 'News & filings',    color: '#06b6d4', icon: Newspaper, re: /news|announcement/ },
+  { key: 'corp',     label: 'Payouts & insider', color: '#22c55e', icon: Banknote,  re: /payouts|insider/ },
 ]
 const OTHER: Cat = { key: 'other', label: 'Other', color: '#94a3b8', icon: Layers }
 
@@ -345,7 +353,9 @@ const SCHEDULE: [string, string][] = [
   ['General news + announcements', 'every hour'],
   ['Sector news', 'every 2 hours (shared by all companies in a sector)'],
   ['Financials + fundamentals', 'daily, overnight'],
-  ['Profiles + shareholders', 'weekly, Sunday night'],
+  ['Payouts', 'daily, 2 AM PKT'],
+  ['Insider transactions', 'Mon–Fri, 5 PM PKT (1 call)'],
+  ['Profiles + shareholders', 'weekly, Sunday 3–5 AM PKT'],
   ['Company pages', 'read from Supabase — no call unless data is missing'],
 ]
 

@@ -3,10 +3,11 @@
 //   general_news / sector_news         → news             (scope, key)
 //   announcements                      → announcements    (symbol)
 //   profile_overview / profile_detail  → company_profiles (symbol, kind)
+//   payouts                            → company_profiles (symbol, kind 'payouts')
 
 import { createServiceClient } from './service'
 
-type ContentType = 'announcements' | 'profile_overview' | 'profile_detail' | 'general_news' | 'sector_news'
+type ContentType = 'announcements' | 'profile_overview' | 'profile_detail' | 'general_news' | 'sector_news' | 'payouts'
 
 // How old a stored row may be before getContent() treats it as missing.
 // News and announcements are refreshed by cron syncs, so any stored copy is
@@ -17,6 +18,7 @@ const STALE_HOURS: Record<ContentType, number> = {
   sector_news:      Infinity,  // every-2-hours sync
   profile_overview: 168,       // weekly sync (Sunday) — 7 days
   profile_detail:   168,
+  payouts:          Infinity,  // nightly sync (2 AM PKT); always served from the database
 }
 
 // Table + key columns for each content type. `id` is the symbol / sector code / 'MARKET'.
@@ -28,6 +30,7 @@ function target(id: string, type: ContentType): { table: string; keys: Record<st
     case 'announcements':    return { table: 'announcements',    keys: { symbol: up },                      conflict: 'symbol' }
     case 'profile_overview': return { table: 'company_profiles', keys: { symbol: up, kind: 'overview' },    conflict: 'symbol,kind' }
     case 'profile_detail':   return { table: 'company_profiles', keys: { symbol: up, kind: 'detail' },      conflict: 'symbol,kind' }
+    case 'payouts':          return { table: 'company_profiles', keys: { symbol: up, kind: 'payouts' },     conflict: 'symbol,kind' }
   }
 }
 

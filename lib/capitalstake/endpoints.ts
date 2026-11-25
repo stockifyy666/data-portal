@@ -42,6 +42,9 @@ export const CS_ENDPOINTS = {
   ANNOUNCEMENTS_ALL: (offset = 0, count = 50) =>
     `${UAT_BASE}/3.0/announcements?offset=${offset}&count=${count}`,
 
+  // ── PAYOUTS (dividend / bonus / right / split per result) ────────────────────
+  PAYOUTS: (symbol: string) => `${UAT_BASE}/3.0/payouts?symbol=${symbol}`,
+
   // ── INSIDER TRANSACTIONS ─────────────────────────────────────────────────────
   INSIDER: (offset = 0, count = 50) =>
     `${UAT_BASE}/3.0/insider?offset=${offset}&count=${count}`,

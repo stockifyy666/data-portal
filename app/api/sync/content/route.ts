@@ -1,6 +1,6 @@
 // =============================================================================
 // FILE: app/api/sync/content/route.ts
-// PURPOSE: WEEKLY sync (Sundays) — company profile overview, profile detail and
+// PURPOSE: WEEKLY sync (Sunday 3–5 AM PKT, after the 2 AM payouts sync) — company profile overview, profile detail and
 //          shareholders for every company → Supabase `company_profiles`.
 //          Served from Supabase for 7 days, until the next Sunday.
 //

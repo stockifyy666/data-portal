@@ -6,7 +6,7 @@ import {
   LayoutDashboard, TrendingUp, BookMarked,
   SlidersHorizontal, Settings, LogOut, User,
   Grid2x2, Sun, Moon, X, Calculator, BookOpen, BarChart2, PanelTopOpen,
-  Newspaper, Globe, ArrowUpDown, Activity, ArrowLeftRight,
+  Newspaper, Globe, ArrowUpDown, Activity,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useTheme }     from '@/components/providers/ThemeProvider'
@@ -26,7 +26,6 @@ const NAV_ITEMS = [
   // { icon: Calculator,        label: 'Tools',            href: '/tools'      },
   // { icon: BookOpen,          label: 'Reports',          href: '/reports'    },
   { icon: Newspaper,         label: 'News',             href: '/news'       },
-  { icon: ArrowLeftRight,    label: 'Insider Trades',   href: '/insider'    },
   // { icon: BarChart2,         label: 'Technical Chart',  href: '/chart'      },
   // { icon: PanelTopOpen,      label: 'Multi Chart',      href: '/multichart' },
 ]
