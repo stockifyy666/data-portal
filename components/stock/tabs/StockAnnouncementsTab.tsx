@@ -269,6 +269,9 @@ function PayoutView({ payouts, onPreview }: { payouts: PayoutItem[]; onPreview: 
     .filter((d): d is string => !!d && Date.parse(d) >= Date.now() - 86_400e3)
     .sort()[0]
 
+  const years  = groupByYear(payouts)
+  const maxDiv = Math.max(0, ...payouts.map(p => num(p.payouts?.dividend)))
+
   const stats = [
     { label: 'Dividend · last 12 months', value: `Rs ${div12.toFixed(2)}`, sub: `${last12.length} payout${last12.length === 1 ? '' : 's'} · ${+(div12 * 10).toFixed(2)}% of face value`, accent: '#10b981' },
     { label: 'Latest payout', value: latest ? (chipsOf(latest.payouts)[0]?.value ?? '—') : '—', sub: latest ? `${periodOf(latest)} · announced ${fmtD(latest.date)}` : '—', accent: '#f59e0b' },
@@ -290,88 +293,183 @@ function PayoutView({ payouts, onPreview }: { payouts: PayoutItem[]; onPreview: 
         ))}
       </div>
 
-      {/* Payout cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-        {payouts.map(p => <PayoutCard key={p.id || p.date} p={p} onPreview={onPreview} />)}
+      {/* One section per year: annual payout on top, quarterly histogram below */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
+        {years.map(y => <YearSection key={y.year} y={y} max={maxDiv} onPreview={onPreview} />)}
       </div>
     </div>
   )
 }
 
-function PayoutCard({ p, onPreview }: { p: PayoutItem; onPreview: (v: { src: string; title: string }) => void }) {
-  const po     = p.payouts ?? {}
-  const chips  = chipsOf(po)
-  const main   = chips[0]
-  const accent = main?.color ?? '#94a3b8'
-  const file   = p.docs?.find(d => /\.pdf$/i.test(d))
-  const image  = !file ? p.images?.[0] : undefined
-  const exPast = po.ex_date ? Date.parse(po.ex_date) < Date.now() - 86_400e3 : true
+const Q_ORDER: Record<string, number> = { Q1: 1, Q2: 2, Q3: 3, Q4: 4, YEAR: 5 }
+const yearOf = (p: PayoutItem) => (p.period_ended || p.date || '').slice(0, 4) || '—'
+const keyOf  = (p: PayoutItem) => p.id || p.date
 
+type YearGroup = { year: string; items: PayoutItem[]; annual: PayoutItem[]; quarters: PayoutItem[]; total: number }
+
+function groupByYear(payouts: PayoutItem[]): YearGroup[] {
+  const map = new Map<string, PayoutItem[]>()
+  for (const p of payouts) {
+    const y = yearOf(p)
+    if (!map.has(y)) map.set(y, [])
+    map.get(y)!.push(p)
+  }
+  return Array.from(map.entries())
+    .sort((a, b) => b[0].localeCompare(a[0]))
+    .map(([year, items]) => {
+      const sorted = [...items].sort((a, b) => (Q_ORDER[a.quarter] ?? 9) - (Q_ORDER[b.quarter] ?? 9) || (a.date || '').localeCompare(b.date || ''))
+      return {
+        year, items: sorted,
+        annual:   sorted.filter(p => p.quarter === 'YEAR'),
+        quarters: sorted.filter(p => p.quarter !== 'YEAR'),
+        total:    sorted.reduce((s, p) => s + num(p.payouts?.dividend), 0),
+      }
+    })
+}
+
+function ViewBtn({ p, onPreview }: { p: PayoutItem; onPreview: (v: { src: string; title: string }) => void }) {
+  const file  = p.docs?.find(d => /\.pdf$/i.test(d))
+  const image = !file ? p.images?.[0] : undefined
+  const cls   = 'shrink-0 inline-flex items-center gap-1 text-[12px] font-bold px-2.5 py-1 rounded-lg border transition-opacity hover:opacity-80'
+  const st    = { borderColor: 'var(--brand)', color: 'var(--brand)' }
+  if (file) return (
+    <a href={`/api/proxy/pdf?file=${encodeURIComponent(file)}`} target="_blank" rel="noopener noreferrer" title="View announcement" className={cls} style={st}>
+      <Eye size={12} /> View
+    </a>
+  )
+  if (image) return (
+    <button type="button" onClick={() => onPreview({ src: `/api/proxy/pdf?file=${encodeURIComponent(image)}`, title: p.title })} className={cls} style={st}>
+      <ImageIcon size={12} /> View
+    </button>
+  )
+  return null
+}
+
+// Dates for one payout, in a compact 4-column row
+function DateRow({ p, accent }: { p: PayoutItem; accent: string }) {
+  const po = p.payouts ?? {}
   const steps = [
     { k: 'Announced',    v: fmtD(p.date) },
     { k: 'Ex-date',      v: fmtD(po.ex_date), hl: true },
     { k: 'Entitlement',  v: fmtD(po.entitlement_date) },
     { k: 'Book closure', v: po.book_closure_from ? `${fmtD(po.book_closure_from)} – ${fmtD(po.book_closure_to)}` : '—' },
   ]
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      {steps.map(s => (
+        <div key={s.k} className="min-w-0">
+          <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>{s.k}</p>
+          <p className="text-[13px] font-normal mt-0.5 truncate" style={{ color: s.hl ? accent : 'var(--text-primary)' }} title={s.v}>{s.v}</p>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function YearSection({ y, max, onPreview }: { y: YearGroup; max: number; onPreview: (v: { src: string; title: string }) => void }) {
+  const last = y.quarters[y.quarters.length - 1]
+  const [sel, setSel] = useState<string | null>(last ? keyOf(last) : null)
+  const selected = y.quarters.find(p => keyOf(p) === sel)
 
   return (
-    <div className="rounded-xl overflow-hidden flex flex-col transition-all hover:-translate-y-0.5"
-      style={{ background: 'var(--bg-card)', border: '1px solid var(--bg-border)' }}>
-      {/* Top: amount + period */}
-      <div className="flex items-start justify-between gap-3 p-4" style={{ background: `linear-gradient(135deg, ${accent}14, transparent)` }}>
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md"
-              style={{ background: `${accent}22`, color: accent }}>{periodOf(p)}</span>
-            {p.period_ended && (
-              <span className="text-[12px] font-semibold" style={{ color: 'var(--text-secondary)' }}>Period ended {fmtD(p.period_ended)}</span>
-            )}
-            {!exPast && (
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md" style={{ background: 'rgba(59,130,246,0.15)', color: '#3b82f6' }}>Upcoming</span>
-            )}
+    <div className="rounded-xl overflow-hidden flex flex-col" style={{ background: 'var(--bg-card)', border: '1px solid var(--bg-border)' }}>
+      {/* Year header */}
+      <div className="flex items-center justify-between gap-3 px-4 py-3"
+        style={{ borderBottom: '1px solid var(--bg-border)', background: 'linear-gradient(135deg, #10b98114, transparent)' }}>
+        <p className="text-[22px] leading-none font-number" style={{ color: 'var(--text-primary)', fontWeight: 800 }}>{y.year}</p>
+        <div className="text-right min-w-0">
+          <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Total cash dividend</p>
+          <p className="text-[16px] font-number tabular-nums" style={{ color: '#10b981', fontWeight: 800 }}>
+            Rs {y.total.toFixed(2)}
+            <span className="text-[12px] font-bold" style={{ color: 'var(--text-secondary)' }}> · {+(y.total * 10).toFixed(2)}% · {y.items.length} payout{y.items.length === 1 ? '' : 's'}</span>
+          </p>
+        </div>
+      </div>
+
+      {/* Annual payout */}
+      {y.annual.map(p => {
+        const chips  = chipsOf(p.payouts ?? {})
+        const main   = chips[0]
+        const accent = main?.color ?? '#94a3b8'
+        return (
+          <div key={keyOf(p)} className="px-4 py-3 space-y-3" style={{ borderBottom: '1px solid var(--bg-border)' }}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md" style={{ background: `${accent}22`, color: accent }}>Annual</span>
+                  {p.period_ended && <span className="text-[12px] font-semibold" style={{ color: 'var(--text-secondary)' }}>Period ended {fmtD(p.period_ended)}</span>}
+                </div>
+                {main && (
+                  <p className="mt-1.5 flex items-baseline gap-2 flex-wrap">
+                    <span className="text-[24px] leading-none font-number tabular-nums" style={{ color: 'var(--text-primary)', fontWeight: 800 }}>{main.value}</span>
+                    <span className="text-[13px] font-bold" style={{ color: 'var(--text-secondary)' }}>
+                      {main.label}{main.label === 'Cash dividend' ? ` · ${+(num(p.payouts?.dividend) * 10).toFixed(2)}%` : ''}
+                    </span>
+                    {chips.slice(1).map(c => (
+                      <span key={c.label} className="text-[12px] font-bold px-2 py-0.5 rounded-md" style={{ color: c.color, background: `${c.color}1f` }}>{c.label} {c.value}</span>
+                    ))}
+                  </p>
+                )}
+              </div>
+              <ViewBtn p={p} onPreview={onPreview} />
+            </div>
+            <DateRow p={p} accent={accent} />
           </div>
-          {main && (
-            <p className="mt-2 flex items-baseline gap-2">
-              <span className="text-[28px] leading-none font-number tabular-nums" style={{ color: 'var(--text-primary)', fontWeight: 800 }}>{main.value}</span>
-              <span className="text-[13px] font-bold" style={{ color: 'var(--text-secondary)' }}>
-                {main.label}{num(po.dividend) > 0 && main.label === 'Cash dividend' ? ` · ${+(num(po.dividend) * 10).toFixed(2)}%` : ''}
-              </span>
-            </p>
-          )}
-          {chips.length > 1 && (
-            <div className="flex flex-wrap gap-1.5 mt-2">
-              {chips.slice(1).map(c => (
-                <span key={c.label} className="text-[12px] font-bold px-2 py-0.5 rounded-md font-number"
-                  style={{ color: c.color, background: `${c.color}1f` }}>{c.label} {c.value}</span>
-              ))}
+        )
+      })}
+
+      {/* Interim (quarterly) payouts as a histogram — click a bar for its dates */}
+      {y.quarters.length > 0 ? (
+        <div className="px-4 py-3 space-y-3">
+          <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Interim payouts</p>
+          <div className="flex items-end justify-around gap-3 h-[120px]" style={{ borderBottom: '1px solid var(--bg-border)' }}>
+            {y.quarters.map(p => {
+              const k     = keyOf(p)
+              const div   = num(p.payouts?.dividend)
+              const chip  = chipsOf(p.payouts ?? {})[0]
+              const color = chip?.color ?? '#94a3b8'
+              const h     = div > 0 ? Math.max(8, (div / (max || 1)) * 78) : 8
+              const on    = k === sel
+              return (
+                <button key={k} type="button" onClick={() => setSel(k)}
+                  className="flex flex-col items-center justify-end h-full flex-1 max-w-[72px]"
+                  title={chip ? `${periodOf(p)} · ${chip.label} ${chip.value}` : periodOf(p)}>
+                  <span className="text-[12px] font-number tabular-nums mb-1 whitespace-nowrap" style={{ color: on ? color : 'var(--text-primary)', fontWeight: 800 }}>
+                    {chip?.value ?? '—'}
+                  </span>
+                  <span className="w-full rounded-t-md transition-all"
+                    style={{ height: `${h}%`, background: on ? color : `${color}66` }} />
+                </button>
+              )
+            })}
+          </div>
+          <div className="flex justify-around gap-3 -mt-1.5">
+            {y.quarters.map(p => {
+              const k = keyOf(p)
+              return (
+                <button key={k} type="button" onClick={() => setSel(k)}
+                  className="flex-1 max-w-[72px] text-[12px] font-bold text-center"
+                  style={{ color: k === sel ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{periodOf(p)}</button>
+              )
+            })}
+          </div>
+
+          {selected && (
+            <div className="rounded-lg p-3 space-y-2.5" style={{ background: 'var(--bg-hover)' }}>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[12px] font-bold" style={{ color: 'var(--text-primary)' }}>
+                  {periodOf(selected)}
+                  {selected.period_ended ? <span className="font-semibold" style={{ color: 'var(--text-secondary)' }}> · Period ended {fmtD(selected.period_ended)}</span> : null}
+                </p>
+                <ViewBtn p={selected} onPreview={onPreview} />
+              </div>
+              <DateRow p={selected} accent={chipsOf(selected.payouts ?? {})[0]?.color ?? '#94a3b8'} />
             </div>
           )}
         </div>
-        {file ? (
-          <a href={`/api/proxy/pdf?file=${encodeURIComponent(file)}`} target="_blank" rel="noopener noreferrer" title="View announcement"
-            className="shrink-0 inline-flex items-center gap-1 text-[12px] font-bold px-3 py-1.5 rounded-lg border transition-opacity hover:opacity-80"
-            style={{ borderColor: 'var(--brand)', color: 'var(--brand)' }}>
-            <Eye size={12} /> View
-          </a>
-        ) : image ? (
-          <button type="button" onClick={() => onPreview({ src: `/api/proxy/pdf?file=${encodeURIComponent(image)}`, title: p.title })}
-            className="shrink-0 inline-flex items-center gap-1 text-[12px] font-bold px-3 py-1.5 rounded-lg border transition-opacity hover:opacity-80"
-            style={{ borderColor: 'var(--brand)', color: 'var(--brand)' }}>
-            <ImageIcon size={12} /> View
-          </button>
-        ) : null}
-      </div>
-
-      {/* Date timeline */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 px-4 py-3 mt-auto" style={{ borderTop: '1px solid var(--bg-border)' }}>
-        {steps.map(s => (
-          <div key={s.k} className="min-w-0">
-            <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>{s.k}</p>
-            <p className="text-[14px] font-normal mt-1 truncate"
-              style={{ color: s.hl ? accent : 'var(--text-primary)' }} title={s.v}>{s.v}</p>
-          </div>
-        ))}
-      </div>
+      ) : (
+        <p className="px-4 py-4 text-[12px] font-semibold" style={{ color: 'var(--text-muted)' }}>No interim payouts this year</p>
+      )}
     </div>
   )
 }
