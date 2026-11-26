@@ -144,22 +144,22 @@ function SectorModal({ sector, onClose }: { sector: SectorGroup; onClose: () => 
           <table className="w-full min-w-[420px] text-xs">
             <thead className="sticky top-0" style={{ backgroundColor: 'var(--bg-card)' }}>
               <tr style={{ borderBottom: '1px solid var(--bg-border)' }}>
-                <th className="text-left py-2.5 px-4 text-[10px] font-semibold uppercase tracking-wider"
-                    style={{ color: 'var(--text-secondary)' }}>Symbol</th>
-                <th className="text-left py-2.5 px-4 text-[10px] font-semibold uppercase tracking-wider"
-                    style={{ color: 'var(--text-secondary)' }}>Company</th>
-                <th className="text-right py-2.5 px-4 text-[10px] font-semibold uppercase tracking-wider cursor-pointer select-none"
-                    style={{ color: sortBy === 'price' ? '#FEA500' : 'var(--text-secondary)' }}
+                <th className="text-left py-2.5 px-4 text-[11px] font-bold uppercase tracking-wider"
+                    style={{ color: 'var(--text-primary)' }}>Symbol</th>
+                <th className="text-left py-2.5 px-4 text-[11px] font-bold uppercase tracking-wider"
+                    style={{ color: 'var(--text-primary)' }}>Company</th>
+                <th className="text-right py-2.5 px-4 text-[11px] font-bold uppercase tracking-wider cursor-pointer select-none"
+                    style={{ color: sortBy === 'price' ? '#FEA500' : 'var(--text-primary)' }}
                     onClick={() => toggleSort('price')}>
                   <span className="flex items-center justify-end gap-1">Price <ArrowUpDown size={9}/></span>
                 </th>
-                <th className="text-right py-2.5 px-4 text-[10px] font-semibold uppercase tracking-wider cursor-pointer select-none"
-                    style={{ color: sortBy === 'change' ? '#FEA500' : 'var(--text-secondary)' }}
+                <th className="text-right py-2.5 px-4 text-[11px] font-bold uppercase tracking-wider cursor-pointer select-none"
+                    style={{ color: sortBy === 'change' ? '#FEA500' : 'var(--text-primary)' }}
                     onClick={() => toggleSort('change')}>
                   <span className="flex items-center justify-end gap-1">Change % <ArrowUpDown size={9}/></span>
                 </th>
-                <th className="text-right py-2.5 px-4 text-[10px] font-semibold uppercase tracking-wider cursor-pointer select-none"
-                    style={{ color: sortBy === 'volume' ? '#FEA500' : 'var(--text-secondary)' }}
+                <th className="text-right py-2.5 px-4 text-[11px] font-bold uppercase tracking-wider cursor-pointer select-none"
+                    style={{ color: sortBy === 'volume' ? '#FEA500' : 'var(--text-primary)' }}
                     onClick={() => toggleSort('volume')}>
                   <span className="flex items-center justify-end gap-1">Volume <ArrowUpDown size={9}/></span>
                 </th>

@@ -41,7 +41,7 @@ function fmtFundVal(label: string, val: number | null): string {
 
 function TrendBar({ values }: { values: (number | null)[] }) {
   const nums = values.filter((v): v is number => v != null)
-  if (nums.length < 2) return null
+  if (nums.length < 2) return <span className="text-sm" style={{ color: 'var(--text-muted)' }}>—</span>
   const min = Math.min(...nums), max = Math.max(...nums)
   const range = max - min || 1
   return (

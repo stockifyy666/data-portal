@@ -88,12 +88,12 @@ function SectorStocksModal({ sector, onClose }: { sector: ActiveSector; onClose:
             <thead className="sticky top-0" style={{ backgroundColor: 'var(--bg-card)' }}>
               <tr style={{ borderBottom: '1px solid var(--bg-border)' }}>
                 {(['Symbol','Company'] as const).map(h => (
-                  <th key={h} className="text-left py-2.5 px-4 text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{h}</th>
+                  <th key={h} className="text-left py-2.5 px-4 text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-primary)' }}>{h}</th>
                 ))}
                 {(['price','change','volume'] as const).map(col => (
                   <th key={col} onClick={() => toggleSort(col)}
-                    className="text-right py-2.5 px-4 text-[10px] font-semibold uppercase tracking-wider cursor-pointer select-none"
-                    style={{ color: sortBy === col ? '#FEA500' : 'var(--text-muted)' }}>
+                    className="text-right py-2.5 px-4 text-[11px] font-bold uppercase tracking-wider cursor-pointer select-none"
+                    style={{ color: sortBy === col ? '#FEA500' : 'var(--text-primary)' }}>
                     <span className="flex items-center justify-end gap-1">
                       {col === 'change' ? 'Chg %' : col.charAt(0).toUpperCase() + col.slice(1)}
                       <ArrowUpDown size={9} />
