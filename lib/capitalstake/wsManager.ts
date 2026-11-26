@@ -44,7 +44,6 @@ class CSWebSocketManager {
 
   private get token(): string {
     return (
-      process.env.CAPITAL_STAKE_CHART_BEARER_TOKEN ||
       process.env.CAPITAL_STAKE_BEARER_TOKEN ||
       ''
     )

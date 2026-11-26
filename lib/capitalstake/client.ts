@@ -4,7 +4,6 @@
 // GET any uat.csapis.com endpoint
 export async function csUatGet<T = unknown>(url: string): Promise<T> {
   const rawToken =
-    process.env.CAPITAL_STAKE_CHART_BEARER_TOKEN ||
     process.env.CAPITAL_STAKE_BEARER_TOKEN!
   const res = await fetch(url, {
     method:  'GET',
