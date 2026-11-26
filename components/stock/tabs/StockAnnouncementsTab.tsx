@@ -281,7 +281,7 @@ function PayoutView({ payouts, onPreview }: { payouts: PayoutItem[]; onPreview: 
   return (
     <div className="space-y-4 pt-1">
       {/* Summary strip */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 210px), 1fr))" }}>
         {stats.map(s => (
           <div key={s.label} className="rounded-xl p-3.5 relative overflow-hidden min-w-0"
             style={{ background: `linear-gradient(135deg, ${s.accent}1f, ${s.accent}08)`, border: `1px solid ${s.accent}40` }}>
@@ -294,7 +294,7 @@ function PayoutView({ payouts, onPreview }: { payouts: PayoutItem[]; onPreview: 
       </div>
 
       {/* One section per year: annual payout on top, quarterly histogram below */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
+      <div className="grid gap-3 items-stretch" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, max(300px, calc((100% - 24px) / 3))), 1fr))" }}>
         {years.map(y => <YearSection key={y.year} y={y} max={maxDiv} onPreview={onPreview} />)}
       </div>
     </div>
@@ -345,131 +345,100 @@ function ViewBtn({ p, onPreview }: { p: PayoutItem; onPreview: (v: { src: string
   return null
 }
 
-// Dates for one payout, in a compact 4-column row
-function DateRow({ p, accent }: { p: PayoutItem; accent: string }) {
-  const po = p.payouts ?? {}
-  const steps = [
-    { k: 'Announced',    v: fmtD(p.date) },
-    { k: 'Ex-date',      v: fmtD(po.ex_date), hl: true },
-    { k: 'Entitlement',  v: fmtD(po.entitlement_date) },
-    { k: 'Book closure', v: po.book_closure_from ? `${fmtD(po.book_closure_from)} – ${fmtD(po.book_closure_to)}` : '—' },
-  ]
-  return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-      {steps.map(s => (
-        <div key={s.k} className="min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>{s.k}</p>
-          <p className="text-[13px] font-normal mt-0.5 truncate" style={{ color: s.hl ? accent : 'var(--text-primary)' }} title={s.v}>{s.v}</p>
-        </div>
-      ))}
-    </div>
-  )
-}
+// Fixed slots so every year card has the same shape and height
+const SLOTS = [
+  { q: 'Q1',   label: 'Q1' },
+  { q: 'Q2',   label: 'Q2' },
+  { q: 'Q3',   label: 'Q3' },
+  { q: 'YEAR', label: 'Annual' },
+] as const
 
 function YearSection({ y, max, onPreview }: { y: YearGroup; max: number; onPreview: (v: { src: string; title: string }) => void }) {
-  const last = y.quarters[y.quarters.length - 1]
-  const [sel, setSel] = useState<string | null>(last ? keyOf(last) : null)
-  const selected = y.quarters.find(p => keyOf(p) === sel)
+  // One payout per slot (sum dividends if a slot has more than one)
+  const bySlot = SLOTS.map(s => {
+    const items = y.items.filter(p => (p.quarter === 'Q4' ? 'YEAR' : p.quarter) === s.q)
+    return { ...s, items, div: items.reduce((t, p) => t + num(p.payouts?.dividend), 0), chip: items[0] ? chipsOf(items[0].payouts ?? {})[0] : undefined }
+  })
+  const latest = [...bySlot].reverse().find(s => s.items.length)
+  const [sel, setSel] = useState<string>(latest?.q ?? 'YEAR')
+  const cur  = bySlot.find(s => s.q === sel)
+  const p    = cur?.items[cur.items.length - 1]
+  const po   = p?.payouts ?? {}
 
   return (
-    <div className="rounded-xl overflow-hidden flex flex-col" style={{ background: 'var(--bg-card)', border: '1px solid var(--bg-border)' }}>
-      {/* Year header */}
-      <div className="flex items-center justify-between gap-3 px-4 py-3"
-        style={{ borderBottom: '1px solid var(--bg-border)', background: 'linear-gradient(135deg, #10b98114, transparent)' }}>
-        <p className="text-[22px] leading-none font-number" style={{ color: 'var(--text-primary)', fontWeight: 800 }}>{y.year}</p>
-        <div className="text-right min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Total cash dividend</p>
-          <p className="text-[16px] font-number tabular-nums" style={{ color: '#10b981', fontWeight: 800 }}>
-            Rs {y.total.toFixed(2)}
-            <span className="text-[12px] font-bold" style={{ color: 'var(--text-secondary)' }}> · {+(y.total * 10).toFixed(2)}% · {y.items.length} payout{y.items.length === 1 ? '' : 's'}</span>
-          </p>
+    <div className="rounded-xl overflow-hidden flex flex-col h-full" style={{ background: 'var(--bg-card)', border: '1px solid var(--bg-border)' }}>
+      {/* Header: year + total */}
+      <div className="flex items-end justify-between gap-3 px-4 pt-3.5 pb-3" style={{ borderBottom: '1px solid var(--bg-border)' }}>
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Year</p>
+          <p className="text-[22px] leading-tight font-number" style={{ color: 'var(--text-primary)', fontWeight: 800 }}>{y.year}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-[20px] leading-tight font-number tabular-nums" style={{ color: '#10b981', fontWeight: 800 }}>Rs {y.total.toFixed(2)}</p>
+          <p className="text-[11px] font-bold" style={{ color: 'var(--text-secondary)' }}>{+(y.total * 10).toFixed(2)}% · {y.items.length} payout{y.items.length === 1 ? '' : 's'}</p>
         </div>
       </div>
 
-      {/* Annual payout */}
-      {y.annual.map(p => {
-        const chips  = chipsOf(p.payouts ?? {})
-        const main   = chips[0]
-        const accent = main?.color ?? '#94a3b8'
-        return (
-          <div key={keyOf(p)} className="px-4 py-3 space-y-3" style={{ borderBottom: '1px solid var(--bg-border)' }}>
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md" style={{ background: `${accent}22`, color: accent }}>Annual</span>
-                  {p.period_ended && <span className="text-[12px] font-semibold" style={{ color: 'var(--text-secondary)' }}>Period ended {fmtD(p.period_ended)}</span>}
-                </div>
-                {main && (
-                  <p className="mt-1.5 flex items-baseline gap-2 flex-wrap">
-                    <span className="text-[24px] leading-none font-number tabular-nums" style={{ color: 'var(--text-primary)', fontWeight: 800 }}>{main.value}</span>
-                    <span className="text-[13px] font-bold" style={{ color: 'var(--text-secondary)' }}>
-                      {main.label}{main.label === 'Cash dividend' ? ` · ${+(num(p.payouts?.dividend) * 10).toFixed(2)}%` : ''}
-                    </span>
-                    {chips.slice(1).map(c => (
-                      <span key={c.label} className="text-[12px] font-bold px-2 py-0.5 rounded-md" style={{ color: c.color, background: `${c.color}1f` }}>{c.label} {c.value}</span>
-                    ))}
-                  </p>
-                )}
-              </div>
+      {/* Histogram: Q1 · Q2 · Q3 · Annual */}
+      <div className="px-4 pt-4">
+        <div className="grid grid-cols-4 gap-3 items-end h-[110px]" style={{ borderBottom: '1px solid var(--bg-border)' }}>
+          {bySlot.map(s => {
+            const on    = s.q === sel
+            const has   = s.items.length > 0
+            const color = s.q === 'YEAR' ? '#FEA500' : (s.chip?.color ?? '#10b981')
+            const h     = !has ? 0 : s.div > 0 ? Math.max(10, (s.div / (max || 1)) * 72) : 10
+            return (
+              <button key={s.q} type="button" disabled={!has} onClick={() => setSel(s.q)}
+                className="flex flex-col items-center justify-end h-full disabled:cursor-default">
+                <span className="text-[11px] font-number tabular-nums mb-1 whitespace-nowrap"
+                  style={{ color: !has ? 'var(--text-muted)' : on ? color : 'var(--text-primary)', fontWeight: 800 }}>
+                  {has ? (s.div > 0 ? `Rs ${s.div.toFixed(2)}` : s.chip?.value ?? '—') : '—'}
+                </span>
+                <span className="w-full max-w-[44px] rounded-t-md transition-all"
+                  style={{ height: `${h}%`, background: on ? color : `${color}55` }} />
+              </button>
+            )
+          })}
+        </div>
+        <div className="grid grid-cols-4 gap-3 pt-1.5">
+          {bySlot.map(s => (
+            <button key={s.q} type="button" disabled={!s.items.length} onClick={() => setSel(s.q)}
+              className="text-[11px] font-bold text-center disabled:cursor-default"
+              style={{ color: s.q === sel ? 'var(--text-primary)' : 'var(--text-muted)' }}>{s.label}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* Selected payout details */}
+      <div className="m-4 mt-3 rounded-lg p-3 flex-1 flex flex-col gap-2.5" style={{ background: 'var(--bg-hover)' }}>
+        {p ? (
+          <>
+            <div className="flex items-start justify-between gap-2 min-w-0">
+              <p className="text-[12px] font-bold min-w-0" style={{ color: 'var(--text-primary)' }}>
+                {cur?.label}
+                {p.period_ended ? <span className="font-semibold" style={{ color: 'var(--text-secondary)' }}> · ended {fmtD(p.period_ended)}</span> : null}
+              </p>
               <ViewBtn p={p} onPreview={onPreview} />
             </div>
-            <DateRow p={p} accent={accent} />
-          </div>
-        )
-      })}
-
-      {/* Interim (quarterly) payouts as a histogram — click a bar for its dates */}
-      {y.quarters.length > 0 ? (
-        <div className="px-4 py-3 space-y-3">
-          <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Interim payouts</p>
-          <div className="flex items-end justify-around gap-3 h-[120px]" style={{ borderBottom: '1px solid var(--bg-border)' }}>
-            {y.quarters.map(p => {
-              const k     = keyOf(p)
-              const div   = num(p.payouts?.dividend)
-              const chip  = chipsOf(p.payouts ?? {})[0]
-              const color = chip?.color ?? '#94a3b8'
-              const h     = div > 0 ? Math.max(8, (div / (max || 1)) * 78) : 8
-              const on    = k === sel
-              return (
-                <button key={k} type="button" onClick={() => setSel(k)}
-                  className="flex flex-col items-center justify-end h-full flex-1 max-w-[72px]"
-                  title={chip ? `${periodOf(p)} · ${chip.label} ${chip.value}` : periodOf(p)}>
-                  <span className="text-[12px] font-number tabular-nums mb-1 whitespace-nowrap" style={{ color: on ? color : 'var(--text-primary)', fontWeight: 800 }}>
-                    {chip?.value ?? '—'}
-                  </span>
-                  <span className="w-full rounded-t-md transition-all"
-                    style={{ height: `${h}%`, background: on ? color : `${color}66` }} />
-                </button>
-              )
-            })}
-          </div>
-          <div className="flex justify-around gap-3 -mt-1.5">
-            {y.quarters.map(p => {
-              const k = keyOf(p)
-              return (
-                <button key={k} type="button" onClick={() => setSel(k)}
-                  className="flex-1 max-w-[72px] text-[12px] font-bold text-center"
-                  style={{ color: k === sel ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{periodOf(p)}</button>
-              )
-            })}
-          </div>
-
-          {selected && (
-            <div className="rounded-lg p-3 space-y-2.5" style={{ background: 'var(--bg-hover)' }}>
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-[12px] font-bold" style={{ color: 'var(--text-primary)' }}>
-                  {periodOf(selected)}
-                  {selected.period_ended ? <span className="font-semibold" style={{ color: 'var(--text-secondary)' }}> · Period ended {fmtD(selected.period_ended)}</span> : null}
-                </p>
-                <ViewBtn p={selected} onPreview={onPreview} />
-              </div>
-              <DateRow p={selected} accent={chipsOf(selected.payouts ?? {})[0]?.color ?? '#94a3b8'} />
+            <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+              {[
+                { k: 'Announced',    v: fmtD(p.date) },
+                { k: 'Ex-date',      v: fmtD(po.ex_date), hl: true },
+                { k: 'Entitlement',  v: fmtD(po.entitlement_date) },
+                { k: 'Book closure', v: po.book_closure_from ? `${fmtD(po.book_closure_from)} – ${fmtD(po.book_closure_to)}` : '—' },
+              ].map(d => (
+                <div key={d.k} className="min-w-0">
+                  <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>{d.k}</p>
+                  <p className="text-[12px] font-normal mt-0.5" title={d.v}
+                    style={{ color: d.hl ? '#10b981' : 'var(--text-primary)' }}>{d.v}</p>
+                </div>
+              ))}
             </div>
-          )}
-        </div>
-      ) : (
-        <p className="px-4 py-4 text-[12px] font-semibold" style={{ color: 'var(--text-muted)' }}>No interim payouts this year</p>
-      )}
+          </>
+        ) : (
+          <p className="text-[12px] font-semibold m-auto" style={{ color: 'var(--text-muted)' }}>No payout details</p>
+        )}
+      </div>
     </div>
   )
 }
