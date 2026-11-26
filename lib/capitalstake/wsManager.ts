@@ -35,7 +35,7 @@ class CSWebSocketManager {
   private connecting:   boolean = false
 
   private get wsUrl(): string {
-    const base = (process.env.CAPITAL_STAKE_UAT_URL ?? 'https://uat.csapis.com')
+    const base = ((process.env.CAPITAL_STAKE_UAT_URL || 'https://csapis.com').trim())
       .replace(/^https/, 'wss')
       .replace(/^http/, 'ws')
       .replace(/\/$/, '')

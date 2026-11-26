@@ -1,6 +1,6 @@
 // Central list of every Capital Stake UAT API endpoint (uat.csapis.com).
 
-const UAT_BASE = process.env.CAPITAL_STAKE_UAT_URL ?? 'https://uat.csapis.com'
+const UAT_BASE = (process.env.CAPITAL_STAKE_UAT_URL || 'https://csapis.com').trim()
 
 export const CS_ENDPOINTS = {
 
