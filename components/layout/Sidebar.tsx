@@ -32,7 +32,7 @@ const NAV_ITEMS = [
 
 function StockifyySVGLogo() {
   return (
-    <Image src={logo} alt='logo image' width={100} height={100} />
+    <Image src={logo} alt='Stockifyy' width={170} height={60} priority style={{ width: 170, height: 'auto', objectFit: 'contain' }} />
   )
 }
 

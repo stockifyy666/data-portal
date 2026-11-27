@@ -250,48 +250,62 @@ export default function StockDetailClient({
   }, [tab]) // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ── Sector peers ──
-     Built from the full quotes list (has EPS, ROE, P/B, dividend). On a direct
-     load of ?tab=peers the quotes or sector may not be ready yet, so this re-runs
-     when they arrive and upgrades any fallback list from /peers. */
-  const peersFromQuotes = useRef(false)
+     The list (all companies in the sector, prices) comes from the quotes feed.
+     Quotes carry no EPS / P/B / ROE / dividend, so those ratios come from
+     /peers (read from Supabase fundamentals) and are merged in by symbol as
+     soon as they arrive — no page refresh needed. */
+  type PeerRatios = { eps: number | null; roe: number | null; pb: number | null; divYield: number | null; de: number | null }
+  const [peerRatios, setPeerRatios] = useState<Record<string, PeerRatios> | null>(null)
+  const ratiosFetching = useRef(false)
+
   useEffect(() => {
     if (tab !== 'peers' && tab !== 'compare') return
-    if (allQuotes.length > 0 && overview?.sector) {
-      if (peersFromQuotes.current) return
-      const sector = overview.sector
-      const peerList = allQuotes
-        .filter(q =>
-          q.sector === sector &&
-          q.symbol !== symbol &&
-          !/\(R\d*\)|\bRight\b/i.test(q.name) &&
-          !isRightSymbol(q.symbol)
-        )
-        .slice(0, 15)
-        .map(q => ({
+    if (peerRatios || ratiosFetching.current) return
+    ratiosFetching.current = true
+    if (!peers.length) setPeersLoad(true)
+    fetch(`/api/stock/${symbol}/peers`)
+      .then(r => r.json())
+      .then(j => {
+        const list: (PeerRatios & { symbol: string })[] = Array.isArray(j.peers) ? j.peers : []
+        const map: Record<string, PeerRatios> = {}
+        for (const p of list) map[p.symbol] = { eps: p.eps, roe: p.roe, pb: p.pb, divYield: p.divYield, de: p.de }
+        setPeerRatios(map)
+        // Quotes not ready yet: show the server list meanwhile
+        setPeers(prev => prev.length ? prev : (j.peers ?? []))
+      })
+      .catch(() => setPeerRatios({}))
+      .finally(() => setPeersLoad(false))
+  }, [tab, symbol]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (tab !== 'peers' && tab !== 'compare') return
+    if (!allQuotes.length || !overview?.sector) return
+    const sector = overview.sector
+    const pick = (a: number | null | undefined, b: number | null | undefined) =>
+      a != null && a !== 0 ? a : (b ?? null)
+    const peerList = allQuotes
+      .filter(q =>
+        q.sector === sector &&
+        q.symbol !== symbol &&
+        !/\(R\d*\)|\bRight\b/i.test(q.name) &&
+        !isRightSymbol(q.symbol)
+      )
+      .map(q => {
+        const r = peerRatios?.[q.symbol]
+        return {
           symbol: q.symbol, name: q.name, sector: q.sector,
           price: q.price, change: q.change, changePct: q.changePct, volume: q.volume,
           high52: q.high52, low52: q.low52, marketCap: q.mc,
-          eps: q.eps || null,
-          roe: q.roe ? q.roe * 100 : null,
-          pb:  q.bvps > 0 && q.price > 0 ? q.price / q.bvps : null,
-          divYield: q.dps > 0 && q.price > 0 ? (q.dps / q.price) * 100 : null,
-          de: null,
-        }))
-      peersFromQuotes.current = true
-      setPeers(peerList)
-      setPeersLoad(false)
-      return
-    }
-    // Quotes/sector not ready yet: show the server list meanwhile (only once)
-    if (!peers.length && !peersLoad) {
-      setPeersLoad(true)
-      fetch(`/api/stock/${symbol}/peers`)
-        .then(r => r.json())
-        .then(j => { if (!peersFromQuotes.current && Array.isArray(j.peers)) setPeers(j.peers) })
-        .catch(() => {})
-        .finally(() => setPeersLoad(false))
-    }
-  }, [tab, allQuotes, overview?.sector, symbol]) // eslint-disable-line react-hooks/exhaustive-deps
+          eps:      pick(q.eps || null, r?.eps),
+          roe:      pick(q.roe ? q.roe * 100 : null, r?.roe),
+          pb:       pick(q.bvps > 0 && q.price > 0 ? q.price / q.bvps : null, r?.pb),
+          divYield: pick(q.dps > 0 && q.price > 0 ? (q.dps / q.price) * 100 : null, r?.divYield),
+          de:       r?.de ?? null,
+        }
+      })
+    setPeers(peerList)
+    if (peerRatios) setPeersLoad(false)
+  }, [tab, allQuotes, overview?.sector, symbol, peerRatios]) // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ── Re-fetch statement when filters change ── */
   useEffect(() => {

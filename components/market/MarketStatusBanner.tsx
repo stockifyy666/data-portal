@@ -27,9 +27,9 @@ const CODE_STYLES: Record<string, { rgb: string; light: string; dark: string }> 
   open:         { rgb: '34,197,94',   light: '#15803d', dark: '#4ade80' },
   pre_market:   { rgb: '245,158,11',  light: '#b45309', dark: '#fbbf24' },
   post_market:  { rgb: '59,130,246',  light: '#1d4ed8', dark: '#60a5fa' },
-  after_hours:  { rgb: '148,163,184', light: '#475569', dark: '#94a3b8' },
-  friday_break: { rgb: '139,92,246',  light: '#6d28d9', dark: '#a78bfa' },
-  weekend:      { rgb: '148,163,184', light: '#475569', dark: '#94a3b8' },
+  after_hours:  { rgb: '239,68,68',   light: '#b91c1c', dark: '#f87171' },
+  friday_break: { rgb: '239,68,68',   light: '#b91c1c', dark: '#f87171' },
+  weekend:      { rgb: '239,68,68',   light: '#b91c1c', dark: '#f87171' },
 }
 
 export default function MarketStatusBanner() {
@@ -43,7 +43,20 @@ export default function MarketStatusBanner() {
     return () => clearInterval(iv)
   }, [])
 
-  const timeStr = status?.currentTime ?? null
+  // Live ticking PKT clock (updates every second on the client)
+  const [now, setNow] = useState<Date | null>(null)
+  useEffect(() => {
+    setNow(new Date())
+    const t = setInterval(() => setNow(new Date()), 1000)
+    return () => clearInterval(t)
+  }, [])
+  const parts = now
+    ? Object.fromEntries(new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Karachi', hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true,
+        weekday: 'short', day: 'numeric', month: 'short',
+      }).formatToParts(now).map(p => [p.type, p.value]))
+    : null
+  const timeStr = parts ? true : status?.currentTime ?? null
 
   const style = status ? (CODE_STYLES[status.code] ?? CODE_STYLES.after_hours) : null
 
@@ -60,28 +73,41 @@ export default function MarketStatusBanner() {
 
       {status && style ? (
         <div className="flex flex-col items-end gap-1 shrink-0">
-          <div className="inline-flex items-stretch rounded-full overflow-hidden text-[10px] sm:text-xs font-semibold"
+          <div className="inline-flex items-stretch rounded-full overflow-hidden text-[10px] sm:text-[11px] font-semibold"
             style={{ border: `1px solid rgba(${style.rgb},${isDark ? 0.35 : 0.3})`, background: 'var(--bg-card)' }}>
             {timeStr && (
-              <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 font-number"
-                style={{ color: 'var(--text-secondary)', borderRight: `1px solid rgba(${style.rgb},${isDark ? 0.25 : 0.2})` }}>
-                <Clock size={12} strokeWidth={2.2} style={{ color: 'var(--text-muted)' }} />
-                {timeStr}
+              <span className="hidden sm:inline-flex items-center gap-1.5 pl-1 pr-2.5 py-0.5"
+                style={{ borderRight: `1px solid rgba(${style.rgb},${isDark ? 0.25 : 0.2})` }}>
+                <span className="inline-flex items-center justify-center rounded-full"
+                  style={{ width: 18, height: 18, background: `rgba(${style.rgb},${isDark ? 0.16 : 0.12})`, color: isDark ? style.dark : style.light }}>
+                  <Clock size={10} strokeWidth={2.4} />
+                </span>
+                {parts ? (
+                  <span className="flex items-baseline gap-1 tabular-nums">
+                    <span className="font-bold" style={{ color: 'var(--text-primary)', fontSize: '1em', letterSpacing: '0.02em' }}>
+                      {parts.hour}<span className="clock-colon">:</span>{parts.minute}<span className="clock-colon">:</span>{parts.second}
+                    </span>
+                    <span className="text-[8.5px] sm:text-[9px] font-bold" style={{ color: isDark ? style.dark : style.light }}>{parts.dayPeriod}</span>
+                    <span className="text-[8.5px] sm:text-[9px] font-semibold" style={{ color: 'var(--text-secondary)' }}>PKT · {parts.weekday} {parts.day} {parts.month}</span>
+                  </span>
+                ) : (
+                  <span className="font-number" style={{ color: 'var(--text-secondary)' }}>{status.currentTime}</span>
+                )}
               </span>
             )}
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 font-bold tracking-wide"
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 font-bold"
               style={{ color: isDark ? style.dark : style.light, background: `rgba(${style.rgb},${isDark ? 0.14 : 0.1})` }}>
               <span className="relative flex" style={{ width: 7, height: 7 }}>
-                {status.isOpen && (
-                  <span className="absolute inset-0 rounded-full animate-ping" style={{ background: `rgb(${style.rgb})`, opacity: 0.6 }} />
-                )}
-                <span className="relative rounded-full" style={{ width: 7, height: 7, background: `rgb(${style.rgb})` }} />
+                {/* Pulses in every state: fast ping when open, slow breathe when closed */}
+                <span className={`absolute inset-0 rounded-full ${status.isOpen ? 'animate-ping' : 'dot-breathe'}`}
+                  style={{ background: `rgb(${style.rgb})`, opacity: 0.6 }} />
+                <span className="relative rounded-full" style={{ width: 7, height: 7, background: `rgb(${style.rgb})`, boxShadow: `0 0 6px rgba(${style.rgb},0.8)` }} />
               </span>
-              {(status.label ?? '').toUpperCase()}
+              {(status.label ?? '').toLowerCase().replace(/\b\w/g, c => c.toUpperCase())}
             </span>
           </div>
           {status.nextOpen && (
-            <span className="text-[10px] sm:text-[11px]" style={{ color: 'var(--text-muted)' }}>
+            <span className="text-[9px] sm:text-[9.5px] font-medium" style={{ color: 'var(--text-secondary)' }}>
               Opens {status.nextOpen}
             </span>
           )}
@@ -89,6 +115,13 @@ export default function MarketStatusBanner() {
       ) : (
         <div className="h-7 w-32 rounded-full animate-pulse shrink-0" style={{ backgroundColor: 'var(--bg-hover)' }} />
       )}
+      <style>{`
+        @keyframes dotBreathe { 0%,100% { transform: scale(1); opacity: .55 } 50% { transform: scale(2.4); opacity: 0 } }
+        .dot-breathe { animation: dotBreathe 2.4s ease-in-out infinite; }
+        @keyframes colonBlink { 0%,49% { opacity: 1 } 50%,100% { opacity: .25 } }
+        .clock-colon { animation: colonBlink 1s steps(1) infinite; margin: 0 1px; }
+        @media (prefers-reduced-motion: reduce) { .dot-breathe, .clock-colon { animation: none } }
+      `}</style>
     </div>
   )
 }

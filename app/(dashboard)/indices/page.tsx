@@ -726,7 +726,7 @@ export default function IndicesPage() {
         <>
           {/* KPI Row */}
           {kse && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2 sm:gap-2.5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 2xl:grid-cols-6 gap-2 sm:gap-2.5">
               {[
                 {
                   label: `${kse.label} Change`,

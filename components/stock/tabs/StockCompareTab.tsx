@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { Overview, StatementData } from '../stock-detail-types'
 import type { StockQuote } from '@/types/market'
 import { SectionHeading } from '../stock-detail-helpers'
+import SymbolLogo from '@/components/ui/SymbolLogo'
 
 type PeerData = {
   symbol: string; name: string; price: number; volume: number
@@ -31,6 +32,42 @@ export function StockCompareTab({ symbol, overview, snapFunds, peers, peersLoad 
   const [cmpMetricCustom,   setCmpMetricCustom]    = useState('')
   const [cmpMetricLoading,  setCmpMetricLoading]   = useState(false)
   const [cmpMetricData,     setCmpMetricData]      = useState<Record<string,Record<string,{year:string;value:number}[]>>>({})
+  const [cmpMetricSearch,   setCmpMetricSearch]    = useState('')
+  // Real line items from this stock's own statements (Capital Stake data)
+  const [stmtGroups,        setStmtGroups]         = useState<{ label: string; items: string[]; bold: string[] }[] | null>(null)
+
+  useEffect(() => {
+    let alive = true
+    const SRC = [
+      { label: 'Income Statement', type: 'income'       },
+      { label: 'Balance Sheet',    type: 'balance'      },
+      { label: 'Cash Flow',        type: 'cashflow'     },
+      { label: 'Key Ratios',       type: 'fundamentals' },
+    ]
+    Promise.all(SRC.map(src =>
+      fetch(`/api/stock/${symbol}/statement?type=${src.type}&interval=annual`)
+        .then(r => r.json())
+        .then(j => {
+          const fields = ((j?.data?.fields ?? []) as StatementData['fields'])
+            .filter(f => !f.is_heading && f.label?.trim() && f.values.some(v => v != null && v !== 0))
+          const items: string[] = []
+          const bold: string[] = []
+          for (const f of fields) {
+            const l = f.label.trim()
+            if (items.some(x => x.toLowerCase() === l.toLowerCase())) continue
+            items.push(l)
+            if (/^(total|net|profit|gross|operating)\b/i.test(l)) bold.push(l)
+          }
+          return { label: src.label, items, bold }
+        })
+        .catch(() => ({ label: src.label, items: [] as string[], bold: [] as string[] }))
+    )).then(groups => {
+      if (!alive) return
+      const real = groups.filter(g => g.items.length)
+      setStmtGroups(real.length ? real : null)
+    })
+    return () => { alive = false }
+  }, [symbol])
 
   function cmpToggle(sym: string) {
     setCmpSelected(prev =>
@@ -133,13 +170,17 @@ export function StockCompareTab({ symbol, overview, snapFunds, peers, peersLoad 
     return mc.toFixed(0)
   }
 
-  const METRIC_GROUPS = [
+  const FALLBACK_GROUPS = [
     { label: 'Income Statement', items: ['Revenue','Net Revenue','Gross Profit','Operating Profit','EBITDA','Net Profit','Finance Cost','Tax Expense','Other Income','Depreciation'] },
     { label: 'Balance Sheet',    items: ['Total Assets','Total Equity','Total Debt','Cash & Equivalents','Inventory','Retained Earnings','Capital Expenditure','Total Liabilities'] },
     { label: 'Cash Flow',        items: ['Operating Cash Flow','Investing Cash Flow','Financing Cash Flow','Free Cash Flow','Net Cash Flow'] },
     { label: 'Key Ratios',       items: ['EPS','Book Value Per Share','Dividend Per Share','Dividend Yield','P/E Ratio','Price Book Ratio','Return on Equity','Return on Assets','Net Profit Margin','Debt to Equity'] },
     { label: 'Banking',          items: ['Advances','Deposits','Net Interest Income','Investments','Markup Income','NPL','Net Interest Margin'] },
-  ]
+  ].map(g => ({ ...g, bold: [] as string[] }))
+  const q = cmpMetricSearch.trim().toLowerCase()
+  const METRIC_GROUPS = (stmtGroups ?? FALLBACK_GROUPS)
+    .map(g => ({ ...g, items: q ? g.items.filter(m => m.toLowerCase().includes(q)) : g.items }))
+    .filter(g => g.items.length)
 
   function toggleMetric(m: string) {
     setCmpMetricSelected(prev =>
@@ -215,7 +256,7 @@ export function StockCompareTab({ symbol, overview, snapFunds, peers, peersLoad 
                 {cmpSearch && (
                   <button onClick={() => { setCmpSearch(''); setCmpDropOpen(false) }}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-xs opacity-50 hover:opacity-100"
-                    style={{ color: 'var(--text-secondary)' }}>{'✕'}</button>
+                    style={{ color: 'var(--text-secondary)' }}>{'âœ•'}</button>
                 )}
               </div>
 
@@ -252,10 +293,7 @@ export function StockCompareTab({ symbol, overview, snapFunds, peers, peersLoad 
                             {isSel && <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1.5 4L3 5.5L6.5 2" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                           </div>
                           <div className="flex items-center gap-2 flex-1 min-w-0">
-                            <div className="w-6 h-6 rounded flex items-center justify-center text-white text-[9px] font-bold shrink-0"
-                              style={{ background:'linear-gradient(135deg,#FEA500,#986300)' }}>
-                              {item.symbol.charAt(0)}
-                            </div>
+                            <SymbolLogo symbol={item.symbol} size={26} />
                             <div className="min-w-0">
                               <p className="text-xs font-bold" style={{ color:'var(--text-primary)' }}>{item.symbol}</p>
                               <p className="text-[10px] truncate" style={{ color: 'var(--text-secondary)' }}>{item.name}</p>
@@ -317,7 +355,21 @@ export function StockCompareTab({ symbol, overview, snapFunds, peers, peersLoad 
               <>
                 <div className="fixed inset-0 z-10" onMouseDown={() => setCmpMetricDropOpen(false)} />
                 <div className="absolute z-20 top-full mt-1 w-full rounded-xl shadow-xl overflow-hidden"
-                  style={{ backgroundColor:'var(--bg-card)', border:'1px solid var(--bg-border)', maxHeight:320, overflowY:'auto' }}>
+                  style={{ backgroundColor:'var(--bg-card)', border:'1px solid var(--bg-border)', maxHeight:380, overflowY:'auto' }}>
+                  <div className="sticky top-0 z-10 p-2" style={{ backgroundColor:'var(--bg-card)', borderBottom:'1px solid var(--bg-border)' }}>
+                    <input
+                      autoFocus
+                      type="text"
+                      value={cmpMetricSearch}
+                      onChange={e => setCmpMetricSearch(e.target.value)}
+                      placeholder="Search line items..."
+                      className="w-full px-2.5 py-1.5 rounded-lg border text-xs focus:outline-none"
+                      style={{ backgroundColor:'var(--bg-hover)', borderColor:'var(--bg-border)', color:'var(--text-primary)' }}
+                    />
+                  </div>
+                  {METRIC_GROUPS.length === 0 && (
+                    <p className="px-3 py-4 text-xs" style={{ color:'var(--text-secondary)' }}>No matching line items</p>
+                  )}
 
                   {METRIC_GROUPS.map(g => (
                     <div key={g.label}>
@@ -345,7 +397,7 @@ export function StockCompareTab({ symbol, overview, snapFunds, peers, peersLoad 
                                 </svg>
                               )}
                             </div>
-                            <span className="font-medium" style={{ color: sel ? '#FEA500' : 'var(--text-primary)' }}>{m}</span>
+                            <span className={g.bold.includes(m) ? 'font-bold' : 'font-medium'} style={{ color: sel ? '#FEA500' : 'var(--text-primary)' }}>{m}</span>
                           </button>
                         )
                       })}
@@ -486,10 +538,10 @@ export function StockCompareTab({ symbol, overview, snapFunds, peers, peersLoad 
                 // Search annual first, then fundamentals, then quarterly
                 const sources = [annual, fundamentals, quarterly].filter(Boolean) as SD[]
                 for (const data of sources) {
-                  const field = data.fields.find(f =>
-                    !f.is_heading &&
-                    f.label.toLowerCase().includes(metric.toLowerCase())
-                  )
+                  const mk = metric.trim().toLowerCase()
+                  const field =
+                    data.fields.find(f => !f.is_heading && f.label.trim().toLowerCase() === mk) ??
+                    data.fields.find(f => !f.is_heading && f.label.toLowerCase().includes(mk))
                   if (field) {
                     nested[metric][sym] = data.periods
                       .map((p, i) => ({ year: String(p.year), value: (field.values[i] ?? 0) as number }))
@@ -523,15 +575,19 @@ export function StockCompareTab({ symbol, overview, snapFunds, peers, peersLoad 
           )
 
           function detectUnit(vals: number[]): { divisor: number; label: string } {
+            // Statement values from Capital Stake are in thousands (Rs '000).
+            // Small values (EPS, ratios, %) are shown as-is.
             const max = Math.max(...vals.map(Math.abs).filter(Boolean), 0)
-            if (max >= 1000) return { divisor: 1000, label: 'Rs Bn' }
-            if (max >= 1)    return { divisor: 1,    label: 'Rs Mn' }
-            return              { divisor: 0.001,    label: 'Rs Th' }
+            if (max >= 1e9) return { divisor: 1e9, label: 'Rs Tn' }
+            if (max >= 1e6) return { divisor: 1e6, label: 'Rs Bn' }
+            if (max >= 1e4) return { divisor: 1e3, label: 'Rs Mn' }
+            return             { divisor: 1,   label: ''      }
           }
           function fmtMetricVal(v: number, divisor: number) {
             if (v == null || v === 0) return '-'
             const scaled = v / divisor
-            return scaled >= 100 ? scaled.toFixed(0) : scaled >= 10 ? scaled.toFixed(1) : scaled.toFixed(2)
+            const a = Math.abs(scaled)
+            return scaled.toLocaleString('en-US', { maximumFractionDigits: a >= 100 ? 1 : 2, minimumFractionDigits: a >= 100 ? 0 : 2 })
           }
 
           return (
@@ -568,7 +624,7 @@ export function StockCompareTab({ symbol, overview, snapFunds, peers, peersLoad 
                   <div key={metric} className="card space-y-4">
                     <div className="flex items-start justify-between gap-3 flex-wrap">
                       <SectionHeading>{metric}</SectionHeading>
-                      {!noData && (
+                      {!noData && unit.label && (
                         <span className="text-[10px] font-semibold px-2 py-1 rounded-lg tabular-nums"
                           style={{ backgroundColor:'var(--bg-hover)', color: 'var(--text-secondary)' }}>
                           Figures in {unit.label}

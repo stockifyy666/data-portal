@@ -115,10 +115,21 @@ function IndexChart({ symbol }: { symbol: string }) {
           <span className="absolute w-3 h-3 rounded-full -translate-x-1/2 -translate-y-1/2 pointer-events-none"
             style={{ left: `${hx}%`, top: `${hy}%`, transition: SMOOTH, background: color, border: '2px solid var(--bg-card)', boxShadow: `0 0 0 3px ${color}33` }} />
           {/* tooltip, flips side near the right edge */}
-          <div className="absolute top-1 pointer-events-none rounded-lg px-3 py-2 shadow-lg whitespace-nowrap"
+          {/* No transform / will-change: those put the box on a GPU layer at
+              sub-pixel offsets, which made the text look blurry. */}
+          <div className="absolute top-1 pointer-events-none rounded-xl px-3.5 py-2.5 whitespace-nowrap"
             style={{
-              left: `${hx}%`, transform: hx > 70 ? 'translateX(calc(-100% - 10px))' : 'translateX(10px)', transition: SMOOTH, willChange: 'left, transform',
-              background: 'var(--bg-card)', border: '1px solid var(--bg-border)',
+              ...(hx > 70
+                ? { right: `calc(${100 - hx}% + 10px)` }
+                : { left:  `calc(${hx}% + 10px)` }),
+              transition: SMOOTH,
+              background: 'color-mix(in srgb, var(--bg-card) 52%, transparent)',
+              backdropFilter: 'blur(10px) saturate(180%)',
+              WebkitBackdropFilter: 'blur(10px) saturate(180%)',
+              border: '1px solid color-mix(in srgb, var(--text-primary) 14%, transparent)',
+              boxShadow: '0 12px 32px -10px rgba(0,0,0,0.30), inset 0 1px 0 rgba(255,255,255,0.25)',
+              WebkitFontSmoothing: 'antialiased',
+              textRendering: 'geometricPrecision',
             }}>
             {time && <p className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{time} PKT</p>}
             <p className="text-sm tabular-nums" style={{ color: 'var(--text-primary)', fontWeight: 800 }}>
@@ -150,14 +161,14 @@ function IndexStatCard({ label, data, loading, active, onClick }: {
 
   return (
     <button onClick={onClick} aria-pressed={active}
-      className="text-left w-full rounded-xl px-4 py-3.5 flex items-center gap-3 transition-colors"
+      className="text-left w-full min-w-0 rounded-xl px-3 py-3 2xl:px-4 2xl:py-3.5 flex items-center gap-2.5 2xl:gap-3 transition-colors"
       style={{
         background: 'var(--bg-card)',
         border: `1px solid ${active ? '#FEA500' : 'var(--bg-border)'}`,
         boxShadow: active ? '0 0 0 3px rgba(254,165,0,0.16)' : 'none',
       }}>
-      <span className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ background: bg, color: fg }}>
-        {loading ? null : <Icon size={24} strokeWidth={2.2} />}
+      <span className="w-10 h-10 2xl:w-12 2xl:h-12 rounded-xl flex items-center justify-center shrink-0" style={{ background: bg, color: fg }}>
+        {loading ? null : <Icon size={20} strokeWidth={2.2} />}
       </span>
       <div className="min-w-0 flex-1">
         <p className="text-[13px] truncate" style={{ color: 'var(--text-secondary)', fontWeight: 700 }}>{label}</p>
@@ -168,11 +179,11 @@ function IndexStatCard({ label, data, loading, active, onClick }: {
           </>
         ) : data ? (
           <>
-            <p className="text-[24px] leading-tight font-number tabular-nums truncate" style={{ color: 'var(--text-primary)', fontWeight: 800 }}>
+            <p className="text-[clamp(16px,1.15vw,22px)] leading-tight font-number tabular-nums whitespace-nowrap" style={{ color: 'var(--text-primary)', fontWeight: 800 }}>
               {data.current.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </p>
-            <p className="text-[13px] font-number tabular-nums mt-0.5" style={{ color: fg, fontWeight: 700 }}>
-              {formatChange(data.change)} · {formatPercent(data.changePct)}
+            <p className="text-[11px] 2xl:text-[12.5px] font-number tabular-nums mt-0.5 whitespace-nowrap" style={{ color: fg, fontWeight: 700 }}>
+              {formatChange(data.change)} ({formatPercent(data.changePct)})
             </p>
           </>
         ) : <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>Unavailable</p>}
@@ -314,11 +325,11 @@ export default function DashboardClient() {
             if (!d) return null
             const up = d.change >= 0
             return (
-              <div className="text-right">
-                <p className="text-sm sm:text-base font-bold font-number" style={{ color: 'var(--text-primary)' }}>
-                  {formatPrice(d.current, 2)}
+              <div className="text-right space-y-1">
+                <p className="text-base sm:text-lg font-extrabold font-number tabular-nums leading-tight" style={{ color: 'var(--text-primary)' }}>
+                  {d.current.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
-                <p className={`text-xs font-number font-semibold ${up ? 'text-green-600' : 'text-red-500'}`}>
+                <p className={`text-xs sm:text-[13px] font-number font-bold tabular-nums ${up ? 'text-green-600' : 'text-red-500'}`}>
                   {formatChange(d.change)} ({formatPercent(d.changePct)})
                 </p>
               </div>

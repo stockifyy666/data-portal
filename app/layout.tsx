@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Inter, Barlow } from 'next/font/google'
+import { Inter, Barlow, Montserrat } from 'next/font/google'
 import { ThemeProvider } from '@/components/providers/ThemeProvider'
 import { Toaster } from 'react-hot-toast'
 import './globals.css'
@@ -14,6 +14,14 @@ const barlow = Barlow({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700'],
   variable: '--font-mono',
+  display: 'swap',
+})
+
+// Ticker symbol names (Chalet-like geometric sans)
+const montserrat = Montserrat({
+  subsets: ['latin'],
+  weight: ['600', '700', '800'],
+  variable: '--font-ticker',
   display: 'swap',
 })
 
@@ -40,7 +48,7 @@ export default function RootLayout({
       lang="en"
       suppressHydrationWarning
     >
-      <body className={`${inter.variable} ${barlow.variable} antialiased`}>
+      <body className={`${inter.variable} ${barlow.variable} ${montserrat.variable} antialiased`}>
         <ThemeProvider>
           {children}
           <Toaster

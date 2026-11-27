@@ -1,4 +1,5 @@
 import { NextResponse }                               from 'next/server'
+import { getStatement } from '@/lib/supabase/financials'
 import { cacheGet, cacheSet, CACHE_KEYS, TTL_SECONDS } from '@/lib/redis/cache'
 import { csUatGet }                                     from '@/lib/capitalstake/client'
 import { CS_ENDPOINTS }                                 from '@/lib/capitalstake/endpoints'
@@ -66,16 +67,22 @@ async function fetchSingleQuote(symbol: string): Promise<RawSingleQuote | null> 
   } catch { return null }
 }
 
-async function fetchFundamentals(symbol: string): Promise<{
+async function fetchFundamentals(symbol: string, allowApi = false): Promise<{
   eps: number | null; divYield: number | null
   roe: number | null; de: number | null; pb: number | null
 }> {
   const cacheKey = `stock:statement:uat:${symbol}:fundamentals`
   type FundRaw = { periods: string[]; fundamentals: Array<{ name: string; values: (number | null)[] }> }
 
-  const cached = await cacheGet<{ periods: unknown[]; fields: unknown[] }>(cacheKey)
   let fields: Array<{ name: string; values: (number | null)[] }> = []
 
+  // 1. Supabase first (filled by the fundamentals sync) — no Capital Stake call
+  const stored = await getStatement(symbol, 'fundamentals', 'annual')
+  if (stored?.fields?.length) {
+    fields = stored.fields.map(f => ({ name: f.label, values: f.values }))
+  }
+
+  const cached = fields.length ? null : await cacheGet<{ periods: unknown[]; fields: unknown[] }>(cacheKey)
   if (cached) {
     // Already stored in transformed shape — re-extract from raw cache if available
     const rawKey = `stock:fundamentals:raw:uat:${symbol}`
@@ -83,7 +90,8 @@ async function fetchFundamentals(symbol: string): Promise<{
     if (raw) fields = raw.fundamentals ?? []
   }
 
-  if (!fields.length) {
+  // 3. Capital Stake only if allowed (peers list reads DB/cache only)
+  if (!fields.length && allowApi) {
     try {
       const url = CS_ENDPOINTS.COMPANY_FUNDAMENTALS(symbol)
       await trackChartAPICall(url)
@@ -153,7 +161,7 @@ export async function GET(
         !/\(R\d*\)|\bRight\b/i.test(s.name) &&
         !isRightSymbol(s.symbol)
       )
-      .slice(0, 15)
+
 
     // Only fetch fundamentals per peer — quotes come from already-cached bulk data
     const peerResults = await Promise.all(

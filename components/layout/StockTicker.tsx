@@ -29,7 +29,7 @@ function TickerCell({ item }: { item: TickerItem }) {
   return (
     <span className="inline-flex items-center gap-2.5 px-5 shrink-0 select-none"
       style={{ borderRight: '1px solid var(--bg-border)' }}>
-      <span className="text-[11px] font-black tracking-wide" style={{ color: 'var(--text-primary)' }}>
+      <span className="text-[11px] tracking-wide" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-ticker), var(--font-inter), sans-serif', fontWeight: 800 }}>
         {item.symbol}
       </span>
       <span className="text-[11px] font-semibold" style={{ color: 'var(--text-primary)' }}>
@@ -70,7 +70,7 @@ export default function StockTicker() {
     display:        'flex',
     width:          'max-content',
     animationName:  'ticker-scroll',
-    animationDuration: `${Math.max(items.length * 4, 60)}s`,
+    animationDuration: `${Math.max(items.length * 2.6, 40)}s`,
     animationTimingFunction: 'linear',
     animationIterationCount: 'infinite',
     animationPlayState: paused ? 'paused' : 'running',

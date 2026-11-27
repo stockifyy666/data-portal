@@ -361,7 +361,7 @@ export default function ScreenerPage() {
                       onMouseLeave={e => (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'}>
                     <td className="py-2.5 px-2">
                       <div className="flex items-center gap-2">
-                        <SymbolLogo symbol={q.symbol} size={24} />
+                        <SymbolLogo symbol={q.symbol} size={30} />
                         <Link href={`/stocks/${q.symbol}`}
                               prefetch={false}
                               className="font-bold hover:underline"

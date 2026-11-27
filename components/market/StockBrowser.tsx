@@ -54,11 +54,32 @@ function FilterSelect({
   const ref    = useRef<HTMLDivElement>(null)
   const active = value !== ''
   const current = options.find(o => o.value === value) ?? options[0]
+  // Type-to-filter: letters typed while the list is open narrow it down
+  const [query, setQuery] = useState('')
+  const q = query.trim().toLowerCase()
+  const shown = q ? options.filter(o => o.label.toLowerCase().includes(q)) : options
+
+  useEffect(() => { if (!open) setQuery('') }, [open])
 
   useEffect(() => {
     if (!open) return
     const onDoc = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { setOpen(false); return }
+      if (e.ctrlKey || e.metaKey || e.altKey) return
+      if (e.key === 'Backspace') { e.preventDefault(); setQuery(v => v.slice(0, -1)); return }
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        setQuery(cur => {
+          const qq = cur.trim().toLowerCase()
+          const first = qq ? options.find(o => o.label.toLowerCase().includes(qq)) : undefined
+          if (first) { onChange(first.value); setOpen(false) }
+          return cur
+        })
+        return
+      }
+      if (e.key.length === 1 && /[\p{L}\p{N} &\-.]/u.test(e.key)) { e.preventDefault(); setQuery(v => v + e.key) }
+    }
     document.addEventListener('mousedown', onDoc)
     document.addEventListener('keydown', onKey)
     return () => { document.removeEventListener('mousedown', onDoc); document.removeEventListener('keydown', onKey) }
@@ -83,7 +104,16 @@ function FilterSelect({
       {open && (
         <ul role="listbox" className="absolute left-0 right-0 sm:right-auto mt-1.5 z-[70] sm:min-w-[max(100%,240px)] sm:w-max sm:max-w-[320px] max-h-[min(440px,65vh)] overflow-y-auto rounded-xl p-1 shadow-2xl"
           style={{ background: 'linear-gradient(160deg, color-mix(in srgb, var(--bg-card) 55%, rgba(255,255,255,0.10)), color-mix(in srgb, var(--bg-card) 40%, transparent))', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)', border: '1px solid rgba(255,255,255,0.14)', boxShadow: '0 20px 50px -12px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.12)' }}>
-          {options.map(o => {
+          {query && (
+            <li className="px-3 pt-1.5 pb-2 text-xs flex items-center justify-between gap-2" style={{ color: 'var(--text-secondary)' }}>
+              <span>Filter: <span style={{ color: '#FEA500', fontWeight: 700 }}>{query}</span></span>
+              <button type="button" onClick={() => setQuery('')} className="hover:underline">Clear</button>
+            </li>
+          )}
+          {shown.length === 0 && (
+            <li className="px-3 py-3 text-sm" style={{ color: 'var(--text-secondary)' }}>No match</li>
+          )}
+          {shown.map(o => {
             const on = o.value === value
             return (
               <li key={o.value} role="option" aria-selected={on}>
@@ -133,10 +163,13 @@ export default function StockBrowser() {
   const dropResults = useMemo(() => {
     if (!search.trim()) return []
     const q = search.toUpperCase().trim()
+    // Respect the selected Index / Industry filters
     return stocks
+      .filter(s => !indexKey   || s.listed_in?.includes(indexKey))
+      .filter(s => !sectorCode || s.sector === sectorCode)
       .filter(s => s.symbol.includes(q) || s.name.toUpperCase().includes(q))
       .slice(0, 10)
-  }, [search, stocks])
+  }, [search, stocks, indexKey, sectorCode])
 
   const liveCount = useMemo(() => stocks.filter(s => s.price !== null).length, [stocks])
 

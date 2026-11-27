@@ -79,16 +79,17 @@ function PremiumCard({ label, entries, getValue, fmt, lowerBetter = false }: {
         {sorted.map((e, i) => {
           const pct = fillPct(e)
           const isNeg = e.v < 0
-          const rowBg = e.isSelf ? 'rgba(254,165,0,0.07)' : 'transparent'
-          const fillColor = e.isSelf ? 'rgba(254,165,0,0.22)' : isNeg ? 'rgba(220,38,38,0.1)' : 'rgba(100,160,100,0.18)'
-          const textColor = e.isSelf ? '#FEA500' : isNeg ? 'var(--color-down)' : 'var(--text-secondary)'
+          const rowBg = e.isSelf ? 'rgba(254,165,0,0.12)' : 'transparent'
+          const fillColor = e.isSelf ? 'rgba(254,165,0,0.38)' : isNeg ? 'rgba(220,38,38,0.1)' : 'rgba(100,160,100,0.18)'
+          const textColor = e.isSelf ? 'color-mix(in srgb, var(--text-primary) 82%, transparent)' : isNeg ? 'var(--color-down)' : 'var(--text-secondary)'
           return (
             <div key={e.symbol} className="relative flex items-center gap-2 px-3"
               style={{
-                height: 32,
+                height: e.isSelf ? 38 : 32,
                 borderBottom: i < sorted.length - 1 ? '1px solid var(--bg-border)' : 'none',
                 background: rowBg,
-                borderLeft: e.isSelf ? '3px solid #FEA500' : '3px solid transparent',
+                boxShadow: e.isSelf ? 'inset 0 0 0 1px rgba(254,165,0,0.7)' : 'none',
+                borderLeft: e.isSelf ? '4px solid #FEA500' : '3px solid transparent',
               }}>
               <div style={{ position: 'absolute', inset: 0, width: `${pct}%`, background: fillColor, pointerEvents: 'none' }} />
               <div style={{ width: 20, flexShrink: 0, textAlign: 'center', position: 'relative', zIndex: 1 }}>
@@ -97,12 +98,12 @@ function PremiumCard({ label, entries, getValue, fmt, lowerBetter = false }: {
                   : <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>{i + 1}</span>
                 }
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5, width: 72, flexShrink: 0, position: 'relative', zIndex: 1 }}>
-                <SymbolLogo symbol={e.symbol} size={20} isSelf={e.isSelf} />
-                <span style={{ fontSize: 10, fontWeight: e.isSelf ? 700 : 500, color: e.isSelf ? '#FEA500' : 'var(--text-secondary)' }}>{e.symbol}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, width: 84, flexShrink: 0, position: 'relative', zIndex: 1 }}>
+                <SymbolLogo symbol={e.symbol} size={e.isSelf ? 24 : 20} isSelf={e.isSelf} />
+                <span style={{ fontSize: e.isSelf ? 13 : 10, fontWeight: e.isSelf ? 700 : 500, color: e.isSelf ? 'color-mix(in srgb, var(--text-primary) 82%, transparent)' : 'var(--text-secondary)' }}>{e.symbol}</span>
               </div>
               <div style={{ flex: 1 }} />
-              <span style={{ fontSize: 11, fontWeight: e.isSelf ? 700 : 400, fontVariantNumeric: 'tabular-nums', color: textColor, position: 'relative', zIndex: 1 }}>{fmt(e.v)}</span>
+              <span style={{ fontSize: e.isSelf ? 14 : 11, fontWeight: e.isSelf ? 700 : 400, fontVariantNumeric: 'tabular-nums', color: textColor, position: 'relative', zIndex: 1 }}>{fmt(e.v)}</span>
             </div>
           )
         })}
@@ -175,12 +176,22 @@ export function StockPeersTab({ symbol, overview, snapFunds, peers, peersLoad }:
     }),
   ]
 
-  const validPe   = allEntries.map(e => e.pe).filter((v): v is number => v != null && v > 0 && v < 200)
   const validDivY = allEntries.map(e => e.divY).filter((v): v is number => v != null && v > 0)
   const validRoe  = allEntries.map(e => e.roe).filter((v): v is number => v != null)
   const validEps  = allEntries.map(e => e.eps).filter((v): v is number => v != null)
   const avg = (arr: number[]) => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null
-  const sectorPe   = avg(validPe)
+  // Aggregate sector P/E = total market cap ÷ total net profit of the OTHER
+  // companies (this stock excluded). Loss-makers are included — they reduce
+  // total profit — and no single outlier P/E can skew the result.
+  // Net profit per company = market cap × EPS ÷ price (i.e. shares × EPS).
+  const peAgg = allEntries.reduce((acc, e) => {
+    if (e.isSelf || e.eps == null || !e.mc || !(e.price > 0)) return acc
+    acc.mc += e.mc
+    acc.profit += (e.mc * e.eps) / e.price
+    acc.n += 1
+    return acc
+  }, { mc: 0, profit: 0, n: 0 })
+  const sectorPe   = peAgg.n && peAgg.profit > 0 ? peAgg.mc / peAgg.profit : null
   const sectorDivY = avg(validDivY)
   const sectorRoe  = avg(validRoe)
   const sectorEps  = avg(validEps)
@@ -191,7 +202,7 @@ export function StockPeersTab({ symbol, overview, snapFunds, peers, peersLoad }:
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
         {[
           { label: 'P / E',          icon: Scale,      accent: '#3b82f6', self: selfPe,   sector: sectorPe,   lowerIsBetter: true,
-            val: selfPe   != null ? selfPe.toFixed(1)          : '—', sub: sectorPe   ? `Sector ${sectorPe.toFixed(1)} · ${validPe.length} profitable`  : 'Sector avg n/a' },
+            val: selfPe   != null ? selfPe.toFixed(1)          : '—', sub: sectorPe   ? `Sector ${sectorPe.toFixed(1)} · aggregate of ${peAgg.n} peers`  : peAgg.n ? 'Sector P/E n/a · net loss overall' : 'Sector P/E n/a' },
           { label: 'Dividend Yield', icon: HandCoins,  accent: '#8b5cf6', self: selfDivY, sector: sectorDivY, lowerIsBetter: false,
             val: selfDivY != null ? `${selfDivY.toFixed(2)}%`  : '—', sub: sectorDivY ? `Sector ${sectorDivY.toFixed(2)}% · ${validDivY.length} payers` : 'Sector avg n/a' },
           { label: 'ROE',            icon: TrendingUp, accent: '#10b981', self: selfRoe,  sector: sectorRoe,  lowerIsBetter: false,
@@ -201,7 +212,8 @@ export function StockPeersTab({ symbol, overview, snapFunds, peers, peersLoad }:
         ].map(c => {
           const has   = c.self != null && c.sector != null && c.sector !== 0
           const diff  = has ? ((c.self! - c.sector!) / Math.abs(c.sector!)) * 100 : null
-          const same  = diff != null && Math.abs(diff) < 0.5
+          // Within ±10% of the sector counts as in line (neutral colour)
+          const same  = diff != null && Math.abs(diff) < 10
           const good  = diff != null && (c.lowerIsBetter ? diff < 0 : diff > 0)
           const negVal = c.self != null && c.self < 0
           return (
@@ -222,7 +234,7 @@ export function StockPeersTab({ symbol, overview, snapFunds, peers, peersLoad }:
                       : good
                         ? { background: 'rgba(22,163,74,0.14)', color: '#16a34a' }
                         : { background: 'rgba(220,38,38,0.14)', color: '#dc2626' }}>
-                    {same ? 'At sector' : `${diff > 0 ? '▲' : '▼'} ${Math.abs(diff) >= 999 ? '999+' : Math.abs(diff).toFixed(0)}% vs sector`}
+                    {same ? 'In line with sector' : `${diff > 0 ? '▲' : '▼'} ${Math.abs(diff) >= 999 ? '999+' : Math.abs(diff).toFixed(0)}% vs sector`}
                   </span>
                 )}
               </div>
