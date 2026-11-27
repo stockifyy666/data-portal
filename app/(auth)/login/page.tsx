@@ -55,7 +55,7 @@ export default function LoginPage() {
 
   return (
     <AuthShell
-      title="Welcome back"
+      title="Welcome to Stockifyy Data Portal"
       subtitle="Sign in to continue to your market dashboard."
       footer={
         <p className="a-switch">
