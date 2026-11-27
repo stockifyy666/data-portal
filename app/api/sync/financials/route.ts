@@ -11,6 +11,7 @@
 // 15 min overnight until all symbols are done.
 //
 // Auth: Authorization: Bearer <CRON_SECRET>  or  ?secret=<CRON_SECRET>
+// Manual: ?only=fundamentals runs just one statement type.
 // =============================================================================
 
 import { NextRequest, NextResponse }  from 'next/server'
@@ -103,8 +104,12 @@ export async function GET(req: NextRequest) {
     const nodata: Record<string, number> = Object.fromEntries(Object.entries(stored).filter(([, exp]) => exp > now))
     const keyOf  = (sym: string, j: Job) => `${sym}|${j.type}|${j.interval}`
 
+    // ?only=fundamentals (or income|balance|cashflow) → run just that type (manual use)
+    const only    = req.nextUrl.searchParams.get('only')
+    const runJobs = only ? JOBS.filter(j => j.type === only) : JOBS
+
     const jobs = symbols.flatMap(sym =>
-      JOBS.filter(j => !isFresh(sym, j) && !nodata[keyOf(sym, j)]).map(j => ({ sym, j })))
+      runJobs.filter(j => !isFresh(sym, j) && !nodata[keyOf(sym, j)]).map(j => ({ sym, j })))
     const todo = jobs.map(({ sym, j }) => () => fetchAndSave(sym, j))
     const { results, started, skipped } = await paced(todo, { deadlineMs: start + WORK_MS })
 
