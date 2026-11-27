@@ -1,6 +1,7 @@
 // Announcements: one feed for the whole market, fetched hourly, then split by
-// symbol into the `announcements` table. Company pages read only from there —
-// no per-company announcement API calls.
+// symbol into the `announcements` table. Company pages read only from there.
+// History (older announcements) comes from a one-time per-company backfill
+// (/api/sync/announcements-backfill); new + old are merged, never replaced.
 
 import { csUatGet }                from '@/lib/capitalstake/client'
 import { CS_ENDPOINTS }            from '@/lib/capitalstake/endpoints'
@@ -41,15 +42,34 @@ export async function syncAllAnnouncements(): Promise<{ fetched: number; symbols
     bySymbol.set(sym, [...(bySymbol.get(sym) ?? []), a])
   }
 
-  for (const [sym, fresh] of Array.from(bySymbol)) {
-    const existing = (await getContent<Announcement>(sym, 'announcements')) ?? []
-    const merged   = new Map<string, Announcement>()
-    for (const a of [...fresh, ...existing]) if (!merged.has(String(a.id))) merged.set(String(a.id), a)
-    const list = Array.from(merged.values())
-      .sort((x, y) => new Date(y.date).getTime() - new Date(x.date).getTime())
-      .slice(0, KEEP)
-    await saveContent(sym, 'announcements', list)
-  }
+  for (const [sym, fresh] of Array.from(bySymbol)) await mergeAnnouncements(sym, fresh)
 
   return { fetched: items.length, symbols: bySymbol.size, pages }
+}
+
+/** Merge announcements into a company's stored list: dedupe by id, newest first, keep KEEP. */
+export async function mergeAnnouncements(symbol: string, fresh: Announcement[]): Promise<number> {
+  const sym      = symbol.toUpperCase()
+  const existing = (await getContent<Announcement>(sym, 'announcements')) ?? []
+  const merged   = new Map<string, Announcement>()
+  for (const a of [...fresh, ...existing]) if (a?.id != null && !merged.has(String(a.id))) merged.set(String(a.id), a)
+  const list = Array.from(merged.values())
+    .sort((x, y) => new Date(y.date).getTime() - new Date(x.date).getTime())
+    .slice(0, KEEP)
+  await saveContent(sym, 'announcements', list)
+  return list.length
+}
+
+/** Older announcements for one company (backfill only). PAGE per call, up to `pages` calls. */
+export async function fetchCompanyAnnouncements(symbol: string, pages = 2): Promise<Announcement[]> {
+  const out: Announcement[] = []
+  for (let p = 0; p < pages; p++) {
+    const url = CS_ENDPOINTS.ANNOUNCEMENTS_UAT(symbol, p * PAGE, PAGE)
+    await trackChartAPICall(url)
+    const res   = await csUatGet<{ data?: Announcement[] }>(url)
+    const batch = Array.isArray(res?.data) ? res.data : []
+    out.push(...batch.map(x => ({ ...x, symbol: x.symbol || symbol })))
+    if (batch.length < PAGE) break
+  }
+  return out
 }
