@@ -35,6 +35,8 @@ async function migrateLegacy(date: string, ttl: number) {
     }
   }
   await redis.del(LEGACY_KEY, LEGACY_ENDPOINTS)
+  await redis.expire(countKey(date), ttl + 3600)
+  await redis.expire(endpointsKey(date), ttl + 3600)
 }
 
 // Shorten a full URL to a readable label like "GET /3.0/market/quotes"
