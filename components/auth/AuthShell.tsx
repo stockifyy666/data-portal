@@ -2,7 +2,7 @@
 
 // Shared layout for login / register: a market-terminal brand panel (always
 // dark, like a trading screen) beside a theme-aware form panel.
-// The chart and tape on the left are decorative illustrations, not market data.
+// The highlight boxes describe platform coverage, not live market data.
 
 import Image from 'next/image'
 import type { ReactNode } from 'react'
@@ -10,55 +10,19 @@ import { Sun, Moon, Activity, LayoutGrid, FileText, Star, ShieldCheck } from 'lu
 import { useTheme } from '@/components/providers/ThemeProvider'
 
 const FEATURES = [
-  { icon: Activity,   title: 'Live PSX market data',      text: 'Prices, indices and movers through the trading day' },
-  { icon: LayoutGrid, title: 'Sector & index analytics',  text: 'Heatmaps, sector weights and index contributors' },
-  { icon: FileText,   title: 'Fundamentals & filings',    text: 'Ratios, financial statements and announcements' },
-  { icon: Star,       title: 'Watchlists',                text: 'Track the companies you follow in one place' },
+  { icon: Activity,   title: 'Real-time market pulse',     text: 'Live prices, indices and top movers all day' },
+  { icon: LayoutGrid, title: 'Sector intelligence',        text: 'Heatmaps, peers and index contributors' },
+  { icon: FileText,   title: 'Deep fundamentals',          text: 'Financials, ratios, payouts and filings' },
+  { icon: Star,       title: 'Personal watchlists',        text: 'Follow the companies that matter to you' },
 ]
 
-// Decorative candlesticks (illustrative shape only)
-const CANDLES = [
-  [62, 70, 55, 74], [70, 66, 63, 73], [66, 75, 64, 78], [75, 72, 69, 77], [72, 81, 71, 84],
-  [81, 78, 74, 83], [78, 86, 77, 89], [86, 84, 80, 88], [84, 92, 83, 95], [92, 89, 86, 94],
-  [89, 97, 88, 100], [97, 95, 91, 99], [95, 103, 94, 106], [103, 108, 101, 111],
-] as const // [open, close, low, high]
-
-function TerminalChart() {
-  const W = 420, H = 170, pad = 10
-  const lo = 50, hi = 115
-  const y = (v: number) => H - pad - ((v - lo) / (hi - lo)) * (H - pad * 2)
-  const step = (W - pad * 2) / CANDLES.length
-  const line = CANDLES.map(([, c], i) => `${pad + step * i + step / 2},${y(c)}`).join(' ')
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" aria-hidden>
-      <defs>
-        <linearGradient id="auth-area" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#FEA500" stopOpacity="0.28" />
-          <stop offset="100%" stopColor="#FEA500" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      {[0.25, 0.5, 0.75].map(t => (
-        <line key={t} x1={pad} x2={W - pad} y1={pad + t * (H - pad * 2)} y2={pad + t * (H - pad * 2)}
-          stroke="rgba(148,163,184,0.12)" strokeDasharray="3 4" />
-      ))}
-      <polygon points={`${pad + step / 2},${H - pad} ${line} ${pad + step * (CANDLES.length - 1) + step / 2},${H - pad}`} fill="url(#auth-area)" />
-      {CANDLES.map(([o, c, l, h], i) => {
-        const x = pad + step * i + step / 2
-        const up = c >= o
-        const col = up ? '#22c55e' : '#ef4444'
-        return (
-          <g key={i} opacity={0.9}>
-            <line x1={x} x2={x} y1={y(h)} y2={y(l)} stroke={col} strokeWidth={1.2} />
-            <rect x={x - step * 0.22} width={step * 0.44} y={y(Math.max(o, c))}
-              height={Math.max(2, Math.abs(y(o) - y(c)))} rx={1.5} fill={col} />
-          </g>
-        )
-      })}
-      <polyline points={line} fill="none" stroke="#FEA500" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
-    </svg>
-  )
-}
-
+// Coverage highlights (what the platform covers — not live market figures)
+const HIGHLIGHTS = [
+  { value: '500+',  label: 'Listed companies' },
+  { value: '5',     label: 'PSX indices tracked' },
+  { value: '30+',   label: 'Sectors analysed' },
+  { value: 'Live',  label: 'During market hours' },
+]
 export function AuthShell({ title, subtitle, children, footer }: {
   title: string; subtitle: string; children: ReactNode; footer?: ReactNode
 }) {
@@ -75,38 +39,39 @@ export function AuthShell({ title, subtitle, children, footer }: {
           <Image src="/images/logo.svg" alt="Stockifyy" width={150} height={42} style={{ objectFit: 'contain', objectPosition: 'left' }} priority />
 
           <div className="my-auto py-10">
-            <p className="text-xs font-semibold" style={{ color: '#94a3b8' }}>
-              Pakistan Stock Exchange · KSE-100 · KMI-30
+            <p className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.14em]" style={{ color: '#FEA500' }}>
+              <span className="auth-dot" /> Pakistan Stock Exchange
             </p>
-            <h2 className="mt-3 text-[34px] xl:text-[40px] font-extrabold leading-[1.12] tracking-tight text-white">
-              Research the PSX<br />with clarity.
+            <h2 className="mt-4 text-[34px] xl:text-[42px] font-extrabold leading-[1.1] tracking-tight text-white">
+              Invest smarter.<br />
+              <span style={{ background: 'linear-gradient(90deg,#FEA500,#ffd27a)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>
+                Grow your wealth.
+              </span>
             </h2>
-            <p className="mt-4 text-[15px] leading-relaxed" style={{ color: '#a3b0c2' }}>
-              Prices, sector analytics, company fundamentals and filings —
-              organised for investors in Pakistan.
+            <p className="mt-4 text-[15px] leading-relaxed max-w-[480px]" style={{ color: '#a3b0c2' }}>
+              Live PSX prices, sector insights and company fundamentals —
+              everything you need to make confident investment decisions, in one place.
             </p>
 
-            {/* Illustrative chart */}
-            <div className="mt-9 rounded-xl px-5 pt-4 pb-3"
-              style={{ background: 'rgba(15,23,42,0.55)', border: '1px solid rgba(148,163,184,0.14)' }}>
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-semibold" style={{ color: '#cbd5e1' }}>Market overview</span>
-                <span className="flex gap-1">
-                  {['1D', '1W', '1M', '1Y'].map((p, i) => (
-                    <span key={p} className="text-[10px] font-semibold px-2 py-0.5 rounded"
-                      style={i === 2 ? { background: 'rgba(254,165,0,0.16)', color: '#FEA500' } : { color: '#64748b' }}>{p}</span>
-                  ))}
-                </span>
-              </div>
-              <TerminalChart />
+            {/* Glass highlight boxes */}
+            <div className="mt-9 grid grid-cols-2 xl:grid-cols-4 gap-3">
+              {HIGHLIGHTS.map(h => (
+                <div key={h.label} className="auth-glass px-4 py-3.5">
+                  <p className="text-[22px] font-extrabold leading-none text-white tabular-nums">{h.value}</p>
+                  <p className="text-[11px] font-medium mt-1.5 leading-snug" style={{ color: '#9fb0c6' }}>{h.label}</p>
+                </div>
+              ))}
             </div>
 
-            {/* Features: plain two-column list */}
-            <ul className="mt-9 grid grid-cols-2 gap-x-8 gap-y-5">
+            {/* Features as glass cards */}
+            <ul className="mt-4 grid grid-cols-2 gap-3">
               {FEATURES.map(f => (
-                <li key={f.title} className="flex gap-3">
-                  <f.icon size={18} strokeWidth={2} className="shrink-0 mt-0.5" style={{ color: '#FEA500' }} />
-                  <span>
+                <li key={f.title} className="auth-glass flex gap-3 p-4">
+                  <span className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                    style={{ background: 'rgba(254,165,0,0.14)', color: '#FEA500', border: '1px solid rgba(254,165,0,0.25)' }}>
+                    <f.icon size={17} strokeWidth={2.2} />
+                  </span>
+                  <span className="min-w-0">
                     <span className="block text-sm font-semibold text-white">{f.title}</span>
                     <span className="block text-xs leading-relaxed mt-0.5" style={{ color: '#8b98ab' }}>{f.text}</span>
                   </span>
@@ -164,6 +129,10 @@ const AUTH_CSS = `
 @media (min-width: 1024px) { .auth-brand { display: block; } }
 .auth-glow { position: absolute; width: 520px; height: 520px; right: -160px; bottom: -180px; border-radius: 50%;
   background: radial-gradient(circle, rgba(254,165,0,0.10), transparent 65%); filter: blur(40px); }
+.auth-glass { border-radius: 14px; background: linear-gradient(160deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
+  border: 1px solid rgba(255,255,255,0.10); backdrop-filter: blur(14px) saturate(160%); -webkit-backdrop-filter: blur(14px) saturate(160%);
+  box-shadow: 0 10px 30px -12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08); transition: border-color .2s, transform .2s; }
+.auth-glass:hover { border-color: rgba(254,165,0,0.35); transform: translateY(-1px); }
 .auth-dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 0 3px rgba(34,197,94,0.25); }
 
 .auth-form-side { display: flex; flex-direction: column; align-items: center; padding: 24px 20px; min-height: 100vh; background: var(--bg-card); }
