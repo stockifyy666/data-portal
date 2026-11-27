@@ -10,6 +10,7 @@ import { formatPrice, formatChange, formatPercent, formatVolume, getChangeColor 
 import { cachedFetch } from '@/lib/utils/clientCache'
 import type { StockQuote } from '@/types/market'
 import KMIBadge, { isKMI } from '@/components/ui/KMIBadge'
+import { isRightSymbol } from '@/lib/utils/rights'
 
 type Tab = 'all' | 'gainers' | 'losers' | 'active'
 const TABS: { label: string; value: Tab }[] = [
@@ -54,7 +55,7 @@ export default function DashboardQuoteTable() {
     let list = quotes.filter(q =>
       q.price > 0 &&
       !/\(R\d*\)|\bRight\b/i.test(q.name) &&
-      !/R\d*$/.test(q.symbol)
+      !isRightSymbol(q.symbol)
     )
 
     if (tab === 'gainers') list = [...list].filter(s => s.changePct > 0).sort((a, b) => b.changePct - a.changePct).slice(0, 100)

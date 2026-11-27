@@ -26,6 +26,7 @@ import {
   Flame, Newspaper, RefreshCw, BarChart3, ExternalLink,
   Activity, Users,
 } from 'lucide-react'
+import { isRightSymbol } from '@/lib/utils/rights'
 
 /* ── PKT helpers ─────────────────────────────────────────────────── */
 function nowPKT() {
@@ -54,7 +55,7 @@ function timeAgo(d: string) {
   return `${Math.floor(m / 1440)}d ago`
 }
 function isRightShare(symbol: string, name: string) {
-  return /\(R\d*\)|\bRight\b/i.test(name) || /R\d*$/.test(symbol)
+  return /\(R\d*\)|\bRight\b/i.test(name) || isRightSymbol(symbol)
 }
 
 /* ── Types ───────────────────────────────────────────────────────── */

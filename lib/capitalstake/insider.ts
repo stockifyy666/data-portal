@@ -57,11 +57,11 @@ function fromApi(r: Record<string, unknown>): DbRow | null {
 
 /* ── Sync (cron only) ─────────────────────────────────────────────────────── */
 
-/** First run (empty table): back-fills everything (~5 calls). After that: 1 call for the newest 5,000 rows. */
-export async function syncInsider(): Promise<{ calls: number; fetched: number; stored: number; backfill: boolean }> {
+/** First run (empty table) or full=1: pulls every page (~5 calls). Otherwise: 1 call for the newest 5,000 rows. */
+export async function syncInsider(opts: { full?: boolean } = {}): Promise<{ calls: number; fetched: number; stored: number; backfill: boolean }> {
   const db = createServiceClient()
   const { count } = await db.from(TABLE).select('id', { count: 'exact', head: true })
-  const backfill = !count
+  const backfill = !count || !!opts.full   // full=1 re-pulls every page (upsert, no duplicates)
 
   let offset = 0, calls = 0, fetched = 0, stored = 0, total = Infinity
   do {

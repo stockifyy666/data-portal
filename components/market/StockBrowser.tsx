@@ -8,6 +8,7 @@ import { cachedFetch }                  from '@/lib/utils/clientCache'
 import KMIBadge                         from '@/components/ui/KMIBadge'
 import SymbolLogo                        from '@/components/ui/SymbolLogo'
 import type { MergedStock }             from '@/types/capitalstake'
+import { isRightSymbol } from '@/lib/utils/rights'
 
 type UATStock = MergedStock
 
@@ -80,7 +81,7 @@ function FilterSelect({
       </button>
 
       {open && (
-        <ul role="listbox" className="absolute left-0 mt-1.5 z-[70] min-w-[max(100%,240px)] w-max max-w-[320px] max-h-[min(440px,65vh)] overflow-y-auto rounded-xl p-1 shadow-2xl"
+        <ul role="listbox" className="absolute left-0 right-0 sm:right-auto mt-1.5 z-[70] sm:min-w-[max(100%,240px)] sm:w-max sm:max-w-[320px] max-h-[min(440px,65vh)] overflow-y-auto rounded-xl p-1 shadow-2xl"
           style={{ background: 'linear-gradient(160deg, color-mix(in srgb, var(--bg-card) 55%, rgba(255,255,255,0.10)), color-mix(in srgb, var(--bg-card) 40%, transparent))', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)', border: '1px solid rgba(255,255,255,0.14)', boxShadow: '0 20px 50px -12px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.12)' }}>
           {options.map(o => {
             const on = o.value === value
@@ -89,7 +90,7 @@ function FilterSelect({
                 <button type="button" onClick={() => { onChange(o.value); setOpen(false) }}
                   className="w-full flex items-center justify-between gap-3 px-3 py-2 rounded-lg text-sm text-left transition-colors hover:bg-[var(--bg-hover)]"
                   style={{ color: on ? '#FEA500' : 'var(--text-primary)', fontWeight: on ? 700 : 500, background: on ? '#FEA50014' : undefined }}>
-                  <span className="truncate">{o.label}</span>
+                  <span className="leading-snug">{o.label}</span>
                   {on && <Check size={14} className="shrink-0" />}
                 </button>
               </li>
@@ -168,7 +169,7 @@ export default function StockBrowser() {
 
     // Hide right shares by default unless user is searching or filtering
     if (!indexKey && !sectorCode && !search.trim()) {
-      list = list.filter(s => !/R\d*$/.test(s.symbol))
+      list = list.filter(s => !isRightSymbol(s.symbol))
     }
 
     if (indexKey)   list = list.filter(s => s.listed_in?.includes(indexKey))

@@ -8,6 +8,7 @@ import { cachedFetch } from '@/lib/utils/clientCache'
 import type { StockQuote } from '@/types/market'
 import KMIBadge, { isKMI } from '@/components/ui/KMIBadge'
 import SymbolLogo from '@/components/ui/SymbolLogo'
+import { isRightSymbol } from '@/lib/utils/rights'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -221,7 +222,7 @@ export default function DashboardClient() {
     q.price > 0 &&
     q.indexKeys?.includes(activeIndex.key) &&
     !/\(R\d*\)|\bRight\b/i.test(q.name) &&
-    !/R\d*$/.test(q.symbol)
+    !isRightSymbol(q.symbol)
   ), [quotes, activeIndex.key])
 
   const filtered = useMemo(() => {

@@ -16,7 +16,8 @@ export async function GET(req: NextRequest) {
   if (denied) return denied
 
   try {
-    const result = await syncInsider()
+    // ?full=1 → fetch the complete history for all symbols (manual use only)
+    const result = await syncInsider({ full: req.nextUrl.searchParams.get('full') === '1' })
     console.log('[Sync] insider', result)
     return NextResponse.json({ ok: true, ...result })
   } catch (err) {

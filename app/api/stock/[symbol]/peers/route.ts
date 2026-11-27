@@ -5,6 +5,7 @@ import { CS_ENDPOINTS }                                 from '@/lib/capitalstake
 import { trackChartAPICall }                            from '@/lib/utils/rateLimit'
 import { PSX_TTL } from '@/lib/utils/marketHours'
 import type { RawStock }                                from '@/types/capitalstake'
+import { isRightSymbol } from '@/lib/utils/rights'
 
 // Live / per-user data: always run on request, never prerender at build time
 export const dynamic = 'force-dynamic'
@@ -150,7 +151,7 @@ export async function GET(
         s.symbol !== symbol &&
         s.status === 1 &&
         !/\(R\d*\)|\bRight\b/i.test(s.name) &&
-        !/R\d*$/.test(s.symbol)
+        !isRightSymbol(s.symbol)
       )
       .slice(0, 15)
 

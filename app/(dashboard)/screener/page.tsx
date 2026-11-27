@@ -8,6 +8,7 @@ import { cachedFetch } from '@/lib/utils/clientCache'
 import type { StockQuote }              from '@/types/market'
 import KMIBadge, { isKMI }             from '@/components/ui/KMIBadge'
 import SymbolLogo                        from '@/components/ui/SymbolLogo'
+import { isRightSymbol } from '@/lib/utils/rights'
 
 type Filters = {
   minPrice:   string
@@ -99,7 +100,7 @@ export default function ScreenerPage() {
     const q = search.trim().toUpperCase()
     const filtered = quotes.filter(s => {
       if (s.price <= 0) return false
-      if (/\(R\d*\)|\bRight\b/i.test(s.name) || /R\d*$/.test(s.symbol)) return false
+      if (/\(R\d*\)|\bRight\b/i.test(s.name) || isRightSymbol(s.symbol)) return false
       if (q && !s.symbol.includes(q) && !s.name.toUpperCase().includes(q)) return false
       if (filters.minPrice  && s.price     < parseFloat(filters.minPrice))  return false
       if (filters.maxPrice  && s.price     > parseFloat(filters.maxPrice))  return false

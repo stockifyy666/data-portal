@@ -24,6 +24,7 @@ import { StockFundamentalsTab }  from './tabs/StockFundamentalsTab'
 import { StockShareholdersTab }  from './tabs/StockShareholdersTab'
 import { StockInsiderTab }       from './tabs/StockInsiderTab'
 import SymbolLogo from '@/components/ui/SymbolLogo'
+import { isRightSymbol } from '@/lib/utils/rights'
 
 const TABS = [
   { id: 'overview',      label: 'Overview',       Icon: BarChart2 },
@@ -263,7 +264,7 @@ export default function StockDetailClient({
           q.sector === sector &&
           q.symbol !== symbol &&
           !/\(R\d*\)|\bRight\b/i.test(q.name) &&
-          !/R\d*$/.test(q.symbol)
+          !isRightSymbol(q.symbol)
         )
         .slice(0, 15)
         .map(q => ({

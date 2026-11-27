@@ -7,6 +7,7 @@
 
 import { createServiceClient } from '@/lib/supabase/service'
 import { getAllStocks }        from '@/lib/news/sectorNews'
+import { isRightSymbol } from '@/lib/utils/rights'
 
 export async function paced<T>(
   jobs: Array<() => Promise<T>>,
@@ -27,7 +28,7 @@ export async function paced<T>(
 export async function activeSymbols(): Promise<string[]> {
   const stocks = await getAllStocks()
   return stocks
-    .filter(s => s.status === 1 && !/\(R\d*\)|\bRight\b/i.test(s.name) && !/R\d*$/.test(s.symbol))
+    .filter(s => s.status === 1 && !/\(R\d*\)|\bRight\b/i.test(s.name) && !isRightSymbol(s.symbol))
     .map(s => s.symbol)
 }
 

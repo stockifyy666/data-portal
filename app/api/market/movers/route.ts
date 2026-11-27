@@ -6,6 +6,7 @@ import { CS_ENDPOINTS }                       from '@/lib/capitalstake/endpoints
 import { trackChartAPICall }                  from '@/lib/utils/rateLimit'
 import { PSX_TTL }                            from '@/lib/utils/marketHours'
 import type { RawStock, RawQuote }            from '@/types/capitalstake'
+import { isRightSymbol } from '@/lib/utils/rights'
 
 // Live / per-user data: always run on request, never prerender at build time
 export const dynamic = 'force-dynamic'
@@ -44,7 +45,7 @@ export async function GET(request: Request) {
       .filter(s => {
         if (s.status !== 1) return false
         // skip rights issues
-        if (/\(R\d*\)|\bRight\b/i.test(s.name) || /R\d*$/.test(s.symbol)) return false
+        if (/\(R\d*\)|\bRight\b/i.test(s.name) || isRightSymbol(s.symbol)) return false
         const q = qMap.get(s.symbol)
         if (!q || q.close <= 0 || q.volume <= 0) return false
         return type === 'gainers' ? q.change_percent > 0 : q.change_percent < 0
