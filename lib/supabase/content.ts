@@ -16,9 +16,9 @@ const STALE_HOURS: Record<ContentType, number> = {
   announcements:    Infinity,  // hourly sync (market-wide feed)
   general_news:     Infinity,  // hourly sync
   sector_news:      Infinity,  // every-2-hours sync
-  profile_overview: 168,       // weekly sync (Sunday) — 7 days
-  profile_detail:   168,
-  payouts:          Infinity,  // nightly sync (2 AM PKT); always served from the database
+  profile_overview: 168 + 6,   // weekly sync (Sunday) — 7 days + 6h grace for the sync window
+  profile_detail:   168 + 6,
+  payouts:          Infinity,  // Mon–Fri sync (2 AM PKT); always served from the database (covers weekends)
 }
 
 // Table + key columns for each content type. `id` is the symbol / sector code / 'MARKET'.

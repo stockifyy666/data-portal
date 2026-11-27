@@ -17,7 +17,10 @@ import type { StatementData }  from '@/components/stock/stock-detail-types'
 export type StmtType = 'income' | 'balance' | 'cashflow' | 'fundamentals' | 'shareholders'
 
 function staleHours(type: StmtType | string): number {
-  return type === 'shareholders' ? 168 : 24 // shareholders: 7 days; others: 24h
+  // Daily sync (financials/fundamentals) refreshes every 24h; weekly (shareholders) every 7 days.
+  // +2h / +6h grace so rows stay valid while the next sync run is still in progress
+  // (otherwise pages would fall back to Capital Stake for a short window each day).
+  return type === 'shareholders' ? 168 + 6 : 24 + 2
 }
 export type Interval = 'annual' | 'quarterly'
 
