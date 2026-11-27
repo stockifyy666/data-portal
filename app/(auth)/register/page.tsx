@@ -66,7 +66,7 @@ export default function RegisterPage() {
 
   return (
     <AuthShell
-      title="Welcome to Stockifyy Data Portal"
+      title="Welcome to Stockifyy's Data Portal"
       subtitle="Create your free account for PSX prices, analytics and company research."
       footer={
         <p className="a-switch">

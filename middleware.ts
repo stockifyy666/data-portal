@@ -13,7 +13,7 @@ import { Ratelimit }                      from '@upstash/ratelimit'
 import { Redis }                          from '@upstash/redis/cloudflare'
 import { SHOW_USER_SETTINGS }             from '@/lib/features'
 
-const PUBLIC_ROUTES = ['/login', '/register', '/forgot-password']
+const PUBLIC_ROUTES = ['/login', '/register', '/forgot-password', '/privacy', '/terms']
 
 // API routes that do NOT require a logged-in session
 const PUBLIC_API_ROUTES = ['/api/auth']

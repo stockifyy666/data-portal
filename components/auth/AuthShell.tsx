@@ -226,14 +226,13 @@ export function AuthShell({ title, subtitle, children, footer }: {
               Pakistan Stock Exchange · KSE-100 · KMI-30
             </p>
             <h2 className="mt-3 text-[30px] xl:text-[34px] font-extrabold leading-[1.12] tracking-tight text-white">
-              Invest with clarity.<br />
+              Discover. Decode.{' '}
               <span style={{ background: 'linear-gradient(90deg,#FEA500,#ffd27a)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>
-                Act with confidence.
+                Decide.
               </span>
             </h2>
             <p className="mt-3 text-[13.5px] leading-relaxed" style={{ color: '#a3b0c2' }}>
-              Real-time PSX data, in-depth company research and sector trends,
-              all on one powerful platform built for Pakistan&apos;s investors.
+              Everything you need to navigate Pakistan&apos;s stock market. All in one place.
             </p>
 
             {/* Fundamentals snapshot (illustrative) */}
@@ -269,7 +268,7 @@ export function AuthShell({ title, subtitle, children, footer }: {
 
         <div className="flex-1 flex items-center w-full">
           <div ref={formCard} className="w-full max-w-[420px] mx-auto py-8">
-            <h1 className="text-[26px] font-black tracking-tight" style={{ color: 'var(--text-primary)' }}>{title}</h1>
+            <h1 className="text-[26px] font-black leading-snug" style={{ letterSpacing: '0.01em', wordSpacing: '0.08em', color: 'var(--text-primary)' }}>{title}</h1>
             <p className="mt-1.5 mb-7 text-sm" style={{ color: 'var(--text-secondary)' }}>{subtitle}</p>
             {children}
             {footer}
