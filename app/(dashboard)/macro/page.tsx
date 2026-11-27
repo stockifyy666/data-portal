@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import SymbolLogo from '@/components/ui/SymbolLogo'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, Cell,
@@ -759,14 +760,16 @@ export default function MacroDashboard() {
               const accent = exp ? '#16a34a' : '#dc2626'
               return (
                 <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    {exp ? <TrendingUp size={15} color={accent} /> : <TrendingDown size={15} color={accent} />}
-                    <span className="text-[13px] font-bold" style={{ color: 'var(--text-primary)' }}>
-                      {exp ? 'Exporters' : 'Importers'}
-                    </span>
-                    <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                      · {exp ? 'earn in USD — benefit when PKR falls' : 'pay in USD — costs rise when PKR falls'}
-                    </span>
+                  <div className="flex items-start gap-2 mb-3">
+                    <span className="shrink-0 mt-0.5">{exp ? <TrendingUp size={15} color={accent} /> : <TrendingDown size={15} color={accent} />}</span>
+                    <div className="min-w-0">
+                      <p className="text-[13px] font-bold leading-tight" style={{ color: 'var(--text-primary)' }}>
+                        {exp ? 'Exporters' : 'Importers'}
+                      </p>
+                      <p className="text-xs leading-snug mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+                        {exp ? 'Earn in USD — benefit when PKR falls' : 'Pay in USD — costs rise when PKR falls'}
+                      </p>
+                    </div>
                   </div>
                   <div className="grid grid-cols-1 min-[480px]:grid-cols-2 xl:grid-cols-4 gap-3">
                     {PKR_IMPACT.filter(x => x.type === type).map(x => {
@@ -779,10 +782,7 @@ export default function MacroDashboard() {
                           style={{ background: 'var(--bg-card)', border: '1px solid var(--bg-border)' }}
                           onMouseEnter={e => (e.currentTarget.style.borderColor = `${accent}66`)}
                           onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--bg-border)')}>
-                          <span className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
-                            style={{ background: exp ? 'rgba(22,163,74,0.13)' : 'rgba(220,38,38,0.13)', color: accent }}>
-                            {exp ? <TrendingUp size={20} strokeWidth={2.2} /> : <TrendingDown size={20} strokeWidth={2.2} />}
-                          </span>
+                          <SymbolLogo symbol={x.symbol} size={44} />
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-1.5">
                               <span className="text-sm" style={{ color: '#FEA500', fontWeight: 800 }}>{x.symbol}</span>
@@ -863,10 +863,7 @@ export default function MacroDashboard() {
                     onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--bg-border)')}>
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-3 min-w-0">
-                        <span className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
-                          style={{ background: 'rgba(254,165,0,0.14)', color: '#FEA500' }}>
-                          {x.sector === 'Power' ? <Building2 size={20} /> : x.sector === 'Paper' ? <Globe size={20} /> : <Shield size={20} />}
-                        </span>
+                        <SymbolLogo symbol={x.symbol} size={44} />
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5">
                             <span className="text-sm" style={{ color: '#FEA500', fontWeight: 800 }}>{x.symbol}</span>
@@ -910,16 +907,6 @@ export default function MacroDashboard() {
         </p>
       </Section>
 
-      {/* Data sources note */}
-      <div className="rounded-xl px-4 py-3 flex items-start gap-2"
-        style={{ backgroundColor: 'var(--bg-hover)', border: '1px solid var(--bg-border)' }}>
-        <Info size={13} className="shrink-0 mt-0.5" style={{ color: 'var(--text-secondary)' }} />
-        <p className="text-[11px] leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-          <strong style={{ color: 'var(--text-secondary)' }}>Data sources (when live API connected):</strong> SBP.gov.pk (reserves, policy rate),
-          PBS.gov.pk (CPI inflation), IMF.org (program tracker), investing.com / tradingeconomics.com (Brent crude, USD/PKR),
-          SBP MPC calendar (rate decisions). Prices, FX, oil and gold update live; official releases (SBP, PBS, IMF) are updated as they are published.
-        </p>
-      </div>
     </div>
   )
 }

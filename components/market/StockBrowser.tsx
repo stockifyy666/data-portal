@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import Link                             from 'next/link'
-import { Search, X, ChevronDown, ChevronLeft, ChevronRight, MoreHorizontal } from 'lucide-react'
+import { Search, X, ChevronDown, ChevronLeft, ChevronRight, MoreHorizontal, Check } from 'lucide-react'
 import { formatPrice, formatVolume }    from '@/lib/utils/format'
 import { cachedFetch }                  from '@/lib/utils/clientCache'
 import KMIBadge                         from '@/components/ui/KMIBadge'
@@ -49,30 +49,54 @@ function FilterSelect({
   onChange: (v: string) => void
   options: { value: string; label: string }[]
 }) {
+  const [open, setOpen] = useState(false)
+  const ref    = useRef<HTMLDivElement>(null)
   const active = value !== ''
+  const current = options.find(o => o.value === value) ?? options[0]
+
+  useEffect(() => {
+    if (!open) return
+    const onDoc = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
+    document.addEventListener('mousedown', onDoc)
+    document.addEventListener('keydown', onKey)
+    return () => { document.removeEventListener('mousedown', onDoc); document.removeEventListener('keydown', onKey) }
+  }, [open])
+
+  const hi = active || open
   return (
-    <div className="relative">
-      <select
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        className="appearance-none rounded-xl border pl-3.5 pr-9 py-2 text-sm font-medium
-                   focus:outline-none cursor-pointer w-full transition-all duration-150"
+    <div ref={ref} className="relative">
+      <button type="button" onClick={() => setOpen(o => !o)} aria-haspopup="listbox" aria-expanded={open}
+        className="w-full flex items-center justify-between gap-2 rounded-xl border pl-3.5 pr-3 py-2 text-sm font-medium cursor-pointer transition-all duration-150"
         style={{
-          backgroundColor: active ? '#FEA50012' : 'var(--bg-card)',
-          borderColor:     active ? '#FEA500'   : 'var(--bg-border)',
-          color:           active ? '#FEA500'   : 'var(--text-secondary)',
-          boxShadow:       active ? '0 0 0 1px #FEA50033' : 'none',
-        }}
-      >
-        {options.map(o => (
-          <option key={o.value} value={o.value}>{o.label}</option>
-        ))}
-      </select>
-      <ChevronDown
-        size={13}
-        className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2"
-        style={{ color: active ? '#FEA500' : 'var(--text-muted)' }}
-      />
+          backgroundColor: hi ? '#FEA50012' : 'var(--bg-card)',
+          borderColor:     hi ? '#FEA500'   : 'var(--bg-border)',
+          color:           active ? '#FEA500' : 'var(--text-secondary)',
+          boxShadow:       open ? '0 0 0 3px #FEA50022' : active ? '0 0 0 1px #FEA50033' : 'none',
+        }}>
+        <span className="truncate">{current?.label}</span>
+        <ChevronDown size={14} className="shrink-0 transition-transform"
+          style={{ color: hi ? '#FEA500' : 'var(--text-muted)', transform: open ? 'rotate(180deg)' : 'none' }} />
+      </button>
+
+      {open && (
+        <ul role="listbox" className="absolute left-0 mt-1.5 z-[70] min-w-[max(100%,240px)] w-max max-w-[320px] max-h-[min(440px,65vh)] overflow-y-auto rounded-xl p-1 shadow-2xl"
+          style={{ background: 'linear-gradient(160deg, color-mix(in srgb, var(--bg-card) 55%, rgba(255,255,255,0.10)), color-mix(in srgb, var(--bg-card) 40%, transparent))', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)', border: '1px solid rgba(255,255,255,0.14)', boxShadow: '0 20px 50px -12px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.12)' }}>
+          {options.map(o => {
+            const on = o.value === value
+            return (
+              <li key={o.value} role="option" aria-selected={on}>
+                <button type="button" onClick={() => { onChange(o.value); setOpen(false) }}
+                  className="w-full flex items-center justify-between gap-3 px-3 py-2 rounded-lg text-sm text-left transition-colors hover:bg-[var(--bg-hover)]"
+                  style={{ color: on ? '#FEA500' : 'var(--text-primary)', fontWeight: on ? 700 : 500, background: on ? '#FEA50014' : undefined }}>
+                  <span className="truncate">{o.label}</span>
+                  {on && <Check size={14} className="shrink-0" />}
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      )}
     </div>
   )
 }
@@ -209,7 +233,8 @@ export default function StockBrowser() {
                  style={{ color: 'var(--text-secondary)' }}>
             Search
           </label>
-          <div className="relative">
+          <div className="relative flex items-center gap-2">
+            <div className="relative flex-1 min-w-0">
             <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2"
                     style={{ color: 'var(--text-secondary)' }} />
             <input
@@ -228,33 +253,49 @@ export default function StockBrowser() {
                 boxShadow:       search ? '0 0 0 1px #FEA50033' : 'none',
               }}
             />
+            </div>
+            {/* Clear button */}
+            <button
+              onClick={clearFilters}
+              disabled={!hasFilter}
+              className="shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium
+                         transition-colors disabled:opacity-30"
+              style={hasFilter
+                ? { background: 'linear-gradient(135deg, #FEA500, #986300)', color: 'white' }
+                : { backgroundColor: 'var(--bg-hover)', color: 'var(--text-secondary)' }
+              }
+            >
+              <X size={13} />
+              Clear
+            </button>
 
-            {/* Dropdown */}
+            {/* Dropdown — full width of the search row */}
             {searchFocus && dropResults.length > 0 && (
               <div className="absolute top-full left-0 right-0 mt-1 rounded-xl shadow-2xl"
                 style={{
                   backgroundColor: 'var(--bg-card)',
                   border: '1px solid var(--bg-border)',
                   zIndex: 60,
-                  overflow: 'hidden',
+                  overflowY: 'auto',
+                  maxHeight: 420,
                 }}>
                 {dropResults.map(s => (
                   <Link key={s.symbol} href={`/stocks/${s.symbol}`}
                     prefetch={false}
-                    className="flex items-center justify-between px-4 py-2.5 hover:opacity-80 transition-opacity"
+                    className="flex items-center justify-between gap-3 px-3 sm:px-4 py-2.5 hover:opacity-80 transition-opacity"
                     style={{ borderBottom: '1px solid var(--bg-border)' }}
                     onMouseDown={e => e.preventDefault()}>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
                       <SymbolLogo symbol={s.symbol} size={36} />
-                      <div>
+                      <div className="min-w-0">
                         <div className="flex items-center gap-1">
                           <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{s.symbol}</p>
                           {(s.listed_in?.includes('KMI30') || s.listed_in?.includes('KMIALLSHR')) && <KMIBadge />}
                         </div>
-                        <p className="text-[11px] truncate max-w-[200px]" style={{ color: 'var(--text-secondary)' }}>{s.name}</p>
+                        <p className="text-[11px] truncate" style={{ color: 'var(--text-secondary)' }}>{s.name}</p>
                       </div>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right shrink-0">
                       <p className="text-sm font-bold font-number" style={{ color: 'var(--text-primary)' }}>
                         {(s.price ?? s.ldcp).toFixed(2)}
                       </p>
@@ -276,20 +317,6 @@ export default function StockBrowser() {
           </div>
         </div>
 
-        {/* Clear button */}
-        <button
-          onClick={clearFilters}
-          disabled={!hasFilter}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium
-                     transition-colors disabled:opacity-30"
-          style={hasFilter
-            ? { background: 'linear-gradient(135deg, #FEA500, #986300)', color: 'white' }
-            : { backgroundColor: 'var(--bg-hover)', color: 'var(--text-secondary)' }
-          }
-        >
-          <X size={13} />
-          Clear
-        </button>
       </div>
 
       {/* Result count */}

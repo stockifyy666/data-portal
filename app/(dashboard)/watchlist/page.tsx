@@ -153,7 +153,7 @@ export default function WatchlistPage() {
       <tr style={{ borderBottom: '1px solid var(--bg-border)' }}
           onMouseEnter={e => (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--bg-hover)'}
           onMouseLeave={e => (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'}>
-        <td className="py-2.5 px-2">
+        <td className="whitespace-nowrap py-2.5 px-2">
           <div className="flex items-center gap-2">
             <SymbolLogo symbol={item.symbol} size={24} />
             <div className="flex items-center gap-1">
@@ -164,13 +164,13 @@ export default function WatchlistPage() {
             </div>
           </div>
         </td>
-        <td className="py-2.5 px-2 truncate overflow-hidden">
+        <td className="whitespace-nowrap py-2.5 px-2 truncate overflow-hidden">
           <Link href={`/stocks/${item.symbol}`} className="hover:underline" style={{ color: 'var(--text-secondary)' }}>{item.name}</Link>
         </td>
-        <td className="py-2.5 px-2 font-number" style={{ color: 'var(--text-secondary)' }}>
+        <td className="whitespace-nowrap py-2.5 px-2 font-number" style={{ color: 'var(--text-secondary)' }}>
           {item.added_price > 0 ? formatPrice(item.added_price) : '—'}
         </td>
-        <td className="py-2.5 px-2 font-number font-semibold" style={{ color: 'var(--text-primary)' }}>
+        <td className="whitespace-nowrap py-2.5 px-2 font-number font-semibold" style={{ color: 'var(--text-primary)' }}>
           {item.price > 0 ? formatPrice(item.price) : '—'}
         </td>
         <td className={`py-2.5 px-2 font-number ${clr}`}>
@@ -184,10 +184,10 @@ export default function WatchlistPage() {
               </span>
             : '—'}
         </td>
-        <td className="py-2.5 px-2 font-number" style={{ color: 'var(--text-secondary)' }}>
+        <td className="whitespace-nowrap py-2.5 px-2 font-number" style={{ color: 'var(--text-secondary)' }}>
           {item.volume > 0 ? fmtVolume(item.volume) : '—'}
         </td>
-        <td className="py-2.5 px-2 text-right">
+        <td className="whitespace-nowrap py-2.5 px-2 text-right">
           <button onClick={() => remove(item.id, item.symbol)} disabled={isDel}
             className="p-1 rounded hover:text-red-500 disabled:opacity-30 transition-colors"
             style={{ color: 'var(--text-secondary)' }}>
@@ -200,7 +200,7 @@ export default function WatchlistPage() {
     )
   }
 
-  const COL_WIDTHS = ['12%', '28%', '12%', '11%', '11%', '11%', '11%', '4%']
+  const COL_WIDTHS = ['13%', '25%', '12%', '11%', '11%', '12%', '11%', '5%']
   const COL_LABELS = ['Symbol', 'Company', 'Added Price', 'Price', 'Change', '% Chg', 'Volume', '']
 
   function TableHead() {
@@ -222,7 +222,7 @@ export default function WatchlistPage() {
   return (
     <div className="space-y-5 animate-data">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>Watchlist</h1>
           <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>Stocks you are tracking</p>
@@ -302,7 +302,7 @@ export default function WatchlistPage() {
       ) : view === 'list' ? (
         /* ── List view ── */
         <div className="card overflow-x-auto">
-          <table className="w-full text-xs table-fixed">
+          <table className="w-full min-w-[760px] text-xs table-fixed">
             <TableHead />
             <tbody>
               {items.map(item => <Row key={item.id} item={item} />)}
@@ -316,7 +316,7 @@ export default function WatchlistPage() {
             const sUp   = sectorItems.filter(i => i.changePct > 0).length
             const sDown = sectorItems.filter(i => i.changePct < 0).length
             return (
-              <div key={sectorCode} className="card overflow-x-auto">
+              <div key={sectorCode} className="card">
                 {/* Sector header */}
                 <div className="flex items-center justify-between mb-3 pb-2"
                      style={{ borderBottom: '1px solid var(--bg-border)' }}>
@@ -334,12 +334,14 @@ export default function WatchlistPage() {
                     {sDown > 0 && <span style={{ color: '#dc2626' }}>▼ {sDown}</span>}
                   </div>
                 </div>
-                <table className="w-full text-xs table-fixed">
-                  <TableHead />
-                  <tbody>
-                    {sectorItems.map(item => <Row key={item.id} item={item} />)}
-                  </tbody>
-                </table>
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[760px] text-xs table-fixed">
+                    <TableHead />
+                    <tbody>
+                      {sectorItems.map(item => <Row key={item.id} item={item} />)}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )
           })}

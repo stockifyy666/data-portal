@@ -183,36 +183,7 @@ export default function StockDetailClient({
       }
     }
 
-    if ((tab === 'peers' || tab === 'compare') && !peers.length) {
-      if (allQuotes.length > 0 && overview?.sector) {
-        const sector = overview.sector
-        const peerList = allQuotes
-          .filter(q =>
-            q.sector === sector &&
-            q.symbol !== symbol &&
-            !/\(R\d*\)|\bRight\b/i.test(q.name) &&
-            !/R\d*$/.test(q.symbol)
-          )
-          .slice(0, 15)
-          .map(q => ({
-            symbol: q.symbol, name: q.name, sector: q.sector,
-            price: q.price, change: q.change, changePct: q.changePct, volume: q.volume,
-            high52: q.high52, low52: q.low52, marketCap: q.mc,
-            eps: q.eps || null,
-            roe: q.roe ? q.roe * 100 : null,
-            pb:  q.bvps > 0 && q.price > 0 ? q.price / q.bvps : null,
-            divYield: q.dps > 0 && q.price > 0 ? (q.dps / q.price) * 100 : null,
-            de: null,
-          }))
-        setPeers(peerList)
-      } else {
-        setPeersLoad(true)
-        fetch(`/api/stock/${symbol}/peers`)
-          .then(r => r.json())
-          .then(j => { if (Array.isArray(j.peers)) setPeers(j.peers) })
-          .catch(() => {})
-          .finally(() => setPeersLoad(false))
-      }
+    if (tab === 'peers' || tab === 'compare') {
       if (!snapFunds) {
         setSnapLoad(true)
         fetch(`/api/stock/${symbol}/statement?type=fundamentals&interval=annual`)
@@ -276,6 +247,50 @@ export default function StockDetailClient({
         .catch(() => {}).finally(() => setAnnLoad(false))
     }
   }, [tab]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  /* ── Sector peers ──
+     Built from the full quotes list (has EPS, ROE, P/B, dividend). On a direct
+     load of ?tab=peers the quotes or sector may not be ready yet, so this re-runs
+     when they arrive and upgrades any fallback list from /peers. */
+  const peersFromQuotes = useRef(false)
+  useEffect(() => {
+    if (tab !== 'peers' && tab !== 'compare') return
+    if (allQuotes.length > 0 && overview?.sector) {
+      if (peersFromQuotes.current) return
+      const sector = overview.sector
+      const peerList = allQuotes
+        .filter(q =>
+          q.sector === sector &&
+          q.symbol !== symbol &&
+          !/\(R\d*\)|\bRight\b/i.test(q.name) &&
+          !/R\d*$/.test(q.symbol)
+        )
+        .slice(0, 15)
+        .map(q => ({
+          symbol: q.symbol, name: q.name, sector: q.sector,
+          price: q.price, change: q.change, changePct: q.changePct, volume: q.volume,
+          high52: q.high52, low52: q.low52, marketCap: q.mc,
+          eps: q.eps || null,
+          roe: q.roe ? q.roe * 100 : null,
+          pb:  q.bvps > 0 && q.price > 0 ? q.price / q.bvps : null,
+          divYield: q.dps > 0 && q.price > 0 ? (q.dps / q.price) * 100 : null,
+          de: null,
+        }))
+      peersFromQuotes.current = true
+      setPeers(peerList)
+      setPeersLoad(false)
+      return
+    }
+    // Quotes/sector not ready yet: show the server list meanwhile (only once)
+    if (!peers.length && !peersLoad) {
+      setPeersLoad(true)
+      fetch(`/api/stock/${symbol}/peers`)
+        .then(r => r.json())
+        .then(j => { if (!peersFromQuotes.current && Array.isArray(j.peers)) setPeers(j.peers) })
+        .catch(() => {})
+        .finally(() => setPeersLoad(false))
+    }
+  }, [tab, allQuotes, overview?.sector, symbol]) // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ── Re-fetch statement when filters change ── */
   useEffect(() => {
@@ -429,7 +444,7 @@ export default function StockDetailClient({
 
       {tab === 'news' && <StockNewsTab news={news} newsLoad={newsLoad} />}
 
-      {tab === 'announcements' && <StockAnnouncementsTab symbol={symbol} anns={anns} annLoad={annLoad} />}
+      {tab === 'announcements' && <StockAnnouncementsTab symbol={symbol} anns={anns} annLoad={annLoad} price={allQuotes.find(q => q.symbol === symbol)?.price} />}
 
     </div>
   )

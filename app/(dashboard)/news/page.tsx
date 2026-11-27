@@ -57,7 +57,7 @@ function SkeletonCard() {
 
 function Thumb({ src }: { src?: string }) {
   const [failed, setFailed] = useState(false)
-  const cls = 'w-28 h-20 sm:w-32 sm:h-[84px] rounded-lg shrink-0'
+  const cls = 'w-24 sm:w-32 self-stretch min-h-[76px] rounded-lg shrink-0'
   if (!src || failed) {
     return (
       <div className={`${cls} flex items-center justify-center`} style={{ background: 'var(--bg-hover)', color: 'var(--text-secondary)' }}>
@@ -72,27 +72,27 @@ function Thumb({ src }: { src?: string }) {
 function NewsCard({ item }: { item: NewsItem }) {
   return (
     <a href={item.link || '#'} target="_blank" rel="noopener noreferrer"
-      className="group card !p-4 flex gap-4 items-start transition-colors"
+      className="group card !p-2.5 sm:!p-3 flex gap-3 items-stretch transition-colors"
       onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(254,165,0,0.45)')}
       onMouseLeave={e => (e.currentTarget.style.borderColor = '')}>
       <Thumb src={item.image} />
-      <div className="min-w-0 flex-1">
-        <p className="text-[15px] font-semibold leading-snug line-clamp-2 group-hover:text-[#FEA500] transition-colors"
+      <div className="min-w-0 flex-1 flex flex-col py-0.5">
+        <p className="text-[14px] sm:text-[15px] font-semibold leading-snug line-clamp-2 group-hover:text-[#FEA500] transition-colors"
           style={{ color: 'var(--text-primary)' }}>
           {item.title}
         </p>
         {item.description && (
-          <p className="text-[13px] leading-relaxed line-clamp-2 mt-1.5" style={{ color: 'var(--text-primary)', opacity: 0.75 }}>
+          <p className="text-[12.5px] leading-snug line-clamp-1 sm:line-clamp-2 mt-1" style={{ color: 'var(--text-primary)', opacity: 0.75 }}>
             {item.description}
           </p>
         )}
-        <div className="flex items-center gap-2 mt-2.5 text-xs font-medium">
+        <div className="flex items-center gap-2 mt-auto pt-1.5 text-xs font-medium min-w-0">
           <span className="font-semibold truncate" style={{ color: '#FEA500' }}>{item.source}</span>
           <span style={{ color: 'var(--text-secondary)' }}>·</span>
           <span className="shrink-0" style={{ color: 'var(--text-secondary)' }}>{timeAgo(item.date)}</span>
         </div>
       </div>
-      <ExternalLink size={15} className="shrink-0 mt-1 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: '#FEA500' }} />
+      <ExternalLink size={15} className="hidden sm:block shrink-0 mt-1 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: '#FEA500' }} />
     </a>
   )
 }
@@ -223,7 +223,7 @@ export default function NewsPage() {
 
         {/* Search + time filter */}
         <div className="flex flex-wrap items-center gap-3 mt-3">
-          <div className="relative flex-1 min-w-[180px] max-w-xs">
+          <div className="relative w-full sm:w-auto sm:flex-1 sm:min-w-[180px] sm:max-w-xs">
             <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2"
               style={{ color: 'var(--text-muted)' }} />
             <input
@@ -240,11 +240,12 @@ export default function NewsPage() {
             />
           </div>
 
+          <div className="flex items-center gap-2 w-full sm:w-auto sm:flex-1">
           {(['today', 'week', 'all'] as const).map(f => (
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className="px-3 py-1.5 rounded-xl text-xs font-medium capitalize transition-colors"
+              className="px-3 py-1.5 rounded-xl text-xs font-medium capitalize transition-colors whitespace-nowrap"
               style={filter === f ? {
                 background: 'linear-gradient(135deg,#FEA500,#986300)',
                 color: 'white',
@@ -258,15 +259,16 @@ export default function NewsPage() {
           ))}
 
           {!isLoading && (
-            <span className="text-xs font-semibold ml-auto" style={{ color: 'var(--text-secondary)' }}>
+            <span className="text-xs font-semibold ml-auto whitespace-nowrap" style={{ color: 'var(--text-secondary)' }}>
               {filtered.length} article{filtered.length !== 1 ? 's' : ''}
             </span>
           )}
+          </div>
         </div>
       </div>
 
       {/* News grid */}
-      <div className="flex-1 p-6">
+      <div className="flex-1 py-4 sm:p-6">
         {isLoading ? (
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
             {Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)}

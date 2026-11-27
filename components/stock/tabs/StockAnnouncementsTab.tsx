@@ -28,7 +28,7 @@ function tabOf(a: Announcement): AnnTab {
   return 'others'
 }
 
-export function StockAnnouncementsTab({ symbol, anns, annLoad }: { symbol: string; anns: Announcement[]; annLoad: boolean }) {
+export function StockAnnouncementsTab({ symbol, anns, annLoad, price }: { symbol: string; anns: Announcement[]; annLoad: boolean; price?: number }) {
   const [tab, setTab] = useState<AnnTab>('results')
 
   // Payouts: read from our database (nightly 2 AM PKT sync) — no Capital Stake call
@@ -111,7 +111,7 @@ export function StockAnnouncementsTab({ symbol, anns, annLoad }: { symbol: strin
 
       {tab === 'payout' ? (
         payLoad ? <LoadingRows n={6} /> : payouts.length ? (
-          <PayoutView payouts={payouts} onPreview={setPreview} />
+          <PayoutView payouts={payouts} price={price} onPreview={setPreview} />
         ) : (
           <p className="py-10 text-center text-sm" style={{ color: 'var(--text-muted)' }}>No payouts found.</p>
         )
@@ -242,6 +242,7 @@ const fmtD = (s?: string) => {
 }
 const num = (v: unknown) => Number(v) || 0
 
+
 type Chip = { label: string; value: string; color: string }
 
 function chipsOf(po: PayoutItem['payouts']): Chip[] {
@@ -258,7 +259,7 @@ function chipsOf(po: PayoutItem['payouts']): Chip[] {
 
 const periodOf = (p: PayoutItem) => p.quarter === 'YEAR' ? 'Annual' : (p.quarter || 'Interim')
 
-function PayoutView({ payouts, onPreview }: { payouts: PayoutItem[]; onPreview: (v: { src: string; title: string }) => void }) {
+function PayoutView({ payouts, price, onPreview }: { payouts: PayoutItem[]; price?: number; onPreview: (v: { src: string; title: string }) => void }) {
   // Summary: last 12 months of cash dividends (by announcement date)
   const yearAgo = Date.now() - 365 * 86_400e3
   const last12  = payouts.filter(p => Date.parse(p.date) >= yearAgo)
@@ -274,6 +275,7 @@ function PayoutView({ payouts, onPreview }: { payouts: PayoutItem[]; onPreview: 
 
   const stats = [
     { label: 'Dividend · last 12 months', value: `Rs ${div12.toFixed(2)}`, sub: `${last12.length} payout${last12.length === 1 ? '' : 's'} · ${+(div12 * 10).toFixed(2)}% of face value`, accent: '#10b981' },
+    { label: 'Dividend yield', value: price && price > 0 ? `${((div12 / price) * 100).toFixed(2)}%` : '—', sub: price && price > 0 ? `Last 12 months · price Rs ${price.toFixed(2)}` : 'Price unavailable', accent: '#8b5cf6' },
     { label: 'Latest payout', value: latest ? (chipsOf(latest.payouts)[0]?.value ?? '—') : '—', sub: latest ? `${periodOf(latest)} · announced ${fmtD(latest.date)}` : '—', accent: '#f59e0b' },
     { label: upcoming ? 'Next ex-date' : 'Last ex-date', value: fmtD(upcoming ?? latest?.payouts?.ex_date), sub: upcoming ? 'Buy before this date to qualify' : 'No upcoming payout announced', accent: '#3b82f6' },
   ]
@@ -424,12 +426,10 @@ function YearSection({ y, max, onPreview }: { y: YearGroup; max: number; onPrevi
               {[
                 { k: 'Announced',    v: fmtD(p.date) },
                 { k: 'Ex-date',      v: fmtD(po.ex_date), hl: true },
-                { k: 'Entitlement',  v: fmtD(po.entitlement_date) },
-                { k: 'Book closure', v: po.book_closure_from ? `${fmtD(po.book_closure_from)} – ${fmtD(po.book_closure_to)}` : '—' },
               ].map(d => (
                 <div key={d.k} className="min-w-0">
                   <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>{d.k}</p>
-                  <p className="text-[12px] font-normal mt-0.5" title={d.v}
+                  <p className="text-[12px] font-normal mt-0.5 whitespace-nowrap" title={d.v}
                     style={{ color: d.hl ? '#10b981' : 'var(--text-primary)' }}>{d.v}</p>
                 </div>
               ))}

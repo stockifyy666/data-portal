@@ -200,6 +200,7 @@ function MetricModal({
 
     const top = Math.max(0, ...all), bottom = Math.min(0, ...all), span = top - bottom || 1
     const PLOT = 150, LABEL = 20, AXIS_W = 44
+    const BELOW = bottom < 0 ? 18 : 0   // room under negative bars for their value
     const yOf  = (v: number) => LABEL + ((top - v) / span) * PLOT
     const zeroY = yOf(0)
     const ticks = [0, 0.25, 0.5, 0.75, 1].map(t => bottom + t * span)
@@ -227,7 +228,7 @@ function MetricModal({
         </div>
 
         <div className="overflow-x-auto mb-4 pb-1">
-          <div style={{ minWidth: AXIS_W + years.length * MIN_GROUP, position: 'relative', height: LABEL + PLOT + 24 }}>
+          <div style={{ minWidth: AXIS_W + years.length * MIN_GROUP, position: 'relative', height: LABEL + PLOT + BELOW + 24 }}>
             {ticks.map((v, i) => (
               <div key={i} style={{ position: 'absolute', left: AXIS_W, right: 0, top: yOf(v),
                 borderTop: v === 0 ? '1px solid rgba(148,163,184,0.45)' : '1px dashed var(--bg-border)',  }}>
@@ -268,7 +269,7 @@ function MetricModal({
                       </Fragment>
                     )
                   })}
-                  <span style={{ position: 'absolute', left: 0, right: 0, top: LABEL + PLOT + 7, textAlign: 'center',
+                  <span style={{ position: 'absolute', left: 0, right: 0, top: LABEL + PLOT + BELOW + 7, textAlign: 'center',
                     fontSize: 10, fontWeight: 700, color: 'var(--text-secondary)' }}>{y}</span>
                 </div>
               ))}
@@ -344,6 +345,7 @@ function MetricModal({
     const span   = top - bottom || 1
     const PLOT   = 150                 // bar area height (px)
     const LABEL  = 18                  // room above the tallest bar for its value
+    const BELOW  = bottom < 0 ? 18 : 0   // room under negative bars for their value
     const AXIS_W = 44
     const colW   = Math.max(paired.length > 8 ? 42 : 56, Math.min(84, Math.floor(520 / paired.length)))
     const yOf    = (v: number) => LABEL + ((top - v) / span) * PLOT   // px from top of the chart box
@@ -354,7 +356,7 @@ function MetricModal({
       <div>
         <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--text-primary)' }}>{title}</p>
         <div className="overflow-x-auto mb-4 pb-1">
-          <div style={{ minWidth: AXIS_W + paired.length * colW, position: 'relative', height: LABEL + PLOT + 22 }}>
+          <div style={{ minWidth: AXIS_W + paired.length * colW, position: 'relative', height: LABEL + PLOT + BELOW + 22 }}>
             {/* Gridlines + y-axis labels (behind bars) */}
             {ticks.map((v, i) => (
               <div key={i} style={{
@@ -398,7 +400,7 @@ function MetricModal({
                     }} />
                     {/* period label */}
                     <span style={{
-                      position: 'absolute', left: 0, right: 0, top: LABEL + PLOT + 6, textAlign: 'center',
+                      position: 'absolute', left: 0, right: 0, top: LABEL + PLOT + BELOW + 6, textAlign: 'center',
                       fontSize: 11, fontWeight: isLast ? 800 : 600, whiteSpace: 'nowrap',
                       color: isLast ? 'var(--text-primary)' : 'var(--text-secondary)',
                     }}>

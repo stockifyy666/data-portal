@@ -7,6 +7,7 @@ import { formatPrice, formatChange, formatPercent, formatVolume, getChangeColor 
 import { cachedFetch } from '@/lib/utils/clientCache'
 import type { StockQuote } from '@/types/market'
 import KMIBadge, { isKMI } from '@/components/ui/KMIBadge'
+import SymbolLogo from '@/components/ui/SymbolLogo'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -32,6 +33,9 @@ const INDICES = [
 const PAGE_SIZE = 10
 
 // ─── Mini chart ───────────────────────────────────────────────────────────────
+
+// Glide the crosshair, dot and tooltip between points instead of jumping
+const SMOOTH = 'left 140ms ease-out, top 140ms ease-out, transform 220ms ease-out'
 
 function IndexChart({ symbol }: { symbol: string }) {
   const [candles, setCandles] = useState<Candle[]>([])
@@ -106,13 +110,13 @@ function IndexChart({ symbol }: { symbol: string }) {
         <>
           {/* crosshair + dot (HTML so they don't stretch with the SVG) */}
           <span className="absolute top-0 bottom-0 w-px pointer-events-none"
-            style={{ left: `${hx}%`, background: 'var(--text-secondary)', opacity: 0.45 }} />
+            style={{ left: `${hx}%`, background: 'var(--text-secondary)', opacity: 0.45, transition: SMOOTH }} />
           <span className="absolute w-3 h-3 rounded-full -translate-x-1/2 -translate-y-1/2 pointer-events-none"
-            style={{ left: `${hx}%`, top: `${hy}%`, background: color, border: '2px solid var(--bg-card)', boxShadow: `0 0 0 3px ${color}33` }} />
+            style={{ left: `${hx}%`, top: `${hy}%`, transition: SMOOTH, background: color, border: '2px solid var(--bg-card)', boxShadow: `0 0 0 3px ${color}33` }} />
           {/* tooltip, flips side near the right edge */}
           <div className="absolute top-1 pointer-events-none rounded-lg px-3 py-2 shadow-lg whitespace-nowrap"
             style={{
-              left: `${hx}%`, transform: hx > 70 ? 'translateX(calc(-100% - 10px))' : 'translateX(10px)',
+              left: `${hx}%`, transform: hx > 70 ? 'translateX(calc(-100% - 10px))' : 'translateX(10px)', transition: SMOOTH, willChange: 'left, transform',
               background: 'var(--bg-card)', border: '1px solid var(--bg-border)',
             }}>
             {time && <p className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{time} PKT</p>}
@@ -248,7 +252,7 @@ export default function DashboardClient() {
 
   const TABLE_COLS: { label: string; col: SortCol; mobileHide?: boolean }[] = [
     { label: 'Symbol', col: 'symbol'    },
-    { label: 'Name',   col: 'name',      mobileHide: true },
+    { label: 'Company', col: 'name'     },
     { label: 'Price',  col: 'price'     },
     { label: 'Change', col: 'change',    mobileHide: true },
     { label: '% Chg',  col: 'changePct' },
@@ -369,7 +373,7 @@ export default function DashboardClient() {
 
         {/* Table — scrollable on mobile */}
         <div className="overflow-x-auto">
-          <table className="w-full text-xs" style={{ minWidth: 360 }}>
+          <table className="w-full text-xs" style={{ minWidth: 420 }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--bg-border)' }}>
                 {TABLE_COLS.map(({ label, col, mobileHide }) => {
@@ -410,21 +414,18 @@ export default function DashboardClient() {
                       onMouseEnter={e => (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--bg-hover)'}
                       onMouseLeave={e => (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'}>
                     {/* Symbol */}
-                    <td className="py-2.5 px-2 sm:px-3">
-                      <div className="flex items-center gap-1">
+                    <td className="py-2.5 px-2 sm:px-3 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        <SymbolLogo symbol={q.symbol} size={26} />
                         <Link href={`/stocks/${q.symbol}`} prefetch={false}
                           className="font-bold hover:underline text-[11px] sm:text-xs" style={{ color: '#FEA500' }}>
                           {q.symbol}
                         </Link>
                         {isKMI(q.indexKeys, q.symbol) && <KMIBadge />}
                       </div>
-                      {/* Name shown below symbol on mobile */}
-                      <p className="sm:hidden text-[10px] truncate max-w-[90px] mt-0.5" style={{ color: 'var(--text-secondary)' }}>
-                        {q.name}
-                      </p>
                     </td>
-                    {/* Name — desktop only */}
-                    <td className="hidden sm:table-cell py-2.5 px-3 max-w-[140px] truncate">
+                    {/* Company */}
+                    <td className="py-2.5 px-2 sm:px-3 min-w-[150px] sm:min-w-[180px] leading-snug">
                       <Link href={`/stocks/${q.symbol}`} prefetch={false} className="hover:underline" style={{ color: 'var(--text-secondary)' }}>
                         {q.name}
                       </Link>

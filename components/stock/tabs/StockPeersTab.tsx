@@ -205,15 +205,15 @@ export function StockPeersTab({ symbol, overview, snapFunds, peers, peersLoad }:
           const good  = diff != null && (c.lowerIsBetter ? diff < 0 : diff > 0)
           const negVal = c.self != null && c.self < 0
           return (
-            <div key={c.label} className="rounded-xl p-4 relative overflow-hidden min-w-0"
+            <div key={c.label} className="rounded-xl p-3 sm:p-4 relative overflow-hidden min-w-0"
               style={{ background: `linear-gradient(135deg, ${c.accent}1f, ${c.accent}08)`, border: `1px solid ${c.accent}40` }}>
               <div className="absolute -top-5 -right-5 w-16 h-16 rounded-full" style={{ background: `${c.accent}22` }} />
-              <div className="flex items-center justify-between gap-2 relative">
+              <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5 relative">
                 <span className="flex items-center gap-1.5 min-w-0">
                   <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${c.accent}2e`, color: c.accent }}>
                     <c.icon size={14} strokeWidth={2.4} />
                   </span>
-                  <span className="text-[11px] font-bold uppercase tracking-wider truncate" style={{ color: 'var(--text-primary)' }}>{c.label}</span>
+                  <span className="text-[11px] font-bold uppercase tracking-wider leading-tight" style={{ color: 'var(--text-primary)' }}>{c.label}</span>
                 </span>
                 {diff != null && (
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap"
@@ -226,9 +226,9 @@ export function StockPeersTab({ symbol, overview, snapFunds, peers, peersLoad }:
                   </span>
                 )}
               </div>
-              <p className="text-2xl font-black font-number tabular-nums mt-3 relative truncate"
+              <p className="text-xl sm:text-2xl font-black font-number tabular-nums mt-2.5 sm:mt-3 relative truncate"
                 style={{ color: negVal ? '#dc2626' : 'var(--text-primary)' }}>{c.val}</p>
-              <p className="text-[11px] font-medium truncate relative mt-0.5" style={{ color: 'var(--text-secondary)' }}>{c.sub}</p>
+              <p className="text-[11px] font-medium leading-snug relative mt-0.5" style={{ color: 'var(--text-secondary)' }}>{c.sub}</p>
             </div>
           )
         })}

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import Link from 'next/link'
-import { TrendingUp, TrendingDown, Activity, RefreshCw, ArrowLeft, X, Layers, Minus, BarChart3 } from 'lucide-react'
+import { TrendingUp, TrendingDown, Activity, RefreshCw, ArrowLeft, X, Layers, Minus, BarChart3, ChevronDown, Check } from 'lucide-react'
 import { cachedFetch } from '@/lib/utils/clientCache'
 import { useTheme } from '@/components/providers/ThemeProvider'
 import { formatVolume, formatCompactMC } from '@/lib/utils/format'
@@ -677,11 +677,7 @@ export default function IndicesPage() {
         </div>
         <div className="flex items-center gap-2 min-w-0 w-full sm:w-auto">
           {/* Index selector — dropdown below xl (phones, tablets, small laptops with sidebar), segmented buttons on desktop */}
-          <select value={indexKey} onChange={e => setIndexKey(e.target.value)} aria-label="Select index"
-            className="xl:hidden flex-1 sm:flex-none sm:w-44 min-w-0 rounded-lg px-3 py-2 text-xs font-semibold focus:outline-none"
-            style={{ background: 'var(--bg-card)', border: '1px solid var(--bg-border)', color: 'var(--text-primary)' }}>
-            {INDEX_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-          </select>
+          <IndexDropdown value={indexKey} onChange={setIndexKey} options={INDEX_OPTIONS} />
           <div className="hidden xl:flex rounded-lg border overflow-hidden" style={{ borderColor: 'var(--bg-border)' }}>
             {INDEX_OPTIONS.map(opt => (
               <button
@@ -949,6 +945,59 @@ export default function IndicesPage() {
           </div>
 
         </>
+      )}
+    </div>
+  )
+}
+
+/* ── Styled index dropdown (replaces the native <select>) ─────────────────── */
+function IndexDropdown({ value, onChange, options }: {
+  value: string; onChange: (v: string) => void; options: readonly { value: string; label: string }[]
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const current = options.find(o => o.value === value)
+
+  useEffect(() => {
+    if (!open) return
+    const onDoc = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
+    document.addEventListener('mousedown', onDoc)
+    document.addEventListener('keydown', onKey)
+    return () => { document.removeEventListener('mousedown', onDoc); document.removeEventListener('keydown', onKey) }
+  }, [open])
+
+  return (
+    <div ref={ref} className="xl:hidden relative flex-1 sm:flex-none sm:w-52 min-w-0">
+      <button type="button" onClick={() => setOpen(o => !o)} aria-haspopup="listbox" aria-expanded={open} aria-label="Select index"
+        className="w-full flex items-center justify-between gap-2 rounded-xl pl-3.5 pr-3 py-2 text-sm font-semibold transition-all"
+        style={{
+          background: open ? '#FEA50012' : 'var(--bg-card)',
+          border: `1px solid ${open ? '#FEA500' : 'var(--bg-border)'}`,
+          boxShadow: open ? '0 0 0 3px #FEA50022' : 'none',
+          color: 'var(--text-primary)',
+        }}>
+        <span className="truncate">{current?.label ?? 'Select index'}</span>
+        <ChevronDown size={15} className="shrink-0 transition-transform" style={{ color: '#FEA500', transform: open ? 'rotate(180deg)' : 'none' }} />
+      </button>
+
+      {open && (
+        <ul role="listbox" className="absolute left-0 right-0 mt-1.5 z-50 max-h-72 overflow-y-auto rounded-xl p-1 shadow-2xl"
+          style={{ background: 'linear-gradient(160deg, color-mix(in srgb, var(--bg-card) 55%, rgba(255,255,255,0.10)), color-mix(in srgb, var(--bg-card) 40%, transparent))', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)', border: '1px solid rgba(255,255,255,0.14)', boxShadow: '0 20px 50px -12px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.12)' }}>
+          {options.map(o => {
+            const on = o.value === value
+            return (
+              <li key={o.value} role="option" aria-selected={on}>
+                <button type="button" onClick={() => { onChange(o.value); setOpen(false) }}
+                  className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-sm text-left transition-colors hover:bg-[var(--bg-hover)]"
+                  style={{ color: on ? '#FEA500' : 'var(--text-primary)', fontWeight: on ? 700 : 500, background: on ? '#FEA50014' : undefined }}>
+                  <span className="truncate">{o.label}</span>
+                  {on && <Check size={14} className="shrink-0" />}
+                </button>
+              </li>
+            )
+          })}
+        </ul>
       )}
     </div>
   )
