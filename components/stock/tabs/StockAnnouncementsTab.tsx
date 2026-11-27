@@ -119,20 +119,20 @@ export function StockAnnouncementsTab({ symbol, anns, annLoad, price }: { symbol
         <div>
           {shown.map((ann, i) => (
             <div key={i}
-                 className="flex items-center gap-4 py-3 px-1 transition-colors"
+                 className="flex flex-wrap sm:flex-nowrap items-start sm:items-center gap-x-4 gap-y-1.5 py-3 px-1 transition-colors"
                  style={{ borderBottom: '1px solid var(--bg-border)' }}
                  onMouseEnter={e => (e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--bg-hover)'}
                  onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.backgroundColor = 'transparent'}>
 
               {/* Date */}
-              <div className="shrink-0 w-[92px]">
+              <div className="shrink-0 w-full sm:w-[92px]">
                 <p className="text-xs font-normal whitespace-nowrap" style={{ color: 'var(--text-secondary)' }}>
                   {new Date(ann.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
                 </p>
               </div>
 
               {/* Title + code */}
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-0 basis-full sm:basis-auto">
                 <p className="text-sm font-medium leading-snug" style={{ color: 'var(--text-primary)' }}>
                   {ann.title}
                 </p>
@@ -162,7 +162,7 @@ export function StockAnnouncementsTab({ symbol, anns, annLoad, price }: { symbol
 
               {/* PDF: view in a new tab, or download */}
               {ann.files?.length ? (
-                <div className="flex flex-col items-end gap-1.5 shrink-0">
+                <div className="flex flex-wrap sm:flex-col items-start sm:items-end gap-1.5 shrink-0 pt-1 sm:pt-0">
                   {ann.files.map((file, fi) => (
                     <div key={file} className="flex items-center gap-1.5">
                       {ann.files.length > 1 && (
@@ -185,7 +185,7 @@ export function StockAnnouncementsTab({ symbol, anns, annLoad, price }: { symbol
                 </div>
               ) : ann.images?.length ? (
                 /* No PDF — show the announcement image(s) instead */
-                <div className="flex flex-col items-end gap-1.5 shrink-0">
+                <div className="flex flex-wrap sm:flex-col items-start sm:items-end gap-1.5 shrink-0 pt-1 sm:pt-0">
                   {ann.images.slice(0, 3).map((img, ii) => {
                     const src = `/api/proxy/pdf?file=${encodeURIComponent(img)}`
                     return (

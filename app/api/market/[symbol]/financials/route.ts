@@ -5,6 +5,7 @@ import { csUatGet }                   from '@/lib/capitalstake/client'
 import { CS_ENDPOINTS }               from '@/lib/capitalstake/endpoints'
 import { withCache, TTL_SECONDS }     from '@/lib/redis/cache'
 import { trackChartAPICall }          from '@/lib/utils/rateLimit'
+import { trimStatement } from '@/lib/utils/statementWindow'
 import type { StatementData }         from '@/components/stock/stock-detail-types'
 
 // Live / per-user data: always run on request, never prerender at build time
@@ -47,7 +48,7 @@ export async function GET(
 
     // 1. Supabase DB first (free, unlimited, nightly refresh)
     const cached = await getStatement(symbol, stmtType, interval)
-    if (cached) return NextResponse.json({ data: cached })
+    if (cached) return NextResponse.json({ data: trimStatement(cached) })
 
     // 2. DB miss — fetch from UAT
     const data = await withCache(
@@ -75,7 +76,7 @@ export async function GET(
       }
     )
 
-    return NextResponse.json({ data })
+    return NextResponse.json({ data: trimStatement(data) })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
     console.error('[API /market/financials]', message)

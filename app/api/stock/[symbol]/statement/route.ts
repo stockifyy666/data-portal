@@ -4,6 +4,7 @@ import { CS_ENDPOINTS }                            from '@/lib/capitalstake/endp
 import { withCache, TTL_SECONDS }                  from '@/lib/redis/cache'
 import { trackChartAPICall }                       from '@/lib/utils/rateLimit'
 import { getStatement, saveStatement }             from '@/lib/supabase/financials'
+import { trimStatement } from '@/lib/utils/statementWindow'
 import type { StatementData }                      from '@/components/stock/stock-detail-types'
 
 // Live / per-user data: always run on request, never prerender at build time
@@ -39,7 +40,7 @@ export async function GET(
 
       // 1. Supabase DB first (free, unlimited, 24h fresh)
       const cached = await getStatement(symbol, stmtType, interval)
-      if (cached) return NextResponse.json({ data: cached })
+      if (cached) return NextResponse.json({ data: trimStatement(cached) })
 
       // 2. DB miss — fetch from Capital Stake, persist to DB + Redis
       const data = await withCache(
@@ -56,14 +57,14 @@ export async function GET(
       // Persist to Supabase so next request serves from DB
       if (data) saveStatement(symbol, stmtType, interval, data, data).catch(() => {})
 
-      return NextResponse.json({ data })
+      return NextResponse.json({ data: trimStatement(data) })
     }
 
     // ── Fundamentals ───────────────────────────────────────────────────────────
     if (type === 'fundamentals') {
       // 1. Supabase DB first
       const cached = await getStatement(symbol, 'fundamentals', 'annual')
-      if (cached) return NextResponse.json({ data: cached })
+      if (cached) return NextResponse.json({ data: trimStatement(cached) })
 
       // 2. Fetch from Capital Stake
       const data = await withCache(
@@ -96,7 +97,7 @@ export async function GET(
       // Persist (store raw response as raw_data for peers route re-use)
       if (data) saveStatement(symbol, 'fundamentals', 'annual', data, data).catch(() => {})
 
-      return NextResponse.json({ data })
+      return NextResponse.json({ data: trimStatement(data) })
     }
 
     // ── Shareholders ───────────────────────────────────────────────────────────
