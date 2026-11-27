@@ -3,6 +3,7 @@ import { csUatGet }                   from '@/lib/capitalstake/client'
 import { CS_ENDPOINTS }               from '@/lib/capitalstake/endpoints'
 import { withCache, TTL_SECONDS }     from '@/lib/redis/cache'
 import { trackChartAPICall }          from '@/lib/utils/rateLimit'
+import { isPSXOpen, secondsUntilOpen } from '@/lib/utils/marketHours'
 
 // Live / per-user data: always run on request, never prerender at build time
 export const dynamic = 'force-dynamic'
@@ -35,9 +36,13 @@ export async function GET(
     const period = (req.nextUrl.searchParams.get('period') ?? '1D') as keyof typeof PERIOD_MAP
     const cfg    = PERIOD_MAP[period] ?? PERIOD_MAP['1D']
 
+    // Market closed (after hours, Friday break, weekend): hold the chart in
+    // Redis until the next PSX open so no Capital Stake call is made.
+    const ttl = isPSXOpen() ? cfg.ttl : Math.max(cfg.ttl, secondsUntilOpen())
+
     const data = await withCache(
       `stock:intraday:${symbol}:${cfg.key}`,
-      cfg.ttl,
+      ttl,
       async () => {
         const url = cfg.endpoint(symbol)
         await trackChartAPICall(url)

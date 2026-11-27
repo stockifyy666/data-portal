@@ -333,7 +333,7 @@ export function StockOverviewTab({ symbol, overview, overviewLoad, snapFunds, sn
                   const r = fundRows.find(f => f.key === k)!
                   return (
                     <div key={k} className="flex items-center justify-between gap-3 px-4 py-2.5" style={{ borderTop: i ? '1px solid var(--bg-border)' : 'none' }}>
-                      <dt className="text-[13px]" style={{ color: 'var(--text-secondary)' }}>{r.label}</dt>
+                      <dt className="text-[13px] font-medium" style={{ color: 'var(--text-primary)', opacity: 0.85 }}>{r.label}</dt>
                       {snapLoad
                         ? <div className="h-4 w-16 rounded animate-pulse" style={{ backgroundColor: 'var(--bg-hover)' }} />
                         : <dd className="text-[15px] font-bold font-number tabular-nums" style={{ color: r.value === '-' ? 'var(--text-secondary)' : 'var(--text-primary)' }}>{r.value === '-' ? '—' : r.value}</dd>}

@@ -88,7 +88,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="w-full px-4 pt-3 pb-4" style={{ borderTop: '1px solid var(--bg-border)' }}>
 
             {/* Attribution row */}
-            <p style={{ fontSize: 12, color: 'var(--text-secondary)', letterSpacing: '0.01em', marginBottom: 10 }}>
+            <p style={{ fontSize: 10, color: 'var(--text-secondary)', letterSpacing: '0.01em', marginBottom: 8 }}>
               Market data provided by{' '}
               <a
                 href="https://capitalstake.com"
@@ -103,10 +103,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
             {/* Disclaimer */}
             <div style={{ borderTop: '1px solid var(--bg-border)', paddingTop: 10 }}>
-              <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>
+              <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 4 }}>
                 Disclaimer
               </p>
-              <p style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.7 }}>
+              <p style={{ fontSize: 9.5, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
                 Stockifyy (Pvt.) Ltd. reserves the right to determine the criteria under which users may access its platform and services.
                 Stockifyy and its owners/affiliates shall not be liable for any damages arising from performance failures, errors, omissions,
                 interruptions, delays, computer viruses, communication failures, or unauthorized access to user accounts.

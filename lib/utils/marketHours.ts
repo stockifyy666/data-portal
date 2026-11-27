@@ -6,9 +6,9 @@
 //
 // PSX Schedule (all times PKT = UTC+5):
 //   Mon–Thu : 09:30 – 15:30  (continuous session)
-//   Friday  : 09:30 – 12:00  (morning session)
+//   Friday  : 09:15 – 12:00  (morning session)
 //             12:00 – 14:30  (Jumu'ah / Friday prayer break — market CLOSED)
-//             14:30 – 15:30  (afternoon session)
+//             14:30 – 16:30  (afternoon session)
 //   Sat–Sun : CLOSED
 // =============================================================================
 
@@ -34,20 +34,21 @@ export function isPSXOpen(at = Date.now()): boolean {
   // Weekends
   if (day === 0 || day === 6) return false
 
-  // Market open: 09:30 → 570 min | Market close: 15:30 → 930 min
-  const OPEN  = 9 * 60 + 30   // 570
-  const CLOSE = 15 * 60 + 30  // 930
-
-  if (hm < OPEN || hm >= CLOSE) return false
-
-  // Friday Jumu'ah break: 12:00 (720) – 14:30 (870)
+  // Friday: 09:15–12:00, Jumu'ah break, 14:30–16:30
   if (day === 5) {
+    const OPEN        = 9 * 60 + 15   // 555
     const BREAK_START = 12 * 60       // 720
     const BREAK_END   = 14 * 60 + 30  // 870
+    const CLOSE       = 16 * 60 + 30  // 990
+    if (hm < OPEN || hm >= CLOSE) return false
     if (hm >= BREAK_START && hm < BREAK_END) return false
+    return true
   }
 
-  return true
+  // Mon–Thu: 09:30 (570) – 15:30 (930)
+  const OPEN  = 9 * 60 + 30
+  const CLOSE = 15 * 60 + 30
+  return hm >= OPEN && hm < CLOSE
 }
 
 /**

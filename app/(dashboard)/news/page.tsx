@@ -268,7 +268,7 @@ export default function NewsPage() {
       </div>
 
       {/* News grid */}
-      <div className="flex-1 py-4 sm:p-6">
+      <div className="flex-1 py-4 sm:py-6">
         {isLoading ? (
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
             {Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)}
