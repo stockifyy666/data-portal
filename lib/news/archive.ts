@@ -31,7 +31,8 @@ export async function archiveNews(scope: NewsScope, items: RawNews[]): Promise<v
     .filter(r => r.link && r.title && r.published_at && Date.parse(r.published_at) >= cutoff)
   if (!rows.length) return
   try {
-    await createServiceClient().from('news_items').upsert(rows, { onConflict: 'link', ignoreDuplicates: true })
+    // Keyed by (link, scope): the same article can live in both the market and general feeds (migration 009)
+    await createServiceClient().from('news_items').upsert(rows, { onConflict: 'link,scope', ignoreDuplicates: true })
   } catch (err) {
     console.error('[news archive] store failed:', err instanceof Error ? err.message : err)
   }
