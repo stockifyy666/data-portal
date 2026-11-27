@@ -1,0 +1,11 @@
+{
+  "_note": "All Vercel crons are PAUSED (vercel.json has an empty list). To restore, copy this 'crons' array back into vercel.json and deploy. Times are UTC; PKT = UTC+5.",
+  "crons": [
+    { "path": "/api/sync/financials",   "schedule": "5-59/15 19-20 * * *", "_pkt": "Daily 12:05-1:50 AM — income, balance, cashflow, fundamentals" },
+    { "path": "/api/sync/content",      "schedule": "5-59/15 22-23 * * 6", "_pkt": "Sunday 3:05-4:50 AM — profile overview, detail, shareholders" },
+    { "path": "/api/sync/payouts",      "schedule": "5-59/15 21 * * *",    "_pkt": "Daily 2:05-2:50 AM — payouts" },
+    { "path": "/api/sync/live-content", "schedule": "30 * * * *",          "_pkt": "Hourly at :30 — general news + announcements" },
+    { "path": "/api/sync/sector-news",  "schedule": "0 */2 * * *",         "_pkt": "Every 2 hours — sector news" },
+    { "path": "/api/sync/insider",      "schedule": "0 12 * * 1-5",        "_pkt": "Mon-Fri 5:00 PM — insider transactions" }
+  ]
+}
