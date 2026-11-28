@@ -17,6 +17,7 @@ export default function RegisterPage() {
   const [gLoading, setGLoading] = useState(false)
   const [fLoading, setFLoading] = useState(false)
   const [error,    setError]    = useState<string | null>(null)
+  const [sentTo,   setSentTo]   = useState<string | null>(null)   // confirmation email sent
 
   function safeRedirect(fallback = '/dashboard') {
     const next = new URLSearchParams(window.location.search).get('next') ?? ''
@@ -32,12 +33,20 @@ export default function RegisterPage() {
       setLoading(false); return
     }
     try {
-      const { error: signUpError } = await supabase.auth.signUp({
-        email, password, options: { data: { full_name: fullName } },
+      // The confirmation email link comes back to our own callback (not the Supabase URL),
+      // which exchanges the code for a session and sends the user into the portal.
+      const next = new URLSearchParams(window.location.search).get('next') ?? '/dashboard'
+      const destination = next.startsWith('/') && !next.startsWith('//') ? next : '/dashboard'
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email, password,
+        options: {
+          data: { full_name: fullName },
+          emailRedirectTo: `${window.location.origin}/api/auth/callback?next=${encodeURIComponent(destination)}`,
+        },
       })
       if (signUpError) { setError(signUpError.message); return }
-      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
-      if (signInError) { setError(signInError.message); return }
+      // "Confirm email" is on: no session until the user clicks the link in their inbox
+      if (!data.session) { setSentTo(email); return }
       safeRedirect()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong.')
@@ -65,6 +74,32 @@ export default function RegisterPage() {
   const strengthColor = ['', '#ef4444', '#f59e0b', '#22c55e', '#16a34a']
 
   return (
+    sentTo ? (
+      <AuthShell
+        title="Check your email"
+        subtitle="One last step to activate your Stockifyy account."
+        footer={
+          <p className="a-switch">
+            Already confirmed?{' '}
+            <Link href="/login" className="a-link">Sign in</Link>
+          </p>
+        }>
+        <div className="flex flex-col items-center text-center gap-3 py-4">
+          <span className="w-14 h-14 rounded-full flex items-center justify-center"
+            style={{ background: 'rgba(254,165,0,0.12)', color: '#c27c00' }}>
+            <Mail size={26} />
+          </span>
+          <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+            We sent a confirmation link to <strong style={{ color: 'var(--text-primary)' }}>{sentTo}</strong>.
+            Click the link in that email to activate your account. It may take a minute to arrive.
+            Check your spam folder if you don&apos;t see it.
+          </p>
+          <button type="button" className="a-link text-sm" onClick={() => setSentTo(null)}>
+            Used the wrong email? Go back
+          </button>
+        </div>
+      </AuthShell>
+    ) :
     <AuthShell
       title="Welcome to Stockifyy's Data Portal"
       subtitle="Create your free account for PSX prices, analytics and company research."
