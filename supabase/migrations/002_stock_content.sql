@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS stock_content (
   content_type TEXT       NOT NULL,  -- 'announcements' | 'news'
   data        JSONB       NOT NULL,  -- raw array from CS UAT
   fetched_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  PRIMARY KEY (symbol, content_type)
+  PRIMARY KEY (symbol, content_type)..
 );
 
 ALTER TABLE stock_content ENABLE ROW LEVEL SECURITY;
