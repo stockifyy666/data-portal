@@ -34,7 +34,8 @@ const redis = new Redis({
 
 const authLimiter = new Ratelimit({
   redis,
-  limiter: Ratelimit.slidingWindow(10, '1 m'),   // 10 login attempts / min per IP
+  // 100 / min per IP: many colleagues can sign in at once from one shared office IP
+  limiter: Ratelimit.slidingWindow(100, '1 m'),
   prefix:  'rl:auth',
 })
 
