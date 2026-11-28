@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Inter, Barlow, Montserrat } from 'next/font/google'
 import { ThemeProvider } from '@/components/providers/ThemeProvider'
 import { Toaster } from 'react-hot-toast'
+import { Analytics } from '@vercel/analytics/react'
 import './globals.css'
 
 const inter = Inter({
@@ -66,6 +67,8 @@ export default function RootLayout({
             }}
           />
         </ThemeProvider>
+        {/* Vercel Web Analytics — page views only, no cookies or personal data */}
+        <Analytics />
       </body>
     </html>
   )
