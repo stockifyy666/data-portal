@@ -64,13 +64,13 @@ export async function trackChartAPICall(endpoint: string): Promise<number> {
       await redis.expire(endpointsKey(date), secondsLeft + 3600)
     }
 
-    console.log(`[CS UAT] Call #${count}/${UAT_MAX_PER_DAY} today → ${endpoint}`)
+    console.log(`[CS] Call #${count}/${UAT_MAX_PER_DAY} today → ${endpoint}`)
 
     if (count >= UAT_WARN_THRESHOLD) {
-      console.warn(`[CS UAT] WARNING: ${count}/${UAT_MAX_PER_DAY} requests used today. Overage is PKR 10/request.`)
+      console.warn(`[CS] WARNING: ${count}/${UAT_MAX_PER_DAY} requests used today. Overage is PKR 10/request.`)
     }
     if (count > UAT_MAX_PER_DAY) {
-      console.error(`[CS UAT] LIMIT EXCEEDED: ${count} calls today — overage charges apply. Endpoint: ${endpoint}`)
+      console.error(`[CS] LIMIT EXCEEDED: ${count} calls today — overage charges apply. Endpoint: ${endpoint}`)
     }
 
     return count
